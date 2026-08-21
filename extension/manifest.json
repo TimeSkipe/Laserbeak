@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Laserbeak",
+  "name": "__MSG_extName__",
   "version": "1.0",
-  "description": "Обвести зону на сторінці й надіслати її в сесію Claude Code",
+  "description": "__MSG_extDescription__",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2KV5d2mngOewBXXrDOGeTUVM3s8Wdk65pEVGQ8Rei/FTXgVV2ffxuMIqudGlO5eq4wKc5zfjeR0v01cHsdE72JjuJexYR7HynP7Rhwcmtfnz0DtsTRTK28rj1fyVRl/b9FfzDEwcnOhUhv6T2BaBD+KhynyeltGuk9vUyUPtFmke05DV42C8DjNp/nOJAOj6AJYn+3Clj9zYG3eUxvrUn+AokagFCo1+sp+vnMiiUenV0O/CCodiK+/No010Ly+gS0eQY33oxu2T4VHC0s9UyCXaL1VjAYkkVbTlfejno1jyUiukwbE65/0z88AaFcdGHYK9X8tZCqghCxFl1IYfUwIDAQAB",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -19,7 +19,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Виділити зону й надіслати в сесію (⌘⇧E)",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icons/16.png",
       "32": "icons/32.png",
@@ -37,8 +37,9 @@
         "default": "Ctrl+Shift+E",
         "mac": "Command+Shift+E"
       },
-      "description": "Виділити зону й надіслати в сесію"
+      "description": "__MSG_commandCapture__"
     }
   },
-  "web_accessible_resources": []
+  "web_accessible_resources": [],
+  "default_locale": "uk"
 }

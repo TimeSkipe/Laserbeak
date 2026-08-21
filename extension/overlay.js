@@ -14,6 +14,8 @@
     return;
   }
 
+  const msg = (key, ...args) => chrome.i18n.getMessage(key, args.map(String));
+
   const STYLES = `
     :host { all: initial; }
     .veil {
@@ -184,7 +186,7 @@
 
     veil = el('div', 'veil');
     hint = el('div', 'hint');
-    hint.textContent = 'Обведи зону · Esc — скасувати';
+    hint.textContent = msg('hintDrag');
 
     document.addEventListener('keydown', onKey, true);
 
@@ -243,7 +245,7 @@
       text: (target?.innerText || '').trim().slice(0, 80),
     });
 
-    if (!answer?.ok) { fail(answer?.error || 'не вдалось зняти зону'); return; }
+    if (!answer?.ok) { fail(answer?.error || msg('errCapture')); return; }
 
     hole.style.display = '';
     ask(rect, answer);
@@ -263,8 +265,8 @@
     card.innerHTML = `
       <img src="${shot.preview}" alt="">
       <div class="to"><span class="arrow">→</span><select></select></div>
-      <textarea placeholder="Що з цим не так?" rows="2"></textarea>
-      <div class="foot"><span>${shot.size}</span><span>Enter — надіслати · Esc — скасувати</span></div>
+      <textarea placeholder="${msg('commentPlaceholder')}" rows="2"></textarea>
+      <div class="foot"><span>${shot.size}</span><span>${msg('footHint')}</span></div>
     `;
 
     const select = card.querySelector('select');
@@ -275,7 +277,7 @@
       .catch(() => ({ sessions: [], bound: '' }));
 
     if (!sessions?.length) {
-      select.innerHTML = '<option>немає сесій, куди можна писати</option>';
+      select.innerHTML = `<option>${msg('noSessions')}</option>`;
       select.disabled = true;
     } else {
       select.innerHTML = sessions
@@ -297,11 +299,11 @@
         comment: area.value,
       }).catch((err) => ({ ok: false, error: err.message }));
 
-      if (!res?.ok) { area.disabled = false; fail(res?.error || 'не надіслалось', card); return; }
+      if (!res?.ok) { area.disabled = false; fail(res?.error || msg('errSend'), card); return; }
 
       const name = select.selectedOptions[0].textContent.split(' · ')[0];
       clear();
-      toast(`Надіслано в «${name}»`);
+      toast(msg('sentTo', name));
     });
   }
 

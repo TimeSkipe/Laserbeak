@@ -38,26 +38,23 @@
 </style>
 
 <h1>Laserbeak</h1>
-<div class="sub">Обвести зону на сторінці й надіслати її в сесію Claude Code</div>
+<div class="sub" data-i18n="popupSubtitle"></div>
 
 <div class="row">
   <span class="dot" id="dot"></span>
-  <span class="grow" id="daemon">перевіряю демон…</span>
+  <span class="grow" id="daemon">…</span>
 </div>
 
-<h2>Як виділити</h2>
+<h2 data-i18n="howToSelect"></h2>
 <div class="row">
-  <span class="grow"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd> · клік по іконці · правий клік на сторінці</span>
+  <span class="grow"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd> · <span data-i18n="howToSelectHint"></span></span>
 </div>
 
-<h2>Куди летить</h2>
+<h2 data-i18n="whereItGoes"></h2>
 <div id="binds"></div>
 
-<h2>Це розширення</h2>
+<h2 data-i18n="thisExtension"></h2>
 <div class="row"><code id="id"></code></div>
-<div class="muted" style="margin-top:8px">
-  Якщо демон відмовляє з «цьому джерелу сюди не можна» — впиши цей рядок
-  як <code>extensionId</code> у ~/.laserbeak/config.json
-</div>
+<div class="muted" style="margin-top:8px" data-i18n="extensionIdHint"></div>
 
 <script src="popup.js"></script>

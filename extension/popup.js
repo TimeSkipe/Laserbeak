@@ -2,8 +2,14 @@
 // привʼязку, якщо група вкладок дісталась іншій сесії.
 
 const DAEMON = 'http://127.0.0.1:8787';
+const msg = (key, ...args) => chrome.i18n.getMessage(key, args.map(String));
 
 document.getElementById('id').textContent = chrome.runtime.id;
+
+// Розмітка тримає лише ключі: HTML до chrome.i18n не дотягнеться сам.
+for (const el of document.querySelectorAll('[data-i18n]')) {
+  el.textContent = msg(el.dataset.i18n);
+}
 
 async function show() {
   const dot = document.getElementById('dot');
@@ -15,13 +21,13 @@ async function show() {
     state = await res.json();
   } catch {
     dot.className = 'dot bad';
-    line.innerHTML = 'демон не відповідає <span class="muted">— npm run restart</span>';
+    line.innerHTML = `${msg('daemonDown')} <span class="muted">— npm run restart</span>`;
     return;
   }
 
   const can = (state.sessions || []).filter((s) => s.canInput).length;
   dot.className = 'dot ok';
-  line.innerHTML = `демон на звʼязку <span class="muted">· сесій, куди можна писати: ${can}</span>`;
+  line.innerHTML = `${msg('daemonUp')} <span class="muted">· ${msg('sessionsAvailable', can)}</span>`;
 
   await showBinds(state);
 }
@@ -43,15 +49,15 @@ async function showBinds(state) {
     const session = byId.get(sid);
     rows.push({
       key: `group:${group.id}`,
-      title: group.title || 'група вкладок',
-      session: session ? (session.displayName || session.label) : 'сесії вже немає',
+      title: group.title || msg('tabGroup'),
+      session: session ? (session.displayName || session.label) : msg('sessionGone'),
       project: session?.project || '',
     });
   }
 
   if (!rows.length) {
     box.innerHTML = '<div class="row"><span class="grow muted">'
-      + 'ще нічого не привʼязано — сесію виберуть при першому виділенні</span></div>';
+      + msg('noBindings') + '</span></div>';
     return;
   }
 
@@ -64,7 +70,7 @@ async function showBinds(state) {
         <span class="name">${row.title}</span><br>
         <span class="muted">→ ${row.session}${row.project ? ` · ${row.project}` : ''}</span>
       </span>
-      <button>Забути</button>
+      <button>${msg('forget')}</button>
     `;
     el.querySelector('button').addEventListener('click', async () => {
       await chrome.storage.local.remove(row.key);

@@ -128,6 +128,7 @@ that address.
 | `manifest.json` | MV3; permissions `activeTab`, `tabGroups`, `storage`, access limited to `127.0.0.1:8787` |
 | `background.js` | service worker: capture, cropping, talking to the daemon, remembering "tab group → session" |
 | `overlay.js` | what you see on the page: the frame, the input field, the element selector; lives in a Shadow DOM |
+| `_locales/{uk,en,cs}/messages.json` | extension strings; the browser picks the folder by its own UI language |
 | `popup.html`, `popup.js` | settings window: is the daemon alive, which groups are bound to which sessions |
 
 The private key lives in `~/.laserbeak/extension-key.pem` — it is not in

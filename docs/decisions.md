@@ -665,6 +665,28 @@ The synthesised decoder throws `keyNotFound`, and decoding of the
 would black out the interface until the app was rebuilt. That is why every
 model has its own `init(from:)`.
 
+### A missing i18n key is worse than an untranslated string
+
+`chrome.i18n.getMessage()` returns an **empty string** for a key that is
+not in `messages.json` — no warning, no fallback to the key name. So a
+typo does not leave you with Ukrainian text in an English UI; it leaves
+you with a blank button.
+
+That is why the key sets are compared against the code as a check: all 30
+keys used in `.js` and in `data-i18n` attributes must exist in all three
+locales. Cheap to run, and it catches the one failure mode that is
+invisible by eye.
+
+The extension follows the **browser's** UI language, not the system's —
+worth knowing when the two differ.
+
+### HTML cannot reach chrome.i18n by itself
+
+The popup's markup holds only keys (`data-i18n="howToSelect"`), and one
+loop in `popup.js` fills them in. There is no declarative way: unlike
+SwiftUI, where `Text("…")` localises for free, a static HTML page has no
+access to the extension API until a script runs.
+
 ### Two languages of text, two different places to translate it
 
 The interface strings live in the apps, but the banner text is assembled

@@ -1,0 +1,102 @@
+{
+  "extName": {
+    "message": "Laserbeak"
+  },
+  "extDescription": {
+    "message": "Обвести зону на сторінці й надіслати її в сесію Claude Code"
+  },
+  "actionTitle": {
+    "message": "Виділити зону й надіслати в сесію (⌘⇧E)"
+  },
+  "commandCapture": {
+    "message": "Виділити зону й надіслати в сесію"
+  },
+  "menuCapture": {
+    "message": "Надіслати зону в сесію Claude Code"
+  },
+  "menuSettings": {
+    "message": "Laserbeak: налаштування"
+  },
+  "hintDrag": {
+    "message": "Обведи зону · Esc — скасувати"
+  },
+  "commentPlaceholder": {
+    "message": "Що з цим не так?"
+  },
+  "footHint": {
+    "message": "Enter — надіслати · Esc — скасувати"
+  },
+  "noSessions": {
+    "message": "немає сесій, куди можна писати"
+  },
+  "sentTo": {
+    "message": "Надіслано в «$NAME$»",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "errCapture": {
+    "message": "не вдалось зняти зону"
+  },
+  "errSend": {
+    "message": "не надіслалось"
+  },
+  "errEmptyRegion": {
+    "message": "зона порожня"
+  },
+  "errLostShot": {
+    "message": "знімок загубився — спробуй ще раз"
+  },
+  "errOpenOverlay": {
+    "message": "не вдалось відкрити виділення"
+  },
+  "daemonDown": {
+    "message": "Laserbeak не відповідає"
+  },
+  "daemonUp": {
+    "message": "Laserbeak на звʼязку"
+  },
+  "sessionsAvailable": {
+    "message": "сесій, куди можна писати: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "tabGroup": {
+    "message": "група вкладок"
+  },
+  "sessionGone": {
+    "message": "сесії вже немає"
+  },
+  "noBindings": {
+    "message": "ще нічого не привʼязано — сесію виберуть при першому виділенні"
+  },
+  "forget": {
+    "message": "Забути"
+  },
+  "popupSubtitle": {
+    "message": "Обвести зону на сторінці й надіслати її в сесію Claude Code"
+  },
+  "howToSelect": {
+    "message": "Як виділити"
+  },
+  "howToSelectHint": {
+    "message": "клік по іконці · правий клік на сторінці"
+  },
+  "whereItGoes": {
+    "message": "Куди летить"
+  },
+  "thisExtension": {
+    "message": "Це розширення"
+  },
+  "extensionIdHint": {
+    "message": "Якщо Laserbeak відмовляє з «цьому джерелу сюди не можна» — впиши цей рядок як extensionId у ~/.laserbeak/config.json"
+  },
+  "errUnknownMessage": {
+    "message": "невідоме повідомлення"
+  }
+}

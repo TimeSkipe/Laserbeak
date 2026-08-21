@@ -437,6 +437,11 @@ defaults write com.laserbeak.desktop AppleLanguages -array en
 defaults delete com.laserbeak.desktop AppleLanguages
 ```
 
+**The browser extension follows the browser.** Its strings live in
+`extension/_locales/`, and Chrome picks the folder matching its own UI
+language — not the system one. So a browser in English shows an English
+overlay even on a Ukrainian Mac.
+
 Log files stay in one language deliberately: hunting for "session not
 found" in three languages inside `daemon.log` would be worse than in one.
 

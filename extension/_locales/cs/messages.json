@@ -1,0 +1,102 @@
+{
+  "extName": {
+    "message": "Laserbeak"
+  },
+  "extDescription": {
+    "message": "Obtáhni oblast na stránce a pošli ji do relace Claude Code"
+  },
+  "actionTitle": {
+    "message": "Vyber oblast a pošli ji do relace (⌘⇧E)"
+  },
+  "commandCapture": {
+    "message": "Vyber oblast a pošli ji do relace"
+  },
+  "menuCapture": {
+    "message": "Poslat oblast do relace Claude Code"
+  },
+  "menuSettings": {
+    "message": "Laserbeak: nastavení"
+  },
+  "hintDrag": {
+    "message": "Obtáhni oblast · Esc zruší"
+  },
+  "commentPlaceholder": {
+    "message": "Co je s tím špatně?"
+  },
+  "footHint": {
+    "message": "Enter odešle · Esc zruší"
+  },
+  "noSessions": {
+    "message": "žádné relace, do kterých lze psát"
+  },
+  "sentTo": {
+    "message": "Odesláno do „$NAME$“",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "errCapture": {
+    "message": "oblast se nepodařilo zachytit"
+  },
+  "errSend": {
+    "message": "odeslání selhalo"
+  },
+  "errEmptyRegion": {
+    "message": "oblast je prázdná"
+  },
+  "errLostShot": {
+    "message": "snímek se ztratil — zkus to znovu"
+  },
+  "errOpenOverlay": {
+    "message": "nepodařilo se otevřít výběr"
+  },
+  "daemonDown": {
+    "message": "Laserbeak neodpovídá"
+  },
+  "daemonUp": {
+    "message": "Laserbeak je připojen"
+  },
+  "sessionsAvailable": {
+    "message": "relací, do kterých lze psát: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "tabGroup": {
+    "message": "skupina záložek"
+  },
+  "sessionGone": {
+    "message": "relace už neexistuje"
+  },
+  "noBindings": {
+    "message": "zatím nic není spárováno — relace se vybere při prvním výběru"
+  },
+  "forget": {
+    "message": "Zapomenout"
+  },
+  "popupSubtitle": {
+    "message": "Obtáhni oblast na stránce a pošli ji do relace Claude Code"
+  },
+  "howToSelect": {
+    "message": "Jak vybrat"
+  },
+  "howToSelectHint": {
+    "message": "klik na ikonu · pravý klik na stránce"
+  },
+  "whereItGoes": {
+    "message": "Kam to letí"
+  },
+  "thisExtension": {
+    "message": "Toto rozšíření"
+  },
+  "extensionIdHint": {
+    "message": "Pokud Laserbeak odmítne s „tento zdroj sem nesmí“, zapiš tento řetězec jako extensionId do ~/.laserbeak/config.json"
+  },
+  "errUnknownMessage": {
+    "message": "neznámá zpráva"
+  }
+}

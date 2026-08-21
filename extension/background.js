@@ -12,6 +12,10 @@
 
 const DAEMON = 'http://127.0.0.1:8787';
 
+// Мову бере сам браузер — із власних налаштувань, а не з системи.
+// Тексти лежать в _locales/<мова>/messages.json.
+const msg = (key, ...args) => chrome.i18n.getMessage(key, args.map(String));
+
 // Скільки чекати, поки браузер перемалює сторінку без нашого оверлея.
 // Знімок робиться відразу після того, як оверлей сховався, — без цієї
 // паузи в кадр потрапляє власна рамка.
@@ -73,7 +77,7 @@ async function crop(dataUrl, rect, dpr) {
   const sw = Math.min(bitmap.width - sx, Math.round(rect.width * dpr));
   const sh = Math.min(bitmap.height - sy, Math.round(rect.height * dpr));
 
-  if (sw < 1 || sh < 1) throw new Error('зона порожня');
+  if (sw < 1 || sh < 1) throw new Error(msg('errEmptyRegion'));
 
   // Дуже великі зони зменшуємо: дрібніший текст сесії однаково не
   // потрібен, а вага росте квадратично.
@@ -120,7 +124,7 @@ async function startCapture(tab) {
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['overlay.js'] });
     await chrome.tabs.sendMessage(tab.id, { type: 'lb:begin' });
   } catch (err) {
-    console.warn('[Laserbeak] не вдалось відкрити виділення:', err.message);
+    console.warn('[Laserbeak]', msg('errOpenOverlay') + ':', err.message);
   }
 }
 
@@ -135,12 +139,12 @@ chrome.commands.onCommand.addListener(async (command) => {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'lb-capture',
-    title: 'Надіслати зону в сесію Claude Code',
+    title: msg('menuCapture'),
     contexts: ['page', 'selection', 'image', 'link'],
   });
   chrome.contextMenus.create({
     id: 'lb-settings',
-    title: 'Laserbeak: налаштування',
+    title: msg('menuSettings'),
     contexts: ['action'],
   });
 });
@@ -196,7 +200,7 @@ async function shoot(tab, payload) {
 
 async function send(tab, { sid, comment }) {
   const { pending } = await chrome.storage.session.get('pending');
-  if (!pending) throw new Error('знімок загубився — спробуй ще раз');
+  if (!pending) throw new Error(msg('errLostShot'));
 
   const result = await daemon('/sessions/shot', {
     method: 'POST',
@@ -215,7 +219,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (msg.type === 'lb:sessions') return listSessions(tab);
     if (msg.type === 'lb:shoot') return shoot(tab, msg);
     if (msg.type === 'lb:send') return send(tab, msg);
-    return { ok: false, error: 'невідоме повідомлення' };
+    return { ok: false, error: msg('errUnknownMessage') };
   };
 
   run().then(reply, (err) => reply({ ok: false, error: err.message }));

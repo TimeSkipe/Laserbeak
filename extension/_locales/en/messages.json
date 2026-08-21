@@ -1,0 +1,102 @@
+{
+  "extName": {
+    "message": "Laserbeak"
+  },
+  "extDescription": {
+    "message": "Drag a region on a page and send it to a Claude Code session"
+  },
+  "actionTitle": {
+    "message": "Select a region and send it to a session (⌘⇧E)"
+  },
+  "commandCapture": {
+    "message": "Select a region and send it to a session"
+  },
+  "menuCapture": {
+    "message": "Send a region to a Claude Code session"
+  },
+  "menuSettings": {
+    "message": "Laserbeak: settings"
+  },
+  "hintDrag": {
+    "message": "Drag a region · Esc to cancel"
+  },
+  "commentPlaceholder": {
+    "message": "What's wrong with it?"
+  },
+  "footHint": {
+    "message": "Enter to send · Esc to cancel"
+  },
+  "noSessions": {
+    "message": "no sessions available to type into"
+  },
+  "sentTo": {
+    "message": "Sent to \"$NAME$\"",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "errCapture": {
+    "message": "could not capture the region"
+  },
+  "errSend": {
+    "message": "sending failed"
+  },
+  "errEmptyRegion": {
+    "message": "the region is empty"
+  },
+  "errLostShot": {
+    "message": "the capture was lost — try again"
+  },
+  "errOpenOverlay": {
+    "message": "could not open the selector"
+  },
+  "daemonDown": {
+    "message": "Laserbeak is not responding"
+  },
+  "daemonUp": {
+    "message": "Laserbeak is connected"
+  },
+  "sessionsAvailable": {
+    "message": "sessions you can type into: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "tabGroup": {
+    "message": "tab group"
+  },
+  "sessionGone": {
+    "message": "session no longer exists"
+  },
+  "noBindings": {
+    "message": "nothing bound yet — the session is picked on the first capture"
+  },
+  "forget": {
+    "message": "Forget"
+  },
+  "popupSubtitle": {
+    "message": "Drag a region on a page and send it to a Claude Code session"
+  },
+  "howToSelect": {
+    "message": "How to select"
+  },
+  "howToSelectHint": {
+    "message": "click the icon · right-click the page"
+  },
+  "whereItGoes": {
+    "message": "Where it goes"
+  },
+  "thisExtension": {
+    "message": "This extension"
+  },
+  "extensionIdHint": {
+    "message": "If Laserbeak refuses with \"this origin is not allowed here\", put this string as extensionId in ~/.laserbeak/config.json"
+  },
+  "errUnknownMessage": {
+    "message": "unknown message"
+  }
+}
