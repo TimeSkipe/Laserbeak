@@ -15,10 +15,11 @@
 const terminals = require('./terminals');
 const tmux = require('./tmux');
 const state = require('./state');
+const { t } = require('./i18n');
 
 class NoWayIn extends Error {
   constructor() {
-    super('сесію запущено без посередника — перезапусти її командою start');
+    super(t('err.noWayIn'));
     this.name = 'NoWayIn';
   }
 }

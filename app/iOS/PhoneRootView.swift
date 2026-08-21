@@ -264,8 +264,8 @@ struct NotPairedView: View {
             Text("Підключи ноут")
                 .font(.headline)
 
-            Text("На маку натисни значок QR у смужці стану Laserbeak "
-                 + "і відскануй код. Це треба зробити один раз.")
+            Text(String(localized: "На маку натисни значок QR у смужці стану Laserbeak ")
+                 + String(localized: "і відскануй код. Це треба зробити один раз."))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -293,8 +293,8 @@ struct KeyRejectedView: View {
             Text("Ключ більше не підходить")
                 .font(.headline)
 
-            Text("Схоже, на маку створили новий ключ. "
-                 + "Відскануй код ще раз — це поверне доступ.")
+            Text(String(localized: "Схоже, на маку створили новий ключ. ")
+                 + String(localized: "Відскануй код ще раз — це поверне доступ."))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -319,8 +319,8 @@ struct SearchingView: View {
                 ProgressView()
                 Text("Шукаю ноут…")
                     .font(.headline)
-                Text("Прямий канал працює й без спільної Wi-Fi — "
-                     + "аби програма Laserbeak була запущена на маку")
+                Text(String(localized: "Прямий канал працює й без спільної Wi-Fi — ")
+                     + String(localized: "аби програма Laserbeak була запущена на маку"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -328,7 +328,7 @@ struct SearchingView: View {
                 Image(systemName: "wifi.exclamationmark")
                     .font(.system(size: 34))
                     .foregroundStyle(.secondary)
-                Text(discovery.lastError ?? "Пошук не запущено")
+                Text(discovery.lastError ?? String(localized: "Пошук не запущено"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -363,8 +363,8 @@ struct ConnectionSheet: View {
                             .frame(width: 8, height: 8)
 
                         Text(client.isConnected
-                             ? (client.state?.host ?? "підключено")
-                             : "немає зв'язку")
+                             ? (client.state?.host ?? String(localized: "підключено"))
+                             : String(localized: "немає зв'язку"))
 
                         Spacer()
 
@@ -375,7 +375,7 @@ struct ConnectionSheet: View {
 
                     if client.isConnected {
                         Label(
-                            usingPeer ? "Прямий зашифрований канал" : "HTTP у локальній мережі",
+                            usingPeer ? String(localized: "Прямий зашифрований канал") : String(localized: "HTTP у локальній мережі"),
                             systemImage: usingPeer ? "lock.fill" : "wifi"
                         )
                         .font(.caption)
@@ -385,16 +385,16 @@ struct ConnectionSheet: View {
                     Text("Зараз")
                 } footer: {
                     Text(usingPeer
-                         ? "Дані йдуть прямо між пристроями й зашифровані. Роутер не потрібен."
-                         : "Прямий канал недоступний — схоже, програму на маку закрито. "
-                           + "Працюємо по мережі, з ключем.")
+                         ? String(localized: "Дані йдуть прямо між пристроями й зашифровані. Роутер не потрібен.")
+                         : String(localized: "Прямий канал недоступний — схоже, програму на маку закрито. ")
+                           + String(localized: "Працюємо по мережі, з ключем."))
                 }
 
                 Section {
                     if discovery.macs.isEmpty {
                         HStack(spacing: 8) {
                             if discovery.isSearching { ProgressView() }
-                            Text(discovery.isSearching ? "Шукаю…" : "Нічого не знайдено")
+                            Text(discovery.isSearching ? String(localized: "Шукаю…") : String(localized: "Нічого не знайдено"))
                                 .foregroundStyle(.secondary)
                         }
                     } else {
@@ -439,8 +439,8 @@ struct ConnectionSheet: View {
                     Text("Ключ доступу")
                 } footer: {
                     Text(pairing.map { "Підключено до «\($0.name.isEmpty ? $0.host : $0.name)». "
-                                       + "Ключ зберігається в Keychain телефона." }
-                         ?? "Ноут ще не підключено.")
+                                       + String(localized: "Ключ зберігається в Keychain телефона.") }
+                         ?? String(localized: "Ноут ще не підключено."))
                 }
             }
             .navigationTitle("Ноутбук")

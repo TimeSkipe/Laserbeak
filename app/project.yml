@@ -8,6 +8,10 @@
 name: Laserbeak
 
 options:
+  # Українська — мова оригіналу; решта беруться з Localizable.xcstrings.
+  # Без knownRegions Xcode мовчки не покладе переклади в бандл.
+  developmentLanguage: uk
+  knownRegions: [uk, en, cs, Base]
   bundleIdPrefix: com.laserbeak
   createIntermediateGroups: true
   deploymentTarget:
@@ -31,6 +35,7 @@ targets:
       - path: Shared
       - path: macOS
       - path: Resources/Assets.xcassets
+      - path: Resources/Localizable.xcstrings
     info:
       path: macOS/Info.generated.plist
       properties:
@@ -77,6 +82,7 @@ targets:
       - path: Shared
       - path: iOS
       - path: Resources/Assets.xcassets
+      - path: Resources/Localizable.xcstrings
     info:
       path: iOS/Info.generated.plist
       properties:

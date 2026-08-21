@@ -13,14 +13,14 @@ enum Palette {
     ]
 
     static let titles: [String: String] = [
-        "blue": "синій",
-        "purple": "фіолетовий",
-        "pink": "рожевий",
-        "red": "червоний",
-        "orange": "помаранчевий",
-        "yellow": "жовтий",
-        "green": "зелений",
-        "teal": "бірюзовий",
+        "blue": String(localized: "синій"),
+        "purple": String(localized: "фіолетовий"),
+        "pink": String(localized: "рожевий"),
+        "red": String(localized: "червоний"),
+        "orange": String(localized: "помаранчевий"),
+        "yellow": String(localized: "жовтий"),
+        "green": String(localized: "зелений"),
+        "teal": String(localized: "бірюзовий"),
     ]
 
     static func color(_ name: String) -> Color? {

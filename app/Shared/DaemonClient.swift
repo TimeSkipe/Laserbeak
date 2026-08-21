@@ -95,7 +95,7 @@ final class DaemonClient: ObservableObject {
                 needsPairing = true
                 isConnected = false
                 failures = 0
-                lastError = "ключ доступу не підійшов"
+                lastError = String(localized: "ключ доступу не підійшов")
                 return
             }
 

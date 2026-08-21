@@ -18,6 +18,23 @@ echo
 
 mkdir -p "$DATA" "$AGENTS" "$ROOT/build"
 
+
+# ---------------------------------------------------------------- 0. мова
+#
+# Мовою банерів і помилок керує Laserbeak, а не програма: банер складає
+# він сам, і в запасному шляху через terminal-notifier ніякої програми
+# взагалі немає.
+#
+#   LASERBEAK_LANG=cs npm run install:all   явно
+#   (нічого)                                як у системі
+
+LANG_CHOICE="${LASERBEAK_LANG:-auto}"
+case "$LANG_CHOICE" in
+  uk|en|cs|auto) ;;
+  *) echo "  ⚠ мова «$LANG_CHOICE» невідома — беру auto"; LANG_CHOICE="auto" ;;
+esac
+echo "▸ мова повідомлень: $LANG_CHOICE"
+
 # ---------------------------------------------------------------- 1. залежності
 
 NODE="$(command -v node || true)"
@@ -74,6 +91,7 @@ for name in daemon app; do
       -e "s|__DATA__|$DATA|g" \
       -e "s|__NODE__|$NODE|g" \
       -e "s|__APP__|$APP_PATH|g" \
+      -e "s|__LANG__|$LANG_CHOICE|g" \
       "$ROOT/launchd/$label.plist.template" > "$plist"
 
   # bootout працює асинхронно: якщо одразу викликати bootstrap, launchd
@@ -88,6 +106,18 @@ for name in daemon app; do
   launchctl enable "gui/$UID_NUM/$label" >/dev/null 2>&1 || true
   echo "  ✓ $label"
 done
+
+
+# Мову кладемо в конфіг: LASERBEAK_LANG у launchd передається теж, але
+# конфіг переживає перевстановлення й читається на льоту.
+node -e "
+const fs = require('fs'), p = '$DATA/config.json';
+let cfg = {};
+try { cfg = JSON.parse(fs.readFileSync(p, 'utf8')); } catch {}
+cfg.language = '$LANG_CHOICE';
+fs.mkdirSync('$DATA', { recursive: true });
+fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
+"
 
 # ---------------------------------------------------------------- 4. хуки
 

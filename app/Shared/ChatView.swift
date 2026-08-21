@@ -52,15 +52,15 @@ struct ChatView: View {
         }
         .windowSize(minWidth: 540, minHeight: 440)
         .confirmationDialog(
-            "Стиснути контекст сесії?",
+            String(localized: "Стиснути контекст сесії?"),
             isPresented: $confirmCompact,
             titleVisibility: .visible
         ) {
             Button("Стиснути") { run("compact") { await client.compact(sid: session.sid) } }
             Button("Скасувати", role: .cancel) { }
         } message: {
-            Text("Claude підсумує розмову й почне з коротшого контексту. "
-                 + "Переписка в архіві лишиться цілою.")
+            Text(String(localized: "Claude підсумує розмову й почне з коротшого контексту. ")
+                 + String(localized: "Переписка в архіві лишиться цілою."))
         }
         .task(id: showAll) {
             await reload()
@@ -154,7 +154,7 @@ struct ChatView: View {
         if let meta {
             let shown = query.isEmpty ? messages.count : visible.count
             let of = meta.messages > messages.count ? " з \(meta.messages)" : ""
-            parts.append("\(shown)\(of) повідомлень")
+            parts.append(String(format: String(localized: "%@%@ повідомлень"), shown, of))
         }
 
         if let model = currentModel { parts.append(model.title) }
@@ -309,8 +309,8 @@ struct ChatView: View {
                 Image(systemName: "keyboard.badge.ellipsis")
                     .foregroundStyle(.tertiary)
 
-                Text("Цю сесію запущено без tmux — писати в неї ззовні macOS не дозволяє. "
-                     + "Перезапусти її командою start, і ввід зʼявиться.")
+                Text(String(localized: "Цю сесію запущено без tmux — писати в неї ззовні macOS не дозволяє. ")
+                     + String(localized: "Перезапусти її командою start, і ввід зʼявиться."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -412,7 +412,7 @@ struct MessageBubble: View {
 
     private var header: some View {
         HStack(spacing: 6) {
-            Text(message.isUser ? "Ти" : "Claude")
+            Text(message.isUser ? String(localized: "Ти") : "Claude")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(accent)
 

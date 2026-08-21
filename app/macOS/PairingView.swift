@@ -63,7 +63,7 @@ struct PairingView: View {
             if chosen.isEmpty { chosen = addresses.first?.address ?? "" }
         }
         .confirmationDialog(
-            "Створити новий ключ?",
+            String(localized: "Створити новий ключ?"),
             isPresented: $confirmRotate,
             titleVisibility: .visible
         ) {
@@ -136,20 +136,20 @@ struct PairingView: View {
                     .foregroundStyle(peer.isListening ? .green : .orange)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(peer.isListening ? "Прямий канал увімкнено" : "Прямий канал не працює")
+                    Text(peer.isListening ? String(localized: "Прямий канал увімкнено") : String(localized: "Прямий канал не працює"))
                         .font(.callout.weight(.medium))
 
                     Text(peer.isListening
                          ? (peer.peerCount > 0
                             ? "Підключено пристроїв: \(peer.peerCount)"
-                            : "Дані підуть зашифровано, повз роутер")
-                         : (peer.lastError ?? "невідома причина"))
+                            : String(localized: "Дані підуть зашифровано, повз роутер"))
+                         : (peer.lastError ?? String(localized: "невідома причина")))
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
                     if !hasFallback {
-                        Text("Запасного шляху немає — телефон бачить сесії лише "
-                             + "поки ця програма працює. Демон її підніме, якщо впаде.")
+                        Text(String(localized: "Запасного шляху немає — телефон бачить сесії лише ")
+                             + String(localized: "поки ця програма працює. Демон її підніме, якщо впаде."))
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -158,7 +158,7 @@ struct PairingView: View {
             }
 
             HStack(spacing: 10) {
-                Button(showToken ? "Сховати ключ" : "Показати ключ") {
+                Button(showToken ? String(localized: "Сховати ключ") : String(localized: "Показати ключ")) {
                     showToken.toggle()
                 }
                 .buttonStyle(.borderless)

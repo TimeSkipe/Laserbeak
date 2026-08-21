@@ -407,7 +407,42 @@ numbers that is noticeably more reliable.
 Large regions are sent as JPEG automatically — a `1594×1544` shot would
 weigh several megabytes as PNG. The text on it stays perfectly readable.
 
-### Installation
+### Languages
+
+Ukrainian, English and Czech. The choice is split in two, because the
+text comes from two different places.
+
+**Banners and API errors are written by Laserbeak itself** — it is the
+one assembling them, and in the `terminal-notifier` fallback there is no
+app involved at all. So the language is chosen once, at install time:
+
+```bash
+LASERBEAK_LANG=cs npm run install:all
+```
+
+Without it you get `auto` — whatever the system is set to. It can be
+changed later in `~/.laserbeak/config.json` (`"language"`, re-read on the
+fly), or for a single run: `LASERBEAK_LANG=en npm start`.
+
+**The apps take the language from the device.** A phone set to English
+shows an English screen with nothing to configure — the strings live in a
+String Catalog, and iOS and macOS pick the right one themselves. Which
+also means the Mac can be in Ukrainian while the phone is in English.
+
+To try another language without touching system settings:
+
+```bash
+defaults write com.laserbeak.desktop AppleLanguages -array en
+# back to normal:
+defaults delete com.laserbeak.desktop AppleLanguages
+```
+
+Log files stay in one language deliberately: hunting for "session not
+found" in three languages inside `daemon.log` would be worse than in one.
+
+---
+
+## Installation
 
 ```bash
 npm run extension    # copies the folder path to the clipboard

@@ -165,9 +165,9 @@ extension NWConnection {
                 } else if let data, data.count == count {
                     continuation.resume(returning: data)
                 } else if isComplete {
-                    continuation.resume(throwing: TransportError.broken("зʼєднання закрито"))
+                    continuation.resume(throwing: TransportError.broken(String(localized: "зʼєднання закрито")))
                 } else {
-                    continuation.resume(throwing: TransportError.broken("кадр обірвано"))
+                    continuation.resume(throwing: TransportError.broken(String(localized: "кадр обірвано")))
                 }
             }
         }
@@ -246,7 +246,7 @@ extension NWConnection {
     /// перекладаємо: -9846 означає, що паролі не збіглись.
     static func explain(_ error: NWError) -> String {
         if case .tls(let status) = error, status == -9846 {
-            return "пароль не підійшов — відскануй код на маку заново"
+            return String(localized: "пароль не підійшов — відскануй код на маку заново")
         }
         return error.localizedDescription
     }
@@ -274,7 +274,7 @@ final class PeerTransport: DaemonTransport, @unchecked Sendable {
 
     var isReady: Bool { readiness.value }
 
-    var describeTarget: String { name.isEmpty ? "поруч" : name }
+    var describeTarget: String { name.isEmpty ? String(localized: "поруч") : name }
 
     func send(
         method: String,
@@ -393,7 +393,7 @@ private actor PeerChannel {
         } catch {
             fresh.cancel()
             throw expired.value
-                ? TransportError.broken("мак не відповів — він заснув або ключ уже інший")
+                ? TransportError.broken(String(localized: "мак не відповів — він заснув або ключ уже інший"))
                 : error
         }
 
@@ -480,7 +480,7 @@ private actor PeerChannel {
         } catch {
             // Інакше нагору поїхало б голе CancellationError, і в смужці
             // стану стояло б слово, яке нічого не пояснює.
-            throw expired.value ? TransportError.broken("мак не відповів вчасно") : error
+            throw expired.value ? TransportError.broken(String(localized: "мак не відповів вчасно")) : error
         }
     }
 

@@ -33,10 +33,10 @@ enum SessionStatus: String, Codable {
 
     var title: String {
         switch self {
-        case .idle:       return "простій"
-        case .working:    return "працює"
-        case .waiting:    return "закінчив"
-        case .needsInput: return "чекає на дозвіл"
+        case .idle:       return String(localized: "простій")
+        case .working:    return String(localized: "працює")
+        case .waiting:    return String(localized: "закінчив")
+        case .needsInput: return String(localized: "чекає на дозвіл")
         }
     }
 
@@ -71,11 +71,11 @@ enum ProjectStatus: String, Codable {
 
     var title: String {
         switch self {
-        case .needsInput: return "чекає на дозвіл"
-        case .waiting:    return "закінчив"
-        case .working:    return "працює"
-        case .idle:       return "простій"
-        case .offline:    return "немає сесій"
+        case .needsInput: return String(localized: "чекає на дозвіл")
+        case .waiting:    return String(localized: "закінчив")
+        case .working:    return String(localized: "працює")
+        case .idle:       return String(localized: "простій")
+        case .offline:    return String(localized: "немає сесій")
         }
     }
 
@@ -226,21 +226,21 @@ enum EffortLevel: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .low:    return "низькі"
-        case .medium: return "середні"
-        case .high:   return "високі"
-        case .xhigh:  return "дуже високі"
-        case .max:    return "максимальні"
+        case .low:    return String(localized: "низькі")
+        case .medium: return String(localized: "середні")
+        case .high:   return String(localized: "високі")
+        case .xhigh:  return String(localized: "дуже високі")
+        case .max:    return String(localized: "максимальні")
         }
     }
 
     var hint: String {
         switch self {
-        case .low:    return "швидко й прямолінійно"
-        case .medium: return "розумний баланс"
-        case .high:   return "думає ретельніше"
-        case .xhigh:  return "для складного"
-        case .max:    return "найдовше й найдорожче"
+        case .low:    return String(localized: "швидко й прямолінійно")
+        case .medium: return String(localized: "розумний баланс")
+        case .high:   return String(localized: "думає ретельніше")
+        case .xhigh:  return String(localized: "для складного")
+        case .max:    return String(localized: "найдовше й найдорожче")
         }
     }
 }
@@ -263,10 +263,10 @@ enum ClaudeModel: String, CaseIterable, Identifiable {
 
     var hint: String {
         switch self {
-        case .opus:   return "щодня і для складного"
-        case .fable:  return "найважче й найдовше"
-        case .sonnet: return "швидко, для рутини"
-        case .haiku:  return "найшвидша, для дрібниць"
+        case .opus:   return String(localized: "щодня і для складного")
+        case .fable:  return String(localized: "найважче й найдовше")
+        case .sonnet: return String(localized: "швидко, для рутини")
+        case .haiku:  return String(localized: "найшвидша, для дрібниць")
         }
     }
 
@@ -288,10 +288,10 @@ enum PermissionMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .auto:        return "авто"
-        case .plan:        return "планування"
-        case .acceptEdits: return "правки без питань"
-        case .default:     return "звичайний"
+        case .auto:        return String(localized: "авто")
+        case .plan:        return String(localized: "планування")
+        case .acceptEdits: return String(localized: "правки без питань")
+        case .default:     return String(localized: "звичайний")
         }
     }
 
@@ -307,10 +307,10 @@ enum PermissionMode: String, CaseIterable, Identifiable {
     /// Що саме означає режим — показуємо підказкою при виборі.
     var hint: String {
         switch self {
-        case .auto:        return "Claude сам вирішує, що безпечно виконати"
-        case .plan:        return "спершу план, дії лише після схвалення"
-        case .acceptEdits: return "правки файлів без запитів"
-        case .default:     return "питає дозвіл на кожну дію"
+        case .auto:        return String(localized: "Claude сам вирішує, що безпечно виконати")
+        case .plan:        return String(localized: "спершу план, дії лише після схвалення")
+        case .acceptEdits: return String(localized: "правки файлів без запитів")
+        case .default:     return String(localized: "питає дозвіл на кожну дію")
         }
     }
 }
@@ -371,10 +371,10 @@ struct Project: Identifiable, Codable, Hashable {
 
     var sessionCountText: String {
         switch sessionCount {
-        case 0: return "немає сесій"
-        case 1: return "1 сесія"
-        case 2...4: return "\(sessionCount) сесії"
-        default: return "\(sessionCount) сесій"
+        case 0: return String(localized: "немає сесій")
+        case 1: return String(localized: "1 сесія")
+        case 2...4: return String(format: String(localized: "%d сесії"), sessionCount)
+        default: return String(format: String(localized: "%d сесій"), sessionCount)
         }
     }
 
@@ -383,8 +383,8 @@ struct Project: Identifiable, Codable, Hashable {
         guard terminals > 0 else { return nil }
 
         var parts: [String] = []
-        if claudeTerminals > 0 { parts.append("\(claudeTerminals) з Claude") }
-        if plainTerminals > 0 { parts.append("\(plainTerminals) без") }
+        if claudeTerminals > 0 { parts.append(String(format: String(localized: "%d з Claude"), claudeTerminals)) }
+        if plainTerminals > 0 { parts.append(String(format: String(localized: "%d без"), plainTerminals)) }
 
         let tail = parts.isEmpty ? "" : " (\(parts.joined(separator: ", ")))"
         return "\(terminals) \(Project.tabWord(terminals))\(tail)"
@@ -392,9 +392,9 @@ struct Project: Identifiable, Codable, Hashable {
 
     static func tabWord(_ n: Int) -> String {
         switch n {
-        case 1: return "вкладка"
-        case 2...4: return "вкладки"
-        default: return "вкладок"
+        case 1: return String(localized: "вкладка")
+        case 2...4: return String(localized: "вкладки")
+        default: return String(localized: "вкладок")
         }
     }
 
@@ -664,10 +664,10 @@ enum Format {
     }
 
     static func duration(_ seconds: Double) -> String {
-        if seconds < 60 { return "\(Int(seconds.rounded()))с" }
+        if seconds < 60 { return String(format: String(localized: "%dс"), Int(seconds.rounded())) }
         let m = Int(seconds) / 60
-        if m < 60 { return "\(m)хв \(Int(seconds) % 60)с" }
-        return "\(m / 60)год \(m % 60)хв"
+        if m < 60 { return String(format: String(localized: "%dхв %dс"), m, Int(seconds) % 60) }
+        return String(format: String(localized: "%dгод %dхв"), m / 60, m % 60)
     }
 
     static let clock: DateFormatter = {

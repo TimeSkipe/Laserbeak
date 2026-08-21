@@ -27,11 +27,11 @@ struct QRScannerView: View {
                 case .scanning:
                     CameraPreview { code in
                         guard let parsed = Connection.parse(code) else {
-                            status = .failed("Це не код Laserbeak")
+                            status = .failed(String(localized: "Це не код Laserbeak"))
                             return
                         }
                         guard !parsed.token.isEmpty else {
-                            status = .failed("У коді немає ключа — онови Laserbeak на маку")
+                            status = .failed(String(localized: "У коді немає ключа — онови Laserbeak на маку"))
                             return
                         }
                         onScan(parsed)
@@ -49,13 +49,13 @@ struct QRScannerView: View {
                 case .denied:
                     message(
                         icon: "camera.fill",
-                        title: "Немає доступу до камери",
-                        text: "Дозволь у Параметрах → Laserbeak → Камера."
+                        title: String(localized: "Немає доступу до камери"),
+                        text: String(localized: "Дозволь у Параметрах → Laserbeak → Камера.")
                     )
 
                 case .failed(let reason):
                     message(icon: "questionmark.circle", title: reason,
-                            text: "Відкрий на маку «Підключити телефон» і наведи на той код.")
+                            text: String(localized: "Відкрий на маку «Підключити телефон» і наведи на той код."))
                 }
             }
             .navigationTitle("Сканувати код")

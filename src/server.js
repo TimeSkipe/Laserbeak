@@ -33,6 +33,7 @@ const modes = require('./modes');
 const input = require('./input');
 const shots = require('./shots');
 const config = require('./config');
+const { t } = require('./i18n');
 const reaper = require('./reaper');
 const inspect = require('./inspect');
 const notify = require('./notify');
@@ -172,7 +173,7 @@ function createServer() {
 
     // Сторінка з мережі не має говорити з демоном навіть із localhost.
     if (!originAllowed(req)) {
-      return json(res, 403, { ok: false, error: 'цьому джерелу сюди не можна' });
+      return json(res, 403, { ok: false, error: t('err.badOrigin') });
     }
 
     // Запам'ятовуємо для json(): відповідь розширенню треба явно дозволити
@@ -202,7 +203,7 @@ function createServer() {
       complainOnce(req.socket.remoteAddress || '?', p);
       return json(res, 401, {
         ok: false,
-        error: 'потрібен ключ доступу — підключи телефон QR-кодом заново',
+        error: t('err.needToken'),
       });
     }
 
@@ -278,7 +279,7 @@ function createServer() {
       if (!body.path) return json(res, 400, { ok: false, error: 'path обовʼязковий' });
 
       const updated = projects.updateSettings(body.path, body.settings);
-      if (!updated) return json(res, 404, { ok: false, error: 'проєкт не знайдено' });
+      if (!updated) return json(res, 404, { ok: false, error: t('err.noProject') });
 
       log.info(`налаштування проєкту ${updated.name} оновлено`);
       return json(res, 200, { ok: true, project: updated });
@@ -370,7 +371,7 @@ function createServer() {
       try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
 
       if (!body.sid || !body.text) {
-        return json(res, 400, { ok: false, error: 'потрібні sid і text' });
+        return json(res, 400, { ok: false, error: t('err.needSidText') });
       }
 
       const short = body.sid.slice(0, 8);
@@ -401,11 +402,11 @@ function createServer() {
       try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
 
       if (!body.sid || !body.image) {
-        return json(res, 400, { ok: false, error: 'потрібні sid і image' });
+        return json(res, 400, { ok: false, error: t('err.needSidImage') });
       }
 
       if (!state.get(body.sid) && !terminals.isHosted(body.sid)) {
-        return json(res, 404, { ok: false, error: 'сесії немає' });
+        return json(res, 404, { ok: false, error: t('err.noSession') });
       }
 
       // Перевіряємо шлях у сесію до того, як писати файл: інакше на диску
@@ -413,7 +414,7 @@ function createServer() {
       if (!input.canSend(body.sid)) {
         return json(res, 409, {
           ok: false,
-          error: 'сесію запущено без посередника — перезапусти її командою start',
+          error: t('err.noWayIn'),
         });
       }
 
@@ -456,11 +457,11 @@ function createServer() {
 
       const command = buildCommand(body);
       if (!command) {
-        return json(res, 400, { ok: false, error: 'невідома команда або значення' });
+        return json(res, 400, { ok: false, error: t('err.badCommand') });
       }
 
       if (!state.get(body.sid) && !terminals.isHosted(body.sid)) {
-        return json(res, 404, { ok: false, error: 'сесії немає' });
+        return json(res, 404, { ok: false, error: t('err.noSession') });
       }
 
       try {
@@ -502,7 +503,7 @@ function createServer() {
       try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
 
       const session = state.get(body.sid);
-      if (!session) return json(res, 404, { ok: false, error: 'сесії немає' });
+      if (!session) return json(res, 404, { ok: false, error: t('err.noSession') });
 
       const press = terminals.isHosted(body.sid)
         ? () => terminals.shiftTab(body.sid)
@@ -511,7 +512,7 @@ function createServer() {
       if (!press) {
         return json(res, 409, {
           ok: false,
-          error: 'сесію запущено без посередника — перезапусти її командою start',
+          error: t('err.noWayIn'),
         });
       }
 
@@ -538,7 +539,7 @@ function createServer() {
       try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
 
       const session = state.get(body.sid);
-      if (!session) return json(res, 404, { ok: false, error: 'сесії немає' });
+      if (!session) return json(res, 404, { ok: false, error: t('err.noSession') });
 
       state.remove(body.sid);
       modes.forget(body.sid);
@@ -577,7 +578,7 @@ function createServer() {
     if (req.method === 'GET' && p.startsWith('/archive/')) {
       const sid = decodeURIComponent(p.slice('/archive/'.length));
       const meta = archive.meta(sid);
-      if (!meta) return json(res, 404, { ok: false, error: 'сесії немає в архіві' });
+      if (!meta) return json(res, 404, { ok: false, error: t('err.noSessionInArchive') });
 
       return json(res, 200, {
         ok: true,

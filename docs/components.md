@@ -14,6 +14,7 @@
 | `auth.js` | access key: creation, storage with mode `0600`, constant-time comparison |
 | `paths.js` | every path in one place; the migration from the old name lives here too |
 | `log.js` | logs to stdout, which launchd writes to a file |
+| `i18n.js` | user-visible text in uk/en/cs; logs stay in one language on purpose |
 
 ### Watching
 
@@ -69,6 +70,7 @@ Compiled for both platforms.
 | `ChatView.swift` | conversation with an input field; updates live |
 | `Markdown.swift` | our own markdown rendering: headings, lists, tables, code |
 | `LucideIcons.swift` | **generated** file — do not edit by hand |
+| `Resources/Localizable.xcstrings` | String Catalog: 205 keys × uk/en/cs |
 | `Palette.swift` | project colours |
 | `QRCode.swift` | pairing-link format + drawing the code |
 | `PlatformLayout.swift` | sizes that apply on the Mac only |

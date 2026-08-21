@@ -4,6 +4,7 @@
 
 const path = require('path');
 const state = require('./state');
+const { t } = require('./i18n');
 const projects = require('./projects');
 const sessionSettings = require('./sessionSettings');
 const tokens = require('./tokens');
@@ -23,11 +24,11 @@ function fmtTokens(n) {
 
 function fmtDuration(sec) {
   if (sec == null || !isFinite(sec)) return '';
-  if (sec < 60) return `${Math.round(sec)}с`;
+  if (sec < 60) return t('dur.seconds', { s: Math.round(sec) });
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
-  if (m < 60) return `${m}хв ${s}с`;
-  return `${Math.floor(m / 60)}год ${m % 60}хв`;
+  if (m < 60) return t('dur.minutes', { m, s });
+  return t('dur.hours', { h: Math.floor(m / 60), m: m % 60 });
 }
 
 /**
@@ -81,7 +82,7 @@ function handle(event, payload, meta) {
   switch (event) {
     case 'session-start':
       state.touch(sid, { ...base, status: 'idle', since: Date.now() });
-      state.record({ sid, label, project, kind: 'session-start', message: 'сесія відкрита' });
+      state.record({ sid, label, project, kind: 'session-start', message: t('history.opened') });
       break;
 
     case 'prompt': {
@@ -113,8 +114,10 @@ function handle(event, payload, meta) {
         totalWorkSeconds: (s.totalWorkSeconds || 0) + (elapsed || 0),
       });
 
-      const parts = [elapsed != null ? `Готово за ${fmtDuration(elapsed)}` : 'Готово'];
-      if (spent > 0) parts.push(`${fmtTokens(spent)} токенів`);
+      const parts = [elapsed != null
+        ? t('history.done', { duration: fmtDuration(elapsed) })
+        : t('history.doneNoTime')];
+      if (spent > 0) parts.push(t('tokens', { count: fmtTokens(spent) }));
       const message = parts.join(' · ');
 
       state.record({ sid, label, project, kind: 'stop', message, seconds: elapsed, tokens: spent });
@@ -122,7 +125,7 @@ function handle(event, payload, meta) {
       // У банері перший рядок каже, що саме сталося, другий — подробиці.
       const details = [];
       if (elapsed != null) details.push(fmtDuration(elapsed));
-      if (spent > 0) details.push(`${fmtTokens(spent)} токенів`);
+      if (spent > 0) details.push(t('tokens', { count: fmtTokens(spent) }));
 
       notify.send({
         kind: 'stop',
@@ -133,7 +136,7 @@ function handle(event, payload, meta) {
         term: base.term,
         title: `✅ ${project || 'Claude Code'}`,
         subtitle: sessionSettings.displayName(sid, label),
-        message: ['Закінчила роботу', details.join(' · ')].filter(Boolean).join('\n'),
+        message: [t('notify.done'), details.join(' · ')].filter(Boolean).join('\n'),
       });
       break;
     }
@@ -167,7 +170,7 @@ function handle(event, payload, meta) {
           subtitle: sessionSettings.displayName(sid, label),
           // Причину в банер не пишемо — важливий сам факт, що чекають
           // на тебе. Повний текст лишається в історії.
-          message: 'Потрібен дозвіл',
+          message: t('notify.permission'),
         });
         break;
       }
@@ -186,7 +189,7 @@ function handle(event, payload, meta) {
         term: base.term,
         title: `⌛ ${project || 'Claude Code'}`,
         subtitle: sessionSettings.displayName(sid, label),
-        message: 'Чекає на твій ввід',
+        message: t('notify.idle'),
       });
       break;
     }
@@ -194,7 +197,7 @@ function handle(event, payload, meta) {
     case 'session-end':
       tokens.forget(sid);
       state.remove(sid);
-      state.record({ sid, label, project, kind: 'session-end', message: 'сесія закрита' });
+      state.record({ sid, label, project, kind: 'session-end', message: t('history.closed') });
       break;
 
     default:

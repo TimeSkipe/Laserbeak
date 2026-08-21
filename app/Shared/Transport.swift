@@ -36,11 +36,11 @@ enum TransportError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notConnected:     return "немає зʼєднання"
-        case .unauthorized:     return "ключ доступу не підійшов"
-        case .tooLarge(let n):  return "завелика відповідь (\(n) байтів)"
+        case .notConnected:     return String(localized: "немає зʼєднання")
+        case .unauthorized:     return String(localized: "ключ доступу не підійшов")
+        case .tooLarge(let n):  return String(format: String(localized: "завелика відповідь (%d байтів)"), n)
         case .broken(let text): return text
-        case .timedOut:         return "демон не відповів"
+        case .timedOut:         return String(localized: "демон не відповів")
         }
     }
 }
@@ -121,7 +121,7 @@ final class HTTPTransport: DaemonTransport, @unchecked Sendable {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
-            throw TransportError.broken("незрозуміла відповідь")
+            throw TransportError.broken(String(localized: "незрозуміла відповідь"))
         }
 
         return DaemonReply(status: http.statusCode, data: data)

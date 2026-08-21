@@ -48,7 +48,7 @@ final class PeerServer: ObservableObject {
         // Тому: немає відповіді — нічого не чіпаємо, працюємо далі зі
         // старим паролем.
         guard !passcode.isEmpty else {
-            if !isListening { lastError = "немає ключа доступу" }
+            if !isListening { lastError = String(localized: "немає ключа доступу") }
             return
         }
 
@@ -185,7 +185,7 @@ final class PeerServer: ObservableObject {
     /// з 127.0.0.1, а такі запити демон пускає без нього.
     private nonisolated func forward(_ request: PeerRequest, body: Data) async -> DaemonReply {
         guard let base = await daemonURL else {
-            return DaemonReply(status: 503, data: Self.error("демон не налаштовано"))
+            return DaemonReply(status: 503, data: Self.error(String(localized: "демон не налаштовано")))
         }
 
         var components = URLComponents(
@@ -195,7 +195,7 @@ final class PeerServer: ObservableObject {
         if !request.query.isEmpty { components?.percentEncodedQuery = request.query }
 
         guard let url = components?.url else {
-            return DaemonReply(status: 400, data: Self.error("поганий шлях"))
+            return DaemonReply(status: 400, data: Self.error(String(localized: "поганий шлях")))
         }
 
         var urlRequest = URLRequest(url: url)

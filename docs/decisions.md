@@ -665,6 +665,36 @@ The synthesised decoder throws `keyNotFound`, and decoding of the
 would black out the interface until the app was rebuilt. That is why every
 model has its own `init(from:)`.
 
+### Two languages of text, two different places to translate it
+
+The interface strings live in the apps, but the banner text is assembled
+by Laserbeak — and in the `terminal-notifier` fallback there is no app in
+the picture at all. Translating banners on the client would therefore
+lose them exactly when the app is closed.
+
+So the split is: Laserbeak translates what it writes (`src/i18n.js`,
+language from config or `LASERBEAK_LANG`), and the apps translate their
+own screens through a String Catalog, taking the language from the
+device. A Mac in Ukrainian and a phone in English work at the same time.
+
+Logs are deliberately left untranslated. They are read by whoever opened
+`daemon.log`, and grepping for "session not found" in three languages
+would be worse than in one.
+
+### SwiftUI localises literals for free, but only inside its own views
+
+`Text("Проєкти")` takes a `LocalizedStringKey`, so adding the catalog was
+enough — 85 strings started working with no code change at all. But
+`return "простій"` in a model is a plain `String`, and so is
+`Text(flag ? "on" : "off")`: those needed wrapping in
+`String(localized:)` by hand. Out of 189 interface strings, 120 needed
+the wrapper.
+
+Strings with interpolation are a third case: `"\(count) сесій"` cannot be
+a key at all. Those were rewritten as `String(format:)` with real
+placeholders (`"%d сесій"`), which is also what makes word order
+translatable — in some languages the number does not come first.
+
 ### A hardcoded Team ID means only the author can build the project
 
 `app/project.yml` carried `DEVELOPMENT_TEAM: ABCDE12345` — perfectly

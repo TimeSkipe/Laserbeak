@@ -101,7 +101,7 @@ struct ProjectsView: View {
             }
         }
         .confirmationDialog(
-            forgetTarget.map { "Прибрати «\($0.title)» зі списку?" } ?? "",
+            forgetTarget.map { String(format: String(localized: "Прибрати «%@» зі списку?"), $0.title) } ?? "",
             isPresented: Binding(
                 get: { forgetTarget != nil },
                 set: { if !$0 { forgetTarget = nil } }
@@ -115,8 +115,8 @@ struct ProjectsView: View {
             }
             Button("Скасувати", role: .cancel) { forgetTarget = nil }
         } message: { _ in
-            Text("Сама сесія не зупиниться — вона лише зникне зі списку. "
-                 + "Якщо вона ще жива, повернеться з наступною своєю подією.")
+            Text(String(localized: "Сама сесія не зупиниться — вона лише зникне зі списку. ")
+                 + String(localized: "Якщо вона ще жива, повернеться з наступною своєю подією."))
         }
         .sheet(item: $sheet) { which in
             switch which {
@@ -202,7 +202,7 @@ struct ProjectHeader: View {
                 }
 
                 if project.untracked > 0 {
-                    Label("\(project.untracked) без сповіщень", systemImage: "bell.slash")
+                    Label(String(format: String(localized: "%d без сповіщень"), project.untracked), systemImage: "bell.slash")
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(.orange)
                         .help("Сесію відкрито до встановлення хуків — перезапусти її, щоб отримувати сповіщення")
@@ -341,7 +341,7 @@ struct SessionRow: View {
     private var meta: String? {
         var parts: [String] = []
         if let duration = session.durationText { parts.append(duration) }
-        if !session.tokens.isEmpty { parts.append("\(Format.tokens(session.tokens.total)) токенів") }
+        if !session.tokens.isEmpty { parts.append(String(format: String(localized: "%@ токенів"), Format.tokens(session.tokens.total))) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
@@ -451,7 +451,7 @@ struct SessionRow: View {
         HStack(spacing: 3) {
             Image(systemName: mode?.symbol ?? "questionmark")
                 .font(.caption2)
-            Text(mode?.title ?? "режим?")
+            Text(mode?.title ?? String(localized: "режим?"))
                 .font(.caption2)
         }
         .foregroundStyle(mode == .plan ? Color.purple : .secondary)
@@ -475,14 +475,14 @@ struct SessionDetails: View {
 
             Divider().padding(.vertical, 16)
 
-            block("Час") {
-                row("Загальний час роботи", Format.duration(Double(session.totalWorkSeconds)),
+            block(String(localized: "Час")) {
+                row(String(localized: "Загальний час роботи"), Format.duration(Double(session.totalWorkSeconds)),
                     accent: true)
-                row("Турнів", "\(session.turns)")
+                row(String(localized: "Турнів"), "\(session.turns)")
                 if let last = session.lastTurnSeconds {
-                    row("Останній турн", Format.duration(last))
+                    row(String(localized: "Останній турн"), Format.duration(last))
                 }
-                row("Сесія відкрита", Format.duration(Double(session.ageSeconds)))
+                row(String(localized: "Сесія відкрита"), Format.duration(Double(session.ageSeconds)))
             }
 
             Divider().padding(.vertical, 16)
@@ -492,19 +492,19 @@ struct SessionDetails: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                block("Токени") {
-                    row("Разом", Format.tokensFull(session.tokens.total), accent: true)
-                    row("Свіжий контекст", Format.tokensFull(session.tokens.input))
-                    row("Запис у кеш", Format.tokensFull(session.tokens.cacheWrite))
-                    row("Читання з кешу", Format.tokensFull(session.tokens.cacheRead))
-                    row("Відповіді", Format.tokensFull(session.tokens.output))
+                block(String(localized: "Токени")) {
+                    row(String(localized: "Разом"), Format.tokensFull(session.tokens.total), accent: true)
+                    row(String(localized: "Свіжий контекст"), Format.tokensFull(session.tokens.input))
+                    row(String(localized: "Запис у кеш"), Format.tokensFull(session.tokens.cacheWrite))
+                    row(String(localized: "Читання з кешу"), Format.tokensFull(session.tokens.cacheRead))
+                    row(String(localized: "Відповіді"), Format.tokensFull(session.tokens.output))
                     if session.tokens.thinking > 0 {
-                        row("з них міркування", Format.tokensFull(session.tokens.thinking),
+                        row(String(localized: "з них міркування"), Format.tokensFull(session.tokens.thinking),
                             muted: true)
                     }
-                    row("Відповідей", "\(session.tokens.messages)")
+                    row(String(localized: "Відповідей"), "\(session.tokens.messages)")
                     if !session.tokens.model.isEmpty {
-                        row("Модель", session.tokens.model)
+                        row(String(localized: "Модель"), session.tokens.model)
                     }
                 }
             }
@@ -649,12 +649,12 @@ struct EmptyStateView: View {
                 .font(.system(size: 34))
                 .foregroundStyle(.secondary)
 
-            Text(client.isConnected ? "Проєктів поки немає" : "Немає зв'язку з демоном")
+            Text(client.isConnected ? String(localized: "Проєктів поки немає") : String(localized: "Немає зв'язку з демоном"))
                 .font(.headline)
 
             Text(client.isConnected
-                 ? "Запусти Claude Code — проєкт зʼявиться тут і залишиться назавжди"
-                 : (client.lastError ?? "Перевір, чи демон запущено"))
+                 ? String(localized: "Запусти Claude Code — проєкт зʼявиться тут і залишиться назавжди")
+                 : (client.lastError ?? String(localized: "Перевір, чи демон запущено")))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -676,15 +676,15 @@ struct ConnectionBar: View {
                 .frame(width: 8, height: 8)
 
             Text(client.isConnected
-                 ? (client.state?.host ?? "підключено")
-                 : (client.needsPairing ? "потрібен ключ" : "немає зв'язку"))
+                 ? (client.state?.host ?? String(localized: "підключено"))
+                 : (client.needsPairing ? String(localized: "потрібен ключ") : String(localized: "немає зв'язку")))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             Spacer()
 
             if let state = client.state, client.isConnected {
-                Text("\(state.sortedProjects.count) відкрито · \(state.sessions.count) сесій")
+                Text(String(format: String(localized: "%d відкрито · %d сесій"), state.sortedProjects.count, state.sessions.count))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
