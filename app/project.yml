@@ -1,0 +1,125 @@
+# Опис Xcode-проєкту для xcodegen.
+#
+#   xcodegen generate     # з теки app/
+#
+# Сам .xcodeproj у git не тримаємо — він генерується з цього файлу.
+# Так історія лишається читабельною, а конфлікти в проєкті зникають.
+
+name: Laserbeak
+
+options:
+  bundleIdPrefix: com.laserbeak
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "14.0"
+    iOS: "17.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_STRICT_CONCURRENCY: minimal
+
+targets:
+
+  # ---------------------------------------------------------------- macOS
+  Laserbeak:
+    type: application
+    platform: macOS
+    sources:
+      - path: Shared
+      - path: macOS
+      - path: Resources/Assets.xcassets
+    info:
+      path: macOS/Info.generated.plist
+      properties:
+        CFBundleName: Laserbeak
+        CFBundleDisplayName: Laserbeak
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        # true — програма-значок: живе в меню-барі, у доці й у ⌘Tab її
+        # немає. Так і має бути: вікно тут не головне, головне — що вона
+        # завжди працює і тримає канал до телефона. Іконка в доці лише
+        # вдавала б, що програму «відкрито», хоч закривати її не можна.
+        #
+        # Вікно від цього нікуди не дінеться: воно відкривається з
+        # меню-бару й поводиться як звичайне.
+        LSUIElement: true
+        NSHumanReadableCopyright: ""
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.laserbeak.desktop
+        PRODUCT_NAME: Laserbeak
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+        # Підпис справжнім сертифікатом розробника, а не ad-hoc.
+        # Це не косметика: з ad-hoc підписом macOS відмовляє програмі
+        # у сповіщеннях ("Notifications are not allowed for this
+        # application") і навіть не показує запит на дозвіл.
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: Automatic
+        # Підставляється при збірці з сертифіката цієї машини —
+        # див. scripts/team-id.sh. Зашитий тут Team ID означав би,
+        # що зібрати проєкт може лише його власник.
+        DEVELOPMENT_TEAM: $(LASERBEAK_TEAM)
+
+        # Пісочницю НЕ вмикаємо — потрібен доступ до ~/.laserbeak/config.json
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: NO
+        COMBINE_HIDPI_IMAGES: YES
+
+  # ---------------------------------------------------------------- iOS
+  LaserbeakPhone:
+    type: application
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: iOS
+      - path: Resources/Assets.xcassets
+    info:
+      path: iOS/Info.generated.plist
+      properties:
+        CFBundleName: Laserbeak
+        CFBundleDisplayName: Laserbeak
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+
+        # iOS 14+ вимагає явно пояснити, навіщо програмі локальна мережа.
+        # Без цього рядка Bonjour мовчки нічого не знайде.
+        NSLocalNetworkUsageDescription: >-
+          Щоб знайти твій комп'ютер поруч і показати активні сесії Claude Code.
+
+        # Обидва сервіси мають бути тут перелічені поіменно: iOS не
+        # покаже застосунку жодного, якого немає в цьому списку.
+        #   _laserbeak-p2p._tcp — прямий зашифрований канал до програми
+        #                         на маку, головний шлях;
+        #   _laserbeak._tcp     — сам демон, запасний шлях по HTTP.
+        NSBonjourServices:
+          - _laserbeak-p2p._tcp
+          - _laserbeak._tcp
+
+        # Камера потрібна лише для сканування коду підключення.
+        NSCameraUsageDescription: >-
+          Щоб відсканувати код підключення з екрана компʼютера.
+
+        # Демон говорить звичайним HTTP у межах твоєї мережі.
+        # Дозволяємо це лише для локальних адрес, назовні — ні.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.laserbeak.phone
+        PRODUCT_NAME: Laserbeak
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIconPhone
+        CODE_SIGN_STYLE: Automatic
+        # Підставляється при збірці з сертифіката цієї машини —
+        # див. scripts/team-id.sh. Зашитий тут Team ID означав би,
+        # що зібрати проєкт може лише його власник.
+        DEVELOPMENT_TEAM: $(LASERBEAK_TEAM)
+        TARGETED_DEVICE_FAMILY: "1,2"

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.laserbeak.app</string>
+
+    <!-- Запускаємо через open, а не бінарник напряму: так програму
+         реєструє LaunchServices, а без цієї реєстрації система може не
+         пускати її сповіщення.
+
+         -g  не виводити на передній план
+         --args --background  сказати програмі не відкривати вікно -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/open</string>
+        <string>-g</string>
+        <string>-a</string>
+        <string>__APP__</string>
+        <string>--args</string>
+        <string>--background</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- false, і це важливо: open одразу завершується, віддавши роботу
+         LaunchServices, тож launchd вважав би це падінням і перезапускав
+         open кожні десять секунд вічно.
+
+         Програма тепер тримає єдиний канал до телефона, тому за її
+         живучістю стежить демон (src/appguard.js): він знає не лише те,
+         чи процес існує, а й чи вона взагалі на звʼязку. Свідомий вихід
+         демон поважає — див. ~/.laserbeak/app-quit. -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>__DATA__/app.log</string>
+    <key>StandardErrorPath</key>
+    <string>__DATA__/app.log</string>
+</dict>
+</plist>

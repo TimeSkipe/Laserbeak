@@ -1,0 +1,26 @@
+{
+  "name": "laserbeak",
+  "version": "0.2.0",
+  "description": "Фоновий демон сповіщень для Claude Code + застосунки для macOS та iOS.",
+  "type": "commonjs",
+  "main": "src/daemon.js",
+  "scripts": {
+    "start": "node src/daemon.js",
+    "install:all": "bash scripts/install.sh",
+    "uninstall": "bash scripts/uninstall.sh",
+    "build:app": "bash scripts/build-app.sh",
+    "xcode": "cd app && xcodegen generate && open Laserbeak.xcodeproj",
+    "restart": "launchctl kickstart -k gui/$(id -u)/com.laserbeak.daemon",
+    "logs": "tail -f ~/.laserbeak/daemon.log",
+    "state": "curl -s http://127.0.0.1:8787/state | python3 -m json.tool",
+    "discover": "dns-sd -B _laserbeak._tcp local",
+    "archive:import": "node scripts/archive-import.js",
+    "archive:dry": "node scripts/archive-import.js --dry",
+    "extension": "node -e \"const d=require('path').resolve('extension');require('child_process').execSync('pbcopy',{input:d});console.log('\\n  Теку скопійовано в буфер:\\n  '+d+'\\n\\n  chrome://extensions → Режим розробника → Завантажити розпаковане → ⌘V\\n')\""
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "private": true
+}

@@ -1,0 +1,63 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Laserbeak</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 18px 20px;
+    font: 400 13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    color: #f2f4f8; background: #181b22;
+  }
+  h1 { margin: 0 0 2px; font-size: 15px; font-weight: 600; }
+  .sub { color: rgba(242,244,248,0.5); font-size: 12px; margin-bottom: 16px; }
+  .row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 0; border-top: 1px solid rgba(255,255,255,0.07);
+  }
+  .row:last-child { border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .ok { background: #4ade80; } .bad { background: #ff7b6b; }
+  .grow { flex: 1; min-width: 0; }
+  .muted { color: rgba(242,244,248,0.45); font-size: 12px; }
+  .name { font-weight: 500; }
+  button {
+    font: inherit; font-size: 12px; color: #f2f4f8;
+    background: rgba(255,255,255,0.08); border: 0; border-radius: 6px;
+    padding: 4px 10px; cursor: pointer;
+  }
+  button:hover { background: rgba(255,255,255,0.14); }
+  h2 { font-size: 12px; font-weight: 600; text-transform: uppercase;
+       letter-spacing: 0.04em; color: rgba(242,244,248,0.4);
+       margin: 20px 0 4px; }
+  kbd {
+    font: 500 11.5px/1 -apple-system, sans-serif;
+    background: rgba(255,255,255,0.1); border-radius: 4px;
+    padding: 3px 6px; margin-right: 2px;
+  }
+  code { font-size: 11px; color: rgba(242,244,248,0.55); word-break: break-all; }
+</style>
+
+<h1>Laserbeak</h1>
+<div class="sub">Обвести зону на сторінці й надіслати її в сесію Claude Code</div>
+
+<div class="row">
+  <span class="dot" id="dot"></span>
+  <span class="grow" id="daemon">перевіряю демон…</span>
+</div>
+
+<h2>Як виділити</h2>
+<div class="row">
+  <span class="grow"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd> · клік по іконці · правий клік на сторінці</span>
+</div>
+
+<h2>Куди летить</h2>
+<div id="binds"></div>
+
+<h2>Це розширення</h2>
+<div class="row"><code id="id"></code></div>
+<div class="muted" style="margin-top:8px">
+  Якщо демон відмовляє з «цьому джерелу сюди не можна» — впиши цей рядок
+  як <code>extensionId</code> у ~/.laserbeak/config.json
+</div>
+
+<script src="popup.js"></script>
