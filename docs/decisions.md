@@ -665,6 +665,28 @@ The synthesised decoder throws `keyNotFound`, and decoding of the
 would black out the interface until the app was rebuilt. That is why every
 model has its own `init(from:)`.
 
+### `%@` with an Int crashes, and it compiles cleanly first
+
+Converting interpolated strings to `String(format:)` for translation, I
+turned `"\(shown)\(of) повідомлень"` into `"%@%@ повідомлень"` — where
+`shown` is an `Int`. It builds without a warning, because `Int` conforms
+to `CVarArg`; then `%@` tries to treat the number as an object pointer
+and the app dies with `EXC_BAD_ACCESS` inside
+`__CFSTRING_IS_CALLING_OUT_TO_AN_OBJECT_FORMAT_ARGUMENT_WITH_CONTEXT__`.
+
+The crash lands on whatever view uses the string — here, opening the
+conversation — so it looks like a bug in that screen rather than in a
+format specifier.
+
+Two rules came out of it: `%d` for numbers and `%@` only for objects, and
+positional arguments (`%1$d%2$@`) in anything with more than one
+placeholder — translations reorder words, and the types must stay bound
+to their own slots.
+
+When touching format strings, audit every call at once: of thirteen sites
+converted, twelve had matching types and one did not, and only that one
+was reachable from a button.
+
 ### A missing i18n key is worse than an untranslated string
 
 `chrome.i18n.getMessage()` returns an **empty string** for a key that is

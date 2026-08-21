@@ -4578,29 +4578,6 @@
         }
       }
     },
-    "%@%@ повідомлень": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@%@ messages"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@%@ zpráv"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@%@ повідомлень"
-          }
-        }
-      }
-    },
     "%d без сповіщень": {
       "extractionState": "manual",
       "localizations": {
@@ -4712,6 +4689,52 @@
           "stringUnit": {
             "state": "translated",
             "value": "завелика відповідь (%d байтів)"
+          }
+        }
+      }
+    },
+    "%1$d%2$@ повідомлень": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d%2$@ messages"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d%2$@ zpráv"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d%2$@ повідомлень"
+          }
+        }
+      }
+    },
+    " з %d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " of %d"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " z %d"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " з %d"
           }
         }
       }

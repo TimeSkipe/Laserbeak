@@ -153,8 +153,12 @@ struct ChatView: View {
 
         if let meta {
             let shown = query.isEmpty ? messages.count : visible.count
-            let of = meta.messages > messages.count ? " з \(meta.messages)" : ""
-            parts.append(String(format: String(localized: "%@%@ повідомлень"), shown, of))
+            let of = meta.messages > messages.count
+                ? String(format: String(localized: " з %d"), meta.messages)
+                : ""
+            // Позиційні аргументи (%1$d, %2$@) навмисно: у перекладі порядок
+            // може бути інший, а типи мусять лишитись на своїх місцях.
+            parts.append(String(format: String(localized: "%1$d%2$@ повідомлень"), shown, of))
         }
 
         if let model = currentModel { parts.append(model.title) }
