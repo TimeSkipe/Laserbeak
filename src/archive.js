@@ -84,6 +84,15 @@ function knownUuids(sid) {
 
 // ---------------------------------------------------------------- розбір
 
+// Інструменти, якими сесія керує браузером. Потрібні не для архіву, а
+// щоб розширення знало, чия це вкладка: коли Claude in Chrome відкриває
+// групу вкладок, викликала її саме та сесія, яка щойно тут відзначилась.
+//
+// Перелік навмисно широкий: браузером керують і через MCP-сервери
+// Playwright чи Puppeteer, і зв'язок «вкладка → сесія» від цього не
+// залежить.
+const BROWSER_TOOL = /claude-in-chrome|playwright|puppeteer|browser/i;
+
 /** Один запис транскрипту -> одне повідомлення архіву, або null. */
 function distill(record) {
   const type = record.type;
@@ -206,6 +215,12 @@ function ingest(sid, transcriptPath, meta = {}) {
     if (message.uuid) {
       if (uuids.has(message.uuid)) continue;
       uuids.add(message.uuid);
+    }
+
+    // Момент, коли сесія востаннє чіпала браузер. Пишемо в індекс, тому
+    // переживає перезапуск демона.
+    if (message.tools?.some((name) => BROWSER_TOOL.test(name))) {
+      entry.lastBrowserTs = Math.max(entry.lastBrowserTs || 0, message.ts);
     }
 
     fresh.push(message);
@@ -365,4 +380,13 @@ function read(sid, options = {}) {
 
 loadIndex();
 
-module.exports = { ingest, ingestRecent, list, meta, read, distill, ARCHIVE_DIR, fileFor };
+/**
+ * Коли сесія востаннє користувалась браузером, у мілісекундах.
+ * 0 — не користувалась зовсім.
+ */
+function lastBrowserUse(sid) {
+  return index.get(sid)?.lastBrowserTs || 0;
+}
+
+module.exports = {
+  lastBrowserUse, ingest, ingestRecent, list, meta, read, distill, ARCHIVE_DIR, fileFor };

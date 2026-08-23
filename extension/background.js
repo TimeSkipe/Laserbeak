@@ -53,16 +53,84 @@ async function bindingKey(tab) {
   return tab.groupId && tab.groupId !== -1 ? `group:${tab.groupId}` : 'last';
 }
 
+// Скільки часу браузерний виклик вважається «щойно». Група вкладок
+// створюється саме в мить, коли сесія бере браузер, тож вистачило б і
+// кількох секунд — але демон дочитує транскрипт раз на дві секунди, а
+// сесія могла відкрити вкладку не першою ж дією.
+const RECENT_MS = 3 * 60_000;
+
+/**
+ * Кому належить нова група вкладок.
+ *
+ * Найнадійніший сигнал — хто щойно керував браузером: демон бачить
+ * виклики mcp__claude-in-chrome__* у транскрипті, тож це не здогад.
+ * Якщо такого сліду немає, годиться й «працює рівно одна сесія».
+ */
+async function guessSession() {
+  let state;
+  try {
+    state = await daemon('/state');
+  } catch {
+    return '';
+  }
+
+  const usable = (state.sessions || []).filter((s) => s.canInput);
+
+  const recent = usable
+    .filter((s) => s.lastBrowserUse && Date.now() - s.lastBrowserUse < RECENT_MS)
+    .sort((a, b) => b.lastBrowserUse - a.lastBrowserUse);
+  if (recent.length) return recent[0].sid;
+
+  const working = usable.filter((s) => s.status === 'working');
+  return working.length === 1 ? working[0].sid : '';
+}
+
 async function readBinding(tab) {
   const key = await bindingKey(tab);
   const store = await chrome.storage.local.get([key, 'last']);
-  return store[key] || store.last || '';
+  if (store[key]) return store[key];
+
+  // Групи ще немає в памʼяті — або її створили, поки розширення спало,
+  // або воно взагалі стало пізніше. Пробуємо визначити самі.
+  if (key !== 'last') {
+    const guessed = await guessSession();
+    if (guessed) {
+      await chrome.storage.local.set({ [key]: guessed });
+      return guessed;
+    }
+  }
+
+  return store.last || '';
 }
 
 async function writeBinding(tab, sid) {
   const key = await bindingKey(tab);
   await chrome.storage.local.set({ [key]: sid, last: sid });
 }
+
+// Щойно Claude in Chrome заводить групу вкладок — привʼязуємо її мовчки,
+// не чекаючи, поки користувач щось виділить.
+//
+// Перша спроба часто порожня: демон дочитує транскрипт раз на дві
+// секунди, тож слід виклику ще не встиг долетіти. Тому друга спроба
+// трохи згодом.
+chrome.tabGroups.onCreated.addListener(async (group) => {
+  const key = `group:${group.id}`;
+
+  for (const delay of [0, 3000]) {
+    if (delay) await new Promise((r) => setTimeout(r, delay));
+
+    const store = await chrome.storage.local.get(key);
+    if (store[key]) return;
+
+    const sid = await guessSession();
+    if (sid) {
+      await chrome.storage.local.set({ [key]: sid });
+      console.log('[Laserbeak] групу', group.id, '→ сесія', sid.slice(0, 8));
+      return;
+    }
+  }
+});
 
 // ── Знімок ──────────────────────────────────────────────────────────
 

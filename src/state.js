@@ -14,6 +14,7 @@ const log = require('./log');
 const inspect = require('./inspect');
 const roots = require('./roots');
 const terminals = require('./terminals');
+const archive = require('./archive');
 const tmux = require('./tmux');
 const modes = require('./modes');
 
@@ -117,6 +118,9 @@ function decorate(session, now) {
     hosted: terminals.isHosted(session.sid),
     // Або вона працює через tmux у терміналі WebStorm — тоді теж можна.
     canInput: terminals.isHosted(session.sid) || Boolean(session.tmuxPane),
+    // Коли сесія востаннє керувала браузером. Розширення бере це, щоб
+    // самому зрозуміти, якій сесії належить нова група вкладок.
+    lastBrowserUse: archive.lastBrowserUse(session.sid),
     // Режим дозволів Claude Code пише в транскрипт, тож читаємо звідти.
     permissionMode: modes.read(session),
     // Рівень зусиль видно в тій самій смужці — одним читанням із режимом.

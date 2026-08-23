@@ -136,6 +136,7 @@ Everything an app needs. Polled every 2 seconds.
     "notifyEnabled": true,
     "canInput": true,           // whether prompts can be typed in
     "hosted": false,            // started by the daemon itself
+    "lastBrowserUse": 0,        // ms; when this session last drove a browser
     "tmuxPane": "%3",
     "pid": 88867,
 

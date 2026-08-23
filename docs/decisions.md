@@ -665,6 +665,26 @@ The synthesised decoder throws `keyNotFound`, and decoding of the
 would black out the interface until the app was rebuilt. That is why every
 model has its own `init(from:)`.
 
+### The session that owns a tab is written in its own transcript
+
+Binding a tab group to a session started as "remember what the user
+picked". That is fine once, but Claude in Chrome opens a **new** group per
+conversation, so with several sessions running you re-pick constantly —
+and picking wrong sends a screenshot into somebody else's work.
+
+The signal was already on disk. The daemon reads transcripts anyway, and
+every browser action leaves a `tool_use` record named
+`mcp__claude-in-chrome__*`. So "who has just been driving a browser" is a
+fact, not a heuristic — it goes into `/state` as `lastBrowserUse`, and the
+extension binds a fresh tab group without asking.
+
+Two details that matter in practice. The daemon re-reads transcripts
+every two seconds, so the trail can be a moment late — `onCreated`
+therefore tries again after three seconds instead of giving up. And the
+tool-name check is deliberately wide (`playwright`, `puppeteer`, plain
+`browser`): the tab-to-session link does not depend on which MCP server
+drives the browser.
+
 ### `%@` with an Int crashes, and it compiles cleanly first
 
 Converting interpolated strings to `String(format:)` for translation, I

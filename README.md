@@ -367,10 +367,15 @@ never grep them anyway.
 
 ### Where exactly it goes
 
-Claude in Chrome puts the tabs of one conversation into their own **tab
-group**, so "which tab belongs to which session" is a fact from the
-browser's API, not a guess. The session is chosen once per group and
-remembered after that:
+You never pick it. When Claude in Chrome opens a tab group, the extension
+asks the daemon who has just been driving a browser — and the daemon
+knows, because it sees `mcp__claude-in-chrome__*` calls in the session
+transcripts. The group is bound silently, before you capture anything.
+
+If that trail is missing (the session drove the browser some other way),
+it falls back to "exactly one session is working", and only then asks.
+
+The binding is remembered per tab group, so it survives restarts:
 
 ```
 ┌─────────────────────────────────────────┐
