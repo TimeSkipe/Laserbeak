@@ -1205,6 +1205,52 @@ start() {
 window and on the phone. Without a label, the first 6 characters of the
 session id are used.
 
+### The first prompt reads the documentation
+
+Asking a session to read `docs/` before it starts guessing is the kind of
+thing that is easy to forget every single time. So `start` asks on your
+behalf: it passes Claude a first prompt naming the documentation the
+project actually has.
+
+Two files are deliberately left out. `CLAUDE.md` — Claude Code loads it
+by itself, and asking again would only mean reading what is already in
+context. And `README.md`, whenever `docs/` exists: there it retells the
+documentation for the user, which is tens of thousands of tokens spent on
+a duplicate. With no `docs/`, the README is the only documentation there
+is, and it goes in.
+
+The project root is found by walking up from the current directory
+(`.git` or `CLAUDE.md`), because sessions are often opened in a subfolder
+while the documentation lives at the top.
+
+### The size of it
+
+Measured on this project: `docs/` is 68 KB, which is about 24,600 tokens.
+A session starts at roughly 37k (system prompt, tool definitions,
+`CLAUDE.md`), so the request costs a fifth of a 200k window — and it buys
+a session that does not have to re-derive how the daemon works. It is
+paid once; from there the prompt cache carries it at a tenth of the
+price.
+
+But documentation folders vary wildly. In a neighbouring project `docs/`
+is 27 files and 497 KB — around 175k tokens, which would swallow a 200k
+window whole before the first request. So there is a budget: over 120 KB
+(~40k tokens) the prompt stops enumerating files and asks the session to
+look at `docs/` and pick what to start with instead. `CLAUDE.md` is
+already in its context to guide that choice.
+
+Nothing is added when there is nothing to add:
+
+| | |
+|---|---|
+| `start api` | asks to read the documentation |
+| `start api "fix the build"` | your own prompt wins, no request added |
+| `start -n api` | no request this time |
+| a project with no `README.md` and no `docs/` | starts as before |
+
+The text arrives as a separate argument, so tmux passes it through
+without running it past a shell — spaces and asterisks survive intact.
+
 ---
 
 ## Layout

@@ -628,6 +628,33 @@ containing the path wins.
 the list. The root is found like this: the project open in the IDE → the
 nearest ancestor with `.git` or `.idea` → the directory itself.
 
+### `tmux kill-server` in a test kills the real work
+
+On 31 August 2026 a session in this project tested the `start` and `stop`
+functions from `~/.zshrc` and ended both of its test scripts with
+`tmux kill-server`. Every session started through `start` lives in the
+same tmux server, so both times all three working sessions died at once.
+The tabs came back to a clean prompt with no `lost server` to hint at
+what had happened — a graceful `kill-server` destroys sessions properly,
+and only an unexpected death of the server prints that line.
+
+`TMUX_TMPDIR` does not isolate such a test. The socket path built from
+the scratchpad came to 143 bytes and `sun_path` on macOS holds 104, so
+tmux silently fell back to the default socket — the real server. The
+test's own output gave it away: the live sessions were listed right next
+to the invented ones, and the closing line read "the real server is
+untouched: no server running".
+
+Test on a named socket instead: `tmux -L proba new-session ...`. `-L`
+takes a socket **name** inside the default directory, so the length limit
+never comes into play.
+
+`hooks/guard-tmux.sh` now refuses any `kill-server` that carries neither
+`-L` nor `-S`. It is wired in as a `PreToolUse` hook on `Bash` in
+`.claude/settings.json`, and it inspects the whole request — the command
+that killed everything only contained the words inside a here-doc it was
+writing to a file.
+
 ### JetBrains leaves `opened="true"` behind after quitting
 
 The flag in `recentProjects.xml` is not cleared when the IDE is closed.

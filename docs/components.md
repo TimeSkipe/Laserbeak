@@ -176,3 +176,12 @@ A single `curl`. Passes as headers what the payload does not carry:
 | `X-Tmux-Pane` | `$TMUX_PANE` | where to type prompts |
 | `X-Hook-Ppid` | `$PPID` | to find the session's process |
 | `X-Term-Program` | `$TERM_PROGRAM` | fallback for terminals |
+
+## The guard — `hooks/guard-tmux.sh`
+
+A `PreToolUse` hook on `Bash` (see `.claude/settings.json`). It blocks
+`tmux kill-server` unless the command names its own socket with `-L` or
+`-S`, because that one command closes every Claude Code session on the
+machine at once. Why it is there: **`tmux kill-server` in a test kills
+the real work** in `docs/decisions.md`.
+
