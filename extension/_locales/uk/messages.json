@@ -20,11 +20,101 @@
   "hintDrag": {
     "message": "Обведи зону · Esc — скасувати"
   },
+  "hintDragNext": {
+    "message": "Знімок $N$ · обведи зону · Esc — пізніше, через ⌘⇧E",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
   "commentPlaceholder": {
     "message": "Що з цим не так?"
   },
+  "commentPlaceholderNext": {
+    "message": "А тут що?"
+  },
   "footHint": {
     "message": "Enter — надіслати · Esc — скасувати"
+  },
+  "footHintSeries": {
+    "message": "Enter — надіслати всі $COUNT$ · Esc — скасувати",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "markButton": {
+    "message": "Позначити"
+  },
+  "markButtonTitle": {
+    "message": "Намалювати на знімку, що саме не так і як має бути"
+  },
+  "toolPen": {
+    "message": "Від руки"
+  },
+  "toolArrow": {
+    "message": "Стрілка"
+  },
+  "toolEllipse": {
+    "message": "Коло"
+  },
+  "toolRect": {
+    "message": "Прямокутник"
+  },
+  "colorRed": {
+    "message": "Червоний"
+  },
+  "colorYellow": {
+    "message": "Жовтий"
+  },
+  "colorGreen": {
+    "message": "Зелений"
+  },
+  "colorBlue": {
+    "message": "Синій"
+  },
+  "colorBlack": {
+    "message": "Чорний"
+  },
+  "colorWhite": {
+    "message": "Білий"
+  },
+  "markUndo": {
+    "message": "Назад (⌘Z)"
+  },
+  "markClear": {
+    "message": "Стерти все"
+  },
+  "markCancel": {
+    "message": "Скасувати"
+  },
+  "markDone": {
+    "message": "Готово"
+  },
+  "markHint": {
+    "message": "Shift — рівне коло, квадрат чи стрілка під 45° · Enter — готово · Esc — скасувати"
+  },
+  "errMark": {
+    "message": "не вдалось зберегти позначки"
+  },
+  "nextButton": {
+    "message": "Наступний знімок"
+  },
+  "nextTitle": {
+    "message": "Відкласти цей знімок і зняти наступний — полетять разом, по порядку"
+  },
+  "seriesDrop": {
+    "message": "Прибрати з послідовності"
+  },
+  "seriesKept": {
+    "message": "У черзі знімків: $COUNT$ · ⌘⇧E — продовжити",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "noSessions": {
     "message": "немає сесій, куди можна писати"
@@ -51,6 +141,9 @@
   },
   "errOpenOverlay": {
     "message": "не вдалось відкрити виділення"
+  },
+  "errSeriesFull": {
+    "message": "черга знімків повна — надішли ці"
   },
   "daemonDown": {
     "message": "Laserbeak не відповідає"
@@ -89,6 +182,15 @@
   },
   "whereItGoes": {
     "message": "Куди летить"
+  },
+  "language": {
+    "message": "Мова"
+  },
+  "languageAuto": {
+    "message": "Як у браузері"
+  },
+  "languageHint": {
+    "message": "Лише для розширення. Мову сповіщень Laserbeak задає \"language\" у ~/.laserbeak/config.json."
   },
   "thisExtension": {
     "message": "Це розширення"

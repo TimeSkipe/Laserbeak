@@ -126,10 +126,11 @@ that address.
 | File | What it is |
 |------|------------|
 | `manifest.json` | MV3; permissions `activeTab`, `tabGroups`, `storage`, access limited to `127.0.0.1:8787` |
-| `background.js` | service worker: capture, cropping, talking to the daemon, remembering "tab group → session" |
-| `overlay.js` | what you see on the page: the frame, the input field, the element selector; lives in a Shadow DOM |
-| `_locales/{uk,en,cs}/messages.json` | extension strings; the browser picks the folder by its own UI language |
-| `popup.html`, `popup.js` | settings window: is the daemon alive, which groups are bound to which sessions |
+| `background.js` | service worker: capture, cropping, talking to the daemon, remembering "tab group → session", the queue of a shot sequence |
+| `overlay.js` | what you see on the page: the frame, the input field, the element selector, the markup editor, the sequence strip; lives in a Shadow DOM |
+| `i18n.js` | the extension's language: the browser's, or the one picked in settings; shared by all three of the above |
+| `_locales/{uk,en,cs}/messages.json` | extension strings |
+| `popup.html`, `popup.js` | settings window: is the daemon alive, which groups are bound to which sessions, language |
 
 The private key lives in `~/.laserbeak/extension-key.pem` — it is not in
 the repository and must never be.
@@ -138,18 +139,76 @@ the repository and must never be.
 
 ```
 ⌘⇧E (or click the icon, or right-click the page)
-  └─ background: executeScript overlay.js
+  └─ background: executeScript i18n.js + overlay.js
       └─ drag a region with the mouse
           ├─ the overlay hides (else it lands in its own screenshot)
           ├─ elementFromPoint → selector of the element under the region
           └─ background: captureVisibleTab → crop ×dpr → storage.session
               └─ "What's wrong with it?" field + session picker
-                  └─ POST /sessions/shot
+                  ├─ "Mark up" (optional): draw over the shot
+                  │   └─ background: lb:mark → the drawn shot replaces the clean one
+                  ├─ "Next shot" (optional): this shot + comment → the queue,
+                  │   and straight back to dragging a region
+                  └─ POST /sessions/shot — the queue and this shot, in order
 ```
 
 The extension knows nothing of its own about sessions: it takes the list
 from `/state`, and the daemon assembles the prompt. Same rule as for the
 Mac and the phone — the client displays, the daemon decides.
+
+### Marking up a shot
+
+"Mark up" on the preview, or a click on the preview itself, opens an
+editor over the page: freehand, arrow, circle and rectangle in six
+colours, with Shift straightening a shape (circle, square, 45° arrow).
+
+- **Shapes are vectors in the shot's own pixels**, not pixels on a
+  canvas. That is what makes undo work, and why reopening the editor shows
+  the clean shot with the same shapes, still editable.
+- **A small region is enlarged — on screen and in the output.** The
+  editor fits the shot to the screen, up to 8× its size on the page. The
+  exported image is the shot scaled by a whole number without smoothing:
+  otherwise a line four screen pixels thick would come out as half a pixel
+  on a region a hundred pixels wide.
+- **The clean shot stays in `storage.session`** next to the drawn one.
+  Clearing every mark restores it instead of re-encoding the drawing of
+  nothing; it is never sent to the daemon.
+
+### A sequence of shots
+
+"Next shot" puts the current shot aside with its comment and marks, and
+the frame comes straight back for the next one — the page scrolls under
+it. Enter on the last card sends them all as one prompt, numbered.
+
+- **The queue lives in the service worker's `storage.session`**, not in
+  the overlay. The overlay dies with the page, and the next step is often
+  on another page: Esc keeps the queue, ⌘⇧E anywhere continues it.
+- **Esc drops only the current shot.** A shot already queued is removed
+  with the × on its thumbnail.
+- **At most 8 shots** — the same `MAX_SERIES` in the daemon and in the
+  extension. `storage.session` holds 10 MB for the whole extension, so a
+  queue of large regions can run out sooner; then "Next shot" says so
+  rather than losing a shot.
+
+### Language
+
+By default the extension speaks the browser's UI language (not the
+system's). The settings window can pin it to Ukrainian, English or Czech.
+
+`chrome.i18n` cannot be switched at all — it is nailed to the browser —
+so for a pinned language `i18n.js` reads `_locales/<lang>/messages.json`
+itself and repeats chrome.i18n's placeholder rules. The service worker
+and the settings window load the table directly; the overlay gets it
+from the service worker by message, so `_locales` never has to be
+exposed to web pages. A key missing from the table falls back to
+chrome.i18n rather than to a blank button.
+
+What cannot follow the switch: the extension's name and description and
+the shortcut's description in `chrome://extensions` — those come from
+the manifest and stay in the browser's language.
+- **The daemon is told the marks are there** (`marked: true`) and says so
+  in the prompt. A red box drawn over an interface reads as part of the
+  interface; without the note the session goes looking for it in the code.
 
 ## Scripts — `scripts/`
 
@@ -160,22 +219,44 @@ Mac and the phone — the client displays, the daemon decides.
 | `build-app.sh` | builds the Mac app and puts it in `/Applications` |
 | `team-id.sh` | resolves the signing Team ID from this machine's keychain, so the project builds for anyone |
 | `install-phone.sh` | builds and installs on an iPhone (works over Wi-Fi too) |
-| `patch-settings.js` | writes hooks into `~/.claude/settings.json`, leaving other settings alone |
+| `patch-settings.js` | writes hooks into `~/.claude/settings.json`, or with `--codex` into `~/.codex/hooks.json`, leaving everything else alone |
 | `archive-import.js` | one-off import of conversations still on disk |
 | `make-lucide.py` | generates `LucideIcons.swift` from SVG |
 | `make-icon.py` | generates the app icon from an image |
 
 ## The hook — `hooks/hook.sh`
 
-A single `curl`. Passes as headers what the payload does not carry:
+A single `curl`, shared by Claude Code and Codex: `hook.sh <event>
+[agent]`, where the hook entry itself says `codex` — nothing is guessed.
+Passes as headers what the payload does not carry:
 
 | Header | Source | Why |
 |--------|--------|-----|
+| `X-Agent` | the second argument | `claude` or `codex` |
 | `X-Claude-Label` | `$CLAUDE_LABEL` | session name |
 | `X-App-Bundle` | `$__CFBundleIdentifier` | which editor to open on click |
 | `X-Tmux-Pane` | `$TMUX_PANE` | where to type prompts |
 | `X-Hook-Ppid` | `$PPID` | to find the session's process |
 | `X-Term-Program` | `$TERM_PROGRAM` | fallback for terminals |
+
+## Codex
+
+`start codex "name"` (in `~/.zshrc`) runs Codex exactly as `start` runs
+Claude Code: in tmux, with the label. The hooks are the same file and
+the same path through the daemon; what differs is kept in a few places:
+
+| Where | What |
+|-------|------|
+| `patch-settings.js --codex` | `SessionStart`, `UserPromptSubmit`, `Stop`, `PermissionRequest` → `approval`, `Interrupt` → `interrupt`, `SessionEnd` |
+| `events.js` | `approval` is always "permission needed"; `interrupt` ends the turn without a banner; a Codex transcript is not handed to the token counter or the archive — they read Claude's format only |
+| `procs.js` | a process named `codex` counts as an agent, for the exact "session → pid" link only |
+| `reaper.js` | a Codex session is never judged by counting processes |
+| `state.js` | `agent` in every session; mode and effort are empty for Codex |
+| `server.js` | mode switching, `/model` and `/effort` refuse a Codex session with `409` |
+
+Not there yet: tokens and the conversation archive for Codex (its
+rollout files are a different format), and the apps still offer the mode
+picker on a Codex session (the daemon refuses it with a clear message).
 
 ## The guard — `hooks/guard-tmux.sh`
 

@@ -3,12 +3,13 @@
 ## The whole picture
 
 ```
-┌─ Claude Code ────────────────────────────────────────────┐
+┌─ Claude Code or Codex ───────────────────────────────────┐
 │  a session in a WebStorm tab (inside tmux)               │
-│  or a session the daemon started itself                  │
+│  or a session the daemon started itself (Claude only)    │
 └───────────────┬──────────────────────────────────────────┘
                 │ hooks: SessionStart, UserPromptSubmit,
                 │        Stop, Notification, SessionEnd
+                │        (Codex: + PermissionRequest, Interrupt)
                 ▼
         hooks/hook.sh  ── POST ──►  127.0.0.1:8787
                                           │
@@ -60,6 +61,20 @@ there and every action in the session would drag.
 
 If the daemon is down, `curl` fails silently and the hook exits 0. The
 user's work never suffers.
+
+### Two agents, one path
+
+Codex has hooks too, with the same events and the same format as Claude
+Code, so it goes through the same `hook.sh` and the same daemon — the
+hook entry adds `codex`, and every session carries `agent`. Everything
+built on top (statuses, banners, typing through tmux, screenshots from
+the browser) works for both without knowing the difference.
+
+Where the two really differ, the daemon says so instead of guessing:
+the Shift+Tab mode cycle and `/model`/`/effort` are Claude Code's, so a
+Codex session refuses them; its transcript is a different format, so
+tokens and the archive are Claude-only for now. Details in
+`docs/components.md`, the traps in `docs/decisions.md`.
 
 ### Two sources of knowledge about sessions
 

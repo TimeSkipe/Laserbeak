@@ -19,6 +19,9 @@ echo "  ✓ агенти прибрано"
 echo "▸ прибираю хуки з ~/.claude/settings.json"
 node "$ROOT/scripts/patch-settings.js" --remove
 
+echo "▸ прибираю хуки з ~/.codex/hooks.json"
+node "$ROOT/scripts/patch-settings.js" --codex --remove
+
 for dir in /Applications "$HOME/Applications"; do
   for app in Laserbeak.app ClaudeNotify.app; do
     if [ -d "$dir/$app" ]; then

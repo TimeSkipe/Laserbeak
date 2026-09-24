@@ -12,9 +12,35 @@
 
 const DAEMON = 'http://127.0.0.1:8787';
 
-// Мову бере сам браузер — із власних налаштувань, а не з системи.
-// Тексти лежать в _locales/<мова>/messages.json.
-const msg = (key, ...args) => chrome.i18n.getMessage(key, args.map(String));
+importScripts('i18n.js');
+
+// Тексти лежать в _locales/<мова>/messages.json. Мова — як у браузері
+// (не в системі!) або та, що вибрана у вікні налаштувань.
+let msg = LaserbeakI18n.bind(null);
+let strings = null;
+
+async function applyLanguage() {
+  const { language = 'auto' } = await chrome.storage.local.get('language');
+  strings = await LaserbeakI18n.load(language).catch(() => null);
+  msg = LaserbeakI18n.bind(strings);
+
+  // Те, що браузер уже показує сам: пункти меню й підказку на іконці.
+  // Меню може ще не існувати (воркер прокинувся раніше за onInstalled) —
+  // тоді помилку ковтаємо, onInstalled створить його вже з потрібним текстом.
+  const quiet = () => void chrome.runtime.lastError;
+  chrome.contextMenus.update('lb-capture', { title: msg('menuCapture') }, quiet);
+  chrome.contextMenus.update('lb-settings', { title: msg('menuSettings') }, quiet);
+  chrome.action.setTitle({ title: msg('actionTitle') });
+}
+
+// Воркер засинає й прокидається, тож мову читаємо щоразу на старті, а
+// все, що говорить із людиною, чекає на неї.
+const languageReady = applyLanguage()
+  .catch((err) => console.warn('[Laserbeak] мова:', err.message));
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.language) applyLanguage();
+});
 
 // Скільки чекати, поки браузер перемалює сторінку без нашого оверлея.
 // Знімок робиться відразу після того, як оверлей сховався, — без цієї
@@ -134,11 +160,13 @@ chrome.tabGroups.onCreated.addListener(async (group) => {
 
 // ── Знімок ──────────────────────────────────────────────────────────
 
+const bitmapOf = async (dataUrl) => createImageBitmap(await (await fetch(dataUrl)).blob());
+
 // captureVisibleTab віддає весь видимий кадр у фізичних пікселях, а
 // рамку користувач малював у CSS-пікселях. На Retina це рівно вдвічі —
 // без множення на dpr виріжеться не те, що обвели.
 async function crop(dataUrl, rect, dpr) {
-  const bitmap = await createImageBitmap(await (await fetch(dataUrl)).blob());
+  const bitmap = await bitmapOf(dataUrl);
 
   const sx = Math.max(0, Math.round(rect.x * dpr));
   const sy = Math.max(0, Math.round(rect.y * dpr));
@@ -147,6 +175,13 @@ async function crop(dataUrl, rect, dpr) {
 
   if (sw < 1 || sh < 1) throw new Error(msg('errEmptyRegion'));
 
+  return pack(bitmap, sx, sy, sw, sh);
+}
+
+// Частина картинки → data URL, готовий їхати в демон. Через це
+// проходить і свіжий знімок, і розмальований: межі розміру й ваги в
+// обох однакові.
+async function pack(bitmap, sx, sy, sw, sh) {
   // Дуже великі зони зменшуємо: дрібніший текст сесії однаково не
   // потрібен, а вага росте квадратично.
   const scale = Math.min(1, MAX_SIDE / Math.max(sw, sh));
@@ -189,7 +224,7 @@ async function startCapture(tab) {
   try {
     // Стилі не вставляємо: оверлей живе у Shadow DOM і несе їх у собі,
     // тож у CSS сторінки ми не лишаємо нічого.
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['overlay.js'] });
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['i18n.js', 'overlay.js'] });
     await chrome.tabs.sendMessage(tab.id, { type: 'lb:begin' });
   } catch (err) {
     console.warn('[Laserbeak]', msg('errOpenOverlay') + ':', err.message);
@@ -204,7 +239,8 @@ chrome.commands.onCommand.addListener(async (command) => {
   startCapture(tab);
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  await languageReady;
   chrome.contextMenus.create({
     id: 'lb-capture',
     title: msg('menuCapture'),
@@ -238,6 +274,7 @@ async function listSessions(tab) {
       name: s.displayName || s.alias || s.label || s.sid.slice(0, 6),
       project: s.project || '',
       status: s.status || '',
+      agent: s.agent || 'claude',
     }));
 
   // Та, що зараз працює, — найімовірніша адресатка.
@@ -266,27 +303,124 @@ async function shoot(tab, payload) {
   return { ok: true, preview: shot.dataUrl, size: shot.size, bytes: shot.bytes };
 }
 
+// Знімок із позначками користувача замість чистого. Чистий лишається
+// поруч: стерли всі позначки — повертаємо його, а не перекодовуємо
+// намальоване з нічим.
+async function mark({ image }) {
+  const { pending } = await chrome.storage.session.get('pending');
+  if (!pending) throw new Error(msg('errLostShot'));
+
+  const { clean = pending.image, ...rest } = pending;
+
+  if (!image) {
+    await chrome.storage.session.set({ pending: { ...rest, image: clean, marked: false } });
+    return { ok: true, preview: clean };
+  }
+
+  const bitmap = await bitmapOf(image);
+  const shot = await pack(bitmap, 0, 0, bitmap.width, bitmap.height);
+  await chrome.storage.session.set({
+    pending: { ...rest, image: shot.dataUrl, clean, marked: true },
+  });
+
+  return { ok: true, preview: shot.dataUrl, bytes: shot.bytes };
+}
+
+// ── Послідовність знімків ───────────────────────────────────────────
+//
+// «Спершу тиснеш тут — відкривається оце, а мало б інше». Кожен знімок
+// зі своїм коментарем відкладається в чергу, а в сесію все летить одним
+// запитом, по порядку.
+//
+// Черга лежить тут, а не в оверлеї: оверлей живе на сторінці й помирає
+// разом із нею, а наступний знімок часто вже на іншій сторінці.
+
+// Та сама межа, що й у демоні (MAX_SERIES у src/shots.js).
+const MAX_SERIES = 8;
+
+async function readSeries() {
+  const { series = [] } = await chrome.storage.session.get('series');
+  return series;
+}
+
+async function listSeries() {
+  const series = await readSeries();
+  return {
+    ok: true,
+    items: series.map((s) => ({ image: s.image, comment: s.comment || '' })),
+    max: MAX_SERIES,
+  };
+}
+
+// Поточний знімок разом із коментарем — у чергу, місце під наступний.
+async function next({ comment }) {
+  const { pending } = await chrome.storage.session.get('pending');
+  if (!pending) throw new Error(msg('errLostShot'));
+
+  // Відкладений знімок уже не правлять, тож чистий більше не потрібен.
+  const { clean, ...shot } = pending;
+  const series = await readSeries();
+
+  // +2: той, що відкладаємо, і той, що буде знято слідом.
+  if (series.length + 2 > MAX_SERIES) throw new Error(msg('errSeriesFull'));
+
+  try {
+    await chrome.storage.session.set({ series: [...series, { ...shot, comment }] });
+  } catch {
+    // storage.session тримає 10 МБ на все розширення, а великі зони
+    // бувають по два. Краще сказати зараз, ніж загубити знімок.
+    throw new Error(msg('errSeriesFull'));
+  }
+  await chrome.storage.session.remove('pending');
+
+  return { ok: true, count: series.length + 1 };
+}
+
+async function drop({ index }) {
+  const series = await readSeries();
+  series.splice(index, 1);
+  await chrome.storage.session.set({ series });
+  return listSeries();
+}
+
 async function send(tab, { sid, comment }) {
   const { pending } = await chrome.storage.session.get('pending');
   if (!pending) throw new Error(msg('errLostShot'));
 
+  // Чистий знімок лишається тут: демонові він не потрібен, а важить
+  // стільки ж, скільки й основний.
+  const { clean, ...shot } = pending;
+  const current = { ...shot, comment };
+  const series = await readSeries();
+
+  // Один знімок їде полями самого тіла, як і досі; кілька — масивом.
+  const body = series.length ? { sid, shots: [...series, current] } : { sid, ...current };
+
   const result = await daemon('/sessions/shot', {
     method: 'POST',
-    body: JSON.stringify({ sid, comment, ...pending }),
+    body: JSON.stringify(body),
   });
 
-  await chrome.storage.session.remove('pending');
+  await chrome.storage.session.remove(['pending', 'series']);
   await writeBinding(tab, sid);
   return result;
 }
 
-chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+// Параметр — не `msg`: так звуть функцію перекладу, і затінена вона
+// падала б саме там, де мала пояснити помилку.
+chrome.runtime.onMessage.addListener((message, sender, reply) => {
   const tab = sender.tab;
 
   const run = async () => {
-    if (msg.type === 'lb:sessions') return listSessions(tab);
-    if (msg.type === 'lb:shoot') return shoot(tab, msg);
-    if (msg.type === 'lb:send') return send(tab, msg);
+    await languageReady;
+    if (message.type === 'lb:strings') return { ok: true, table: strings };
+    if (message.type === 'lb:sessions') return listSessions(tab);
+    if (message.type === 'lb:shoot') return shoot(tab, message);
+    if (message.type === 'lb:mark') return mark(message);
+    if (message.type === 'lb:series') return listSeries();
+    if (message.type === 'lb:next') return next(message);
+    if (message.type === 'lb:drop') return drop(message);
+    if (message.type === 'lb:send') return send(tab, message);
     return { ok: false, error: msg('errUnknownMessage') };
   };
 

@@ -377,6 +377,22 @@ else entirely".
 The capture is taken after the overlay has hidden itself, with a pause
 for repainting — otherwise our own frame lands in the shot.
 
+### The card was measured before its picture existed
+
+A region near the bottom of the screen left the comment card hanging off
+the edge — the text field below the fold, impossible to click. The code
+did clamp the card to the screen, using its measured height. But the
+preview is a data-URL `<img>`, and even a data URL decodes
+asynchronously: at the moment of measuring, the picture had no height
+yet. The card was placed as if it were 67 px shorter, then grew
+downwards. Measured on a real case: 58 px off screen.
+
+Now the card is re-placed whenever it changes size (`ResizeObserver`) or
+the window does: below the region if it fits, above it if not, and
+pressed against the bottom edge as a last resort. On a very short screen
+the preview shrinks first — the card is pointless without the text field,
+not without a big picture.
+
 ### The overlay has to live in a Shadow DOM
 
 The frame is drawn on top of someone else's page, and out there you meet
@@ -409,6 +425,32 @@ seconds. That was not needed here: messages flow between drawing the
 region and pressing Enter, and those keep the worker alive. The capture
 still lives in `chrome.storage.session` rather than in a variable — so it
 survives sleep if the user stops to think.
+
+### An automated drag does not carry Shift into the moves
+
+The markup editor straightens a shape while Shift is held, reading
+`shiftKey` from `pointermove`. Driven through browser automation — a drag
+with the `shift` modifier — it drew an ellipse, not a circle, and the
+Shift code looked broken.
+
+It was not. The same drag dispatched by hand as `PointerEvent`s with
+`shiftKey: true` drew a perfect circle, so the modifier from the tool
+simply never reached the move events. When testing anything keyed on a
+modifier held mid-drag, dispatch the events yourself before suspecting
+the code.
+
+The same rig has a second habit: right after a navigation, drags went
+nowhere — the veil was up, its hint untouched, not a single `mousedown`
+arrived — until a screenshot of the tab had been taken. After that every
+drag landed. Three times in a row it looked like a broken overlay; it was
+the rig.
+
+The reason is probably the same as for a third habit: that tab reports
+`document.visibilityState === 'hidden'` and draws no frames on its own.
+Whatever is delivered on a frame — `requestAnimationFrame`,
+`ResizeObserver` — waits until the next screenshot forces one. The card
+placement looked wrong by exactly the height of a late image until a
+screenshot was taken; then it was right. Measure after a screenshot.
 
 ### `activeTab` instead of `<all_urls>`
 
@@ -664,6 +706,70 @@ in the list.
 
 ---
 
+## Codex
+
+### Codex has Claude Code's hooks — and asks before running them
+
+Codex CLI (0.155, bundled inside `ChatGPT.app` rather than on `PATH`)
+has hooks with the same events and the same JSON format as Claude Code —
+checked against the `hooks.json` of its own bundled plugins. So Codex
+needed no second bridge: `~/.codex/hooks.json` points at the same
+`hook.sh` with `codex` as a second argument.
+
+The difference is trust. Codex does not run new or changed hooks until a
+person approves them: its first screen says "Hooks need review — 6 hooks
+are new or changed" (verified: that screen is how we learned it had
+found our file). There is a flag that skips the review for one run,
+`--dangerously-bypass-hook-trust`, and we do not use it — not in
+`start codex`, not in tests. Approving is the user's call, made once, in
+Codex itself.
+
+Testing without that flag means no hook runs, so what was verified is
+the rest: the file is found, the daemon handles the six events (replayed
+through `hook.sh` from a process named `codex`), and `start codex` builds
+the right command.
+
+### Codex runs its hooks from the process in the pane
+
+That matters because the label and the tmux pane reach the daemon only
+through the environment the hook inherits. Codex also has a shared
+app-server mode, and hooks run from there would carry none of it. In the
+terminal it is not so: every MCP server of a Codex session is a direct
+child of the `codex` process in the pane, so the agent — and its hooks —
+run right there. `$CLAUDE_LABEL` and `$TMUX_PANE` arrive as with Claude.
+
+### A process named `codex` is not necessarily a session
+
+The ChatGPT app keeps a dozen processes of its own named `codex`. So
+Codex is not counted the way `claude` is in `inspect.js` — "live
+processes in this project" would count the app. `procs.js` treats `codex`
+as an agent only for the exact link "this hook → its session's pid", and
+the reaper never judges a Codex session by counting processes.
+
+### Codex does not read CLAUDE.md
+
+It loads `AGENTS.md`. In a project with only `CLAUDE.md`, a Codex session
+knows none of the rules — so the documentation prompt `start codex` sends
+lists `CLAUDE.md` first, while `start` for Claude still leaves it out.
+
+### Trying Codex leaves marks in its config
+
+Launching the TUI once wrote `[tui.model_availability_nux]` into
+`~/.codex/config.toml` (the "this is GPT-6" tip was shown), and a new
+folder asks "Trust this folder?" and saves the answer — a `-c` override
+does not skip that. When testing, run it from a folder that is already
+trusted, keep a copy of `config.toml`, and put back exactly what the test
+added. The desktop app writes the same file, so restore precisely, not
+wholesale.
+
+### A copy of a system binary is killed on sight
+
+To replay hooks "from a process named codex", copying `/bin/bash` to
+`codex` looked enough; macOS killed the copy with `137` before it ran a
+line. A four-line C program that forks the hook works.
+
+---
+
 ## Daemon state
 
 ### Restarting the daemon wiped every session
@@ -741,13 +847,27 @@ not in `messages.json` — no warning, no fallback to the key name. So a
 typo does not leave you with Ukrainian text in an English UI; it leaves
 you with a blank button.
 
-That is why the key sets are compared against the code as a check: all 30
-keys used in `.js` and in `data-i18n` attributes must exist in all three
-locales. Cheap to run, and it catches the one failure mode that is
-invisible by eye.
+That is why the key sets are compared against the code as a check: every
+key used in `.js`, in `data-i18n` attributes and in the manifest must
+exist in all three locales. Cheap to run, and it catches the one failure
+mode that is invisible by eye.
 
-The extension follows the **browser's** UI language, not the system's —
-worth knowing when the two differ.
+By default the extension follows the **browser's** UI language, not the
+system's — worth knowing when the two differ.
+
+### chrome.i18n cannot be switched
+
+There is no API to make `chrome.i18n.getMessage()` answer in a language
+other than the browser's. So a language picked in the extension's
+settings means reading `_locales/<lang>/messages.json` ourselves
+(`i18n.js`) and doing the `$NAME$` → `$1` substitution the way chrome.i18n
+does it. The strings stay in the same files; only the lookup moved.
+
+Two consequences. The overlay lives in a page and gets the table from the
+service worker by message, so `_locales` is not made web-accessible. And
+the manifest's own strings — the extension's name, the shortcut's
+description — are resolved by the browser and stay in its language no
+matter what is picked.
 
 ### HTML cannot reach chrome.i18n by itself
 

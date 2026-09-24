@@ -123,6 +123,7 @@ Everything an app needs. Polled every 2 seconds.
 
   "sessions": [{
     "sid": "…",
+    "agent": "claude",          // claude | codex
     "label": "backend",         // from CLAUDE_LABEL
     "displayName": "Backend",   // taking the custom name into account
     "alias": "Backend",
@@ -131,8 +132,8 @@ Everything an app needs. Polled every 2 seconds.
     "cwd": "/…/storefront/functions",
 
     "status": "waiting",
-    "permissionMode": "auto",   // auto | plan | acceptEdits | default
-    "effort": "high",           // low | medium | high | xhigh | max
+    "permissionMode": "auto",   // auto | plan | acceptEdits | default; "" for Codex
+    "effort": "high",           // low | medium | high | xhigh | max; "" for Codex
     "notifyEnabled": true,
     "canInput": true,           // whether prompts can be typed in
     "hosted": false,            // started by the daemon itself
@@ -171,15 +172,18 @@ Adds `removed` to the response — sessions found to be dead.
 
 ### `POST /hook/<event>`
 
-Accepted **from localhost only**. The body is the JSON Claude Code passed
-to the hook. The response is sent before processing, so the session never
-waits.
+Accepted **from localhost only**. The body is the JSON Claude Code or
+Codex passed to the hook. The response is sent before processing, so the
+session never waits.
 
 Events: `session-start`, `prompt`, `stop`, `notification`, `session-end`.
 The old name `permission` is still accepted — sessions opened before the
-rename still send it.
+rename still send it. Codex adds two of its own: `approval` (its
+`PermissionRequest` — always "permission needed", no text to recognise)
+and `interrupt` (Esc in the middle of a turn: the turn ends, no banner).
 
-Headers: `X-Claude-Label`, `X-App-Bundle`, `X-Tmux-Pane`, `X-Hook-Ppid`,
+Headers: `X-Agent` (`claude` or `codex`; missing means `claude`),
+`X-Claude-Label`, `X-App-Bundle`, `X-Tmux-Pane`, `X-Hook-Ppid`,
 `X-Term-Program`.
 
 ---
@@ -206,6 +210,10 @@ to type into it.
 Presses Shift+Tab and re-reads the indicator until it gets the mode you
 asked for. The response includes `presses` — how many it took.
 
+A Codex session gives `409`: its modes are an approval policy and a
+sandbox, not the Shift+Tab cycle, and pressing keys there blind would
+switch something else.
+
 ### `POST /sessions/command`
 
 Claude Code slash commands. Exactly one field per request:
@@ -225,6 +233,8 @@ Claude Code slash commands. Exactly one field per request:
 Technically this is the same input into a session, but with an allow-list:
 the phone must not be able to send an arbitrary string as a command. An
 unknown value gives `400`, a session without a go-between gives `409`.
+So does `model` or `effort` to a Codex session — Codex names and picks
+them differently; `compact` works in both.
 
 **Important:** Claude Code remembers the model and effort choice as the
 **default for new sessions** — exactly as when you change them by hand.
@@ -242,9 +252,15 @@ A screenshot of a region of a page — what the browser extension sends.
   "url": "http://localhost:3000/checkout",
   "selector": "body > main.page > div.hero > button.cta",
   "text": "Checkout",
-  "size": "420×180"
+  "size": "420×180",
+  "marked": true
 }
 ```
+
+`marked: true` — the image carries the user's own drawing: arrows,
+circles, boxes. The daemon then adds that the coloured marks are the
+user's and are not on the page; otherwise a red box drawn over an
+interface reads as part of the interface.
 
 The daemon writes the image into `~/.laserbeak/shots/` and sends the
 session an ordinary text prompt with the path to it:
@@ -260,14 +276,43 @@ So it is the same input, just assembled by the daemon: Claude Code opens
 the image with its own `Read`. The text is deliberately **a single line**
 — every `\n` in the input is an Enter, i.e. a separate submission.
 
-Response: `{ ok, via, file, bytes }`.
+**A sequence** — several shots taken one after another ("click here, then
+this opens") — comes as a `shots` array of the same objects, in order:
 
-`400` — missing `sid`/`image`, or the image will not parse; `404` — no
-such session; `409` — the session was started without a go-between
-(checked **before** the file is written, so no litter is left on disk).
+```json
+{ "sid": "…", "shots": [
+  { "image": "…", "comment": "I click here", "url": "…", "selector": "…" },
+  { "image": "…", "comment": "and this should be a dialog", "marked": true }
+] }
+```
 
-The body limit here is 8 MB rather than the usual 2: base64 adds a third
-to the image's weight.
+It becomes one prompt, still one line, with numbered items; a URL equal
+to the previous item's is not repeated:
+
+```
+Look at the screenshots in order, they are one sequence; the coloured
+marks on them are mine. 1) …/a1b2c3d4-20260924-113012-1.png — I click
+here. … 2) …/a1b2c3d4-20260924-113012-2.png — and this should be a
+dialog. …
+```
+
+Files of one sequence get `-1`, `-2`… in their names: they are written
+within the same second and would otherwise overwrite each other. Every
+image is decoded before the first one is written, so a broken one in the
+middle leaves nothing on disk.
+
+Response: `{ ok, via, file, files, bytes }` — `file` is the first,
+`files` all of them in order.
+
+`400` — missing `sid`/`image` (in any item), the image will not parse, or
+more than 8 shots; `404` — no such session; `409` — the session was
+started without a go-between (checked **before** anything is written, so
+no litter is left on disk).
+
+The body limit here is 16 MB rather than the usual 2: base64 adds a third
+to the image's weight, and a sequence travels in one request. The
+extension keeps its queue in `storage.session`, which holds 10 MB, so
+more than that cannot arrive from it.
 
 Screenshots sweep themselves — the last 200 or 7 days, whichever comes
 first.

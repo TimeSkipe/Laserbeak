@@ -43,8 +43,10 @@ const MAX_BODY = 2 * 1024 * 1024;
 
 // Скріншот зони приходить як base64, а це +33% до розміру картинки.
 // Розширення й так тисне її перед відправкою, але межу треба тримати
-// вищу за звичайну, інакше великий знімок мовчки обірветься.
-const MAX_SHOT_BODY = 8 * 1024 * 1024;
+// вищу за звичайну, інакше великий знімок мовчки обірветься. Послідовність
+// знімків їде одним запитом; розширення тримає її в storage.session, а
+// там стеля 10 МБ — тож більше, ніж 16, сюди прийти не може.
+const MAX_SHOT_BODY = 16 * 1024 * 1024;
 
 // Скільки тримати відкритим запит на сповіщення. Коротше за вікно,
 // протягом якого демон вважає програму живою.
@@ -220,6 +222,7 @@ function createServer() {
 
       try {
         events.handle(p.slice('/hook/'.length), payload, {
+          agent: headerUtf8(req.headers['x-agent']),
           label: headerUtf8(req.headers['x-claude-label']),
           term: headerUtf8(req.headers['x-term-program']),
           appBundle: headerUtf8(req.headers['x-app-bundle']),
@@ -401,8 +404,15 @@ function createServer() {
       let body = {};
       try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
 
-      if (!body.sid || !body.image) {
+      // Один знімок приходить полями самого тіла, послідовність — масивом
+      // `shots`. Далі обидва випадки — це просто список.
+      const list = Array.isArray(body.shots) ? body.shots : [body];
+
+      if (!body.sid || !list.length || list.some((s) => !s || !s.image)) {
         return json(res, 400, { ok: false, error: t('err.needSidImage') });
+      }
+      if (list.length > shots.MAX_SERIES) {
+        return json(res, 400, { ok: false, error: t('err.tooManyShots', { max: shots.MAX_SERIES }) });
       }
 
       if (!state.get(body.sid) && !terminals.isHosted(body.sid)) {
@@ -420,26 +430,31 @@ function createServer() {
 
       let saved;
       try {
-        saved = shots.save({ sid: body.sid, image: body.image });
+        saved = shots.save({ sid: body.sid, images: list.map((s) => s.image) });
       } catch (err) {
         return json(res, 400, { ok: false, error: err.message });
       }
 
-      const text = shots.prompt({
-        file: saved.file,
-        comment: body.comment,
-        url: body.url,
-        selector: body.selector,
-        text: body.text,
-        size: body.size,
-      });
+      const described = list.map((s, i) => ({
+        file: saved[i].file,
+        comment: s.comment,
+        url: s.url,
+        selector: s.selector,
+        text: s.text,
+        size: s.size,
+        marked: s.marked === true,
+      }));
+      const text = described.length > 1 ? shots.sequence(described) : shots.prompt(described[0]);
 
       try {
         const { via } = input.send(body.sid, text);
-        const kb = Math.round(saved.bytes / 1024);
-        log.info(`скрін зони → сесія ${body.sid.slice(0, 8)} (${via}, ${kb} КБ):`
-          + ` ${String(body.comment || '').slice(0, 60)}`);
-        return json(res, 200, { ok: true, via, file: saved.file, bytes: saved.bytes });
+        const bytes = saved.reduce((sum, f) => sum + f.bytes, 0);
+        const what = saved.length > 1 ? `скріни зон ×${saved.length}` : 'скрін зони';
+        log.info(`${what} → сесія ${body.sid.slice(0, 8)} (${via}, ${Math.round(bytes / 1024)} КБ):`
+          + ` ${String(list[list.length - 1].comment || '').slice(0, 60)}`);
+        return json(res, 200, {
+          ok: true, via, file: saved[0].file, files: saved.map((f) => f.file), bytes,
+        });
       } catch (err) {
         return json(res, 409, { ok: false, error: err.message });
       }
@@ -462,6 +477,13 @@ function createServer() {
 
       if (!state.get(body.sid) && !terminals.isHosted(body.sid)) {
         return json(res, 404, { ok: false, error: t('err.noSession') });
+      }
+
+      // У Codex /model — інтерактивний вибір з іншими назвами, а рівень
+      // зусиль задається інакше. Слати туди команди Claude Code не можна;
+      // лишається /compact, який в обох означає те саме.
+      if (state.get(body.sid)?.agent === 'codex' && !body.compact) {
+        return json(res, 409, { ok: false, error: t('err.notInCodex') });
       }
 
       try {
@@ -504,6 +526,13 @@ function createServer() {
 
       const session = state.get(body.sid);
       if (!session) return json(res, 404, { ok: false, error: t('err.noSession') });
+
+      // Shift+Tab і смужка з режимом — це інтерфейс Claude Code. У Codex
+      // режими — політика підтверджень і sandbox, і тиснути там Shift+Tab
+      // наосліп означало б перемикати невідомо що.
+      if (session.agent === 'codex') {
+        return json(res, 409, { ok: false, error: t('err.notInCodex') });
+      }
 
       const press = terminals.isHosted(body.sid)
         ? () => terminals.shiftTab(body.sid)

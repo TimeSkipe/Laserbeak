@@ -40,14 +40,14 @@ function fillPidFromPane(session) {
   if (!tmux.paneExists(session.tmuxPane)) return;
 
   const shell = tmux.panePid(session.tmuxPane);
-  const pid = shell ? procs.claudeDescendant(shell) : 0;
+  const pid = shell ? procs.agentDescendant(shell) : 0;
   if (pid) state.touch(session.sid, { pid });
 }
 
 /** Точна відповідь про сесію, або null якщо певності немає. */
 function definiteVerdict(session) {
   if (terminals.get(session.sid)) return terminals.isHosted(session.sid);
-  if (session.pid) return procs.isClaudeAlive(session.pid);
+  if (session.pid) return procs.isAgentAlive(session.pid);
   if (session.tmuxPane) return tmux.paneExists(session.tmuxPane);
   return null;
 }
@@ -82,7 +82,10 @@ function reap() {
 
     if (verdict === false) {
       drop(session, 'процес не знайдено', removed);
-    } else if (verdict === null) {
+    } else if (verdict === null && (session.agent || 'claude') === 'claude') {
+      // Слабший сигнал нижче рахує процеси claude — Codex-сесію ним не
+      // судимо: процесів codex не злічиш (їх тримає й застосунок ChatGPT),
+      // і живу сесію прибрало б як «зайву». Її прибере SessionEnd.
       unknown.push(session);
     }
   }

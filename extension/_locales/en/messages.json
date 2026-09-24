@@ -20,11 +20,101 @@
   "hintDrag": {
     "message": "Drag a region · Esc to cancel"
   },
+  "hintDragNext": {
+    "message": "Shot $N$ · drag a region · Esc to continue later with ⌘⇧E",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
   "commentPlaceholder": {
     "message": "What's wrong with it?"
   },
+  "commentPlaceholderNext": {
+    "message": "And here?"
+  },
   "footHint": {
     "message": "Enter to send · Esc to cancel"
+  },
+  "footHintSeries": {
+    "message": "Enter to send all $COUNT$ · Esc to cancel",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "markButton": {
+    "message": "Mark up"
+  },
+  "markButtonTitle": {
+    "message": "Draw on the shot to show what is wrong and how it should look"
+  },
+  "toolPen": {
+    "message": "Freehand"
+  },
+  "toolArrow": {
+    "message": "Arrow"
+  },
+  "toolEllipse": {
+    "message": "Circle"
+  },
+  "toolRect": {
+    "message": "Rectangle"
+  },
+  "colorRed": {
+    "message": "Red"
+  },
+  "colorYellow": {
+    "message": "Yellow"
+  },
+  "colorGreen": {
+    "message": "Green"
+  },
+  "colorBlue": {
+    "message": "Blue"
+  },
+  "colorBlack": {
+    "message": "Black"
+  },
+  "colorWhite": {
+    "message": "White"
+  },
+  "markUndo": {
+    "message": "Undo (⌘Z)"
+  },
+  "markClear": {
+    "message": "Clear all"
+  },
+  "markCancel": {
+    "message": "Cancel"
+  },
+  "markDone": {
+    "message": "Done"
+  },
+  "markHint": {
+    "message": "Shift for a perfect circle, square or 45° arrow · Enter to finish · Esc to cancel"
+  },
+  "errMark": {
+    "message": "could not save the markup"
+  },
+  "nextButton": {
+    "message": "Next shot"
+  },
+  "nextTitle": {
+    "message": "Put this shot aside and take the next — they go together, in order"
+  },
+  "seriesDrop": {
+    "message": "Remove from the sequence"
+  },
+  "seriesKept": {
+    "message": "Shots queued: $COUNT$ · ⌘⇧E to continue",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "noSessions": {
     "message": "no sessions available to type into"
@@ -51,6 +141,9 @@
   },
   "errOpenOverlay": {
     "message": "could not open the selector"
+  },
+  "errSeriesFull": {
+    "message": "the shot queue is full — send these first"
   },
   "daemonDown": {
     "message": "Laserbeak is not responding"
@@ -89,6 +182,15 @@
   },
   "whereItGoes": {
     "message": "Where it goes"
+  },
+  "language": {
+    "message": "Language"
+  },
+  "languageAuto": {
+    "message": "Same as the browser"
+  },
+  "languageHint": {
+    "message": "The extension only. Laserbeak notifications take their language from \"language\" in ~/.laserbeak/config.json."
   },
   "thisExtension": {
     "message": "This extension"

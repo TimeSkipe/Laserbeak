@@ -1,6 +1,15 @@
 'use strict';
 
-// Обробка подій, які приходять із хуків Claude Code.
+// Обробка подій, які приходять із хуків Claude Code і Codex.
+//
+// Хуки в них майже однакові (SessionStart, UserPromptSubmit, Stop,
+// SessionEnd), тож і шлях один. Відмінності три, і всі тут:
+//   • запит дозволу — у Claude це Notification, який треба розпізнати
+//     за текстом, у Codex окрема подія PermissionRequest (у нас approval);
+//   • переривання (Esc посеред ходу) Codex повідомляє окремо — без цього
+//     сесія лишалась би «працює» до наступного запиту;
+//   • транскрипт Codex — зовсім інший формат, тож лічильник токенів і
+//     архів, які вміють читати лише Claude, його не отримують.
 
 const path = require('path');
 const state = require('./state');
@@ -39,6 +48,8 @@ function fmtDuration(sec) {
 function handle(event, payload, meta) {
   const sid = payload.session_id || 'unknown';
   const cwd = payload.cwd || '';
+  const agent = meta.agent === 'codex' ? 'codex' : 'claude';
+  const product = agent === 'codex' ? 'Codex' : 'Claude Code';
 
   // Claude могли запустити в підтеці (my-app, functions...). Проєктом
   // вважається корінь, інакше кожна підтека стала б окремим проєктом.
@@ -47,25 +58,28 @@ function handle(event, payload, meta) {
 
   const label = meta.label || sid.slice(0, 6);
   const base = {
+    agent,
     label,
     project,
     projectPath,
     cwd,
     term: meta.term || '',
     editorBundleId: meta.appBundle || '',
-    // Шлях до транскрипту — джерело даних про токени.
-    transcript: payload.transcript_path || '',
+    // Шлях до транскрипту — джерело даних про токени й архіву. Лише для
+    // Claude: rollout-файл Codex — інший формат, і тутешні читачі
+    // побачили б у ньому нулі або сміття.
+    transcript: agent === 'claude' ? payload.transcript_path || '' : '',
     // Адреса панелі tmux, якщо сесія працює через посередника.
     // Саме вона робить можливим ввід із програми й телефона.
     tmuxPane: meta.tmuxPane || '',
   };
 
-  // Pid самого процесу claude шукаємо один раз: хук передає свій $PPID,
+  // Pid самого процесу агента шукаємо один раз: хук передає свій $PPID,
   // а звідти піднімаємось деревом. Це єдиний точний спосіб зрозуміти,
   // чи сесія ще жива, коли вона працює без tmux.
   const known = state.get(sid);
   if (!known?.pid && meta.hookPpid) {
-    const pid = procs.nearestClaude(meta.hookPpid);
+    const pid = procs.nearestAgent(meta.hookPpid);
     if (pid) base.pid = pid;
   }
 
@@ -134,7 +148,7 @@ function handle(event, payload, meta) {
         project,
         cwd: projectPath,
         term: base.term,
-        title: `✅ ${project || 'Claude Code'}`,
+        title: `✅ ${project || product}`,
         subtitle: sessionSettings.displayName(sid, label),
         message: [t('notify.done'), details.join(' · ')].filter(Boolean).join('\n'),
       });
@@ -150,14 +164,21 @@ function handle(event, payload, meta) {
     // Це не одне й те саме: друге прилітає через хвилину після звичайного
     // завершення відповіді. Якщо не розрізняти, сесія помилково виглядає
     // так, ніби Claude щось питає.
+    //
+    // Codex тексту не шле зовсім: його PermissionRequest (у нас approval)
+    // уже сам по собі означає «потрібен дозвіл», а в даних — лише назва
+    // інструмента, якому він потрібен.
     case 'notification':
-    case 'permission': {
+    case 'permission':
+    case 'approval': {
       const raw = payload.message || '';
-      const needsApproval = /permission|approval|approve|дозвол|схвал/i.test(raw);
+      const needsApproval = event === 'approval'
+        || /permission|approval|approve|дозвол|схвал/i.test(raw);
 
       if (needsApproval) {
+        const why = raw || [t('notify.permission'), payload.tool_name].filter(Boolean).join(': ');
         state.touch(sid, { ...base, status: 'needs-input' });
-        state.record({ sid, label, project, kind: 'permission', message: raw });
+        state.record({ sid, label, project, kind: 'permission', message: why });
 
         notify.send({
           kind: 'permission',
@@ -166,7 +187,7 @@ function handle(event, payload, meta) {
           project,
           cwd: projectPath,
           term: base.term,
-          title: `⏸ ${project || 'Claude Code'}`,
+          title: `⏸ ${project || product}`,
           subtitle: sessionSettings.displayName(sid, label),
           // Причину в банер не пишемо — важливий сам факт, що чекають
           // на тебе. Повний текст лишається в історії.
@@ -187,9 +208,23 @@ function handle(event, payload, meta) {
         project,
         cwd: projectPath,
         term: base.term,
-        title: `⌛ ${project || 'Claude Code'}`,
+        title: `⌛ ${project || product}`,
         subtitle: sessionSettings.displayName(sid, label),
         message: t('notify.idle'),
+      });
+      break;
+    }
+
+    // Codex: хід перервали (Esc). Stop тоді може й не прийти, а без цього
+    // сесія висіла б «працює» до наступного запиту. Сповіщення не треба —
+    // перервала сама людина, і вона про це знає.
+    case 'interrupt': {
+      const s = state.touch(sid, { ...base, status: 'waiting' });
+      const elapsed = s.turnStartedAt ? (Date.now() - s.turnStartedAt) / 1000 : null;
+      state.touch(sid, {
+        turnStartedAt: null,
+        lastTurnSeconds: elapsed,
+        totalWorkSeconds: (s.totalWorkSeconds || 0) + (elapsed || 0),
       });
       break;
     }

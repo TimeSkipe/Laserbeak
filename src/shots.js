@@ -20,6 +20,11 @@ const log = require('./log');
 const KEEP_FILES = 200;
 const KEEP_DAYS = 7;
 
+// Скільки знімків в одній послідовності. «Спершу тут, потім отут» рідко
+// буває довшим за кілька кроків, а кожен знімок — ще мегабайт у тілі
+// запиту й ще один Read у сесії.
+const MAX_SERIES = 8;
+
 const TYPES = {
   'image/png': '.png',
   'image/jpeg': '.jpg',
@@ -43,12 +48,15 @@ function decodeDataUrl(dataUrl) {
 
 // Імʼя читабельне навмисно: воно потрапляє в текст запиту, і в сесії
 // видно, звідки картинка, ще до того як її відкрили.
-function fileName(sid, ext) {
+//
+// Знімки однієї послідовності пишуться в ту саму секунду — без номера
+// вони перезаписали б один одного, і сесія тричі читала б останній.
+function fileName(sid, ext, n) {
   const d = new Date();
-  const p2 = (n) => String(n).padStart(2, '0');
+  const p2 = (x) => String(x).padStart(2, '0');
   const stamp = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}`
     + `-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
-  return `${sid.slice(0, 8)}-${stamp}${ext}`;
+  return `${sid.slice(0, 8)}-${stamp}${n ? `-${n}` : ''}${ext}`;
 }
 
 // Прибираємо при кожному записі: каталог малий, а окремий таймер заради
@@ -76,20 +84,26 @@ function sweep() {
 }
 
 /**
- * Зберегти картинку й повернути шлях до неї.
+ * Зберегти картинки й повернути шляхи до них — у тому ж порядку.
  *
- * @param {{sid: string, image: string}} params
- * @returns {{file: string, bytes: number}}
+ * Спершу розбираємо всі, потім пишемо: одна зіпсована картинка посеред
+ * послідовності — і на диску не лишається жодної.
+ *
+ * @param {{sid: string, images: string[]}} params
+ * @returns {Array<{file: string, bytes: number}>}
  */
-function save({ sid, image }) {
-  const { buf, ext } = decodeDataUrl(image);
+function save({ sid, images }) {
+  const decoded = images.map(decodeDataUrl);
 
   fs.mkdirSync(paths.SHOTS_DIR, { recursive: true });
-  const file = path.join(paths.SHOTS_DIR, fileName(sid, ext));
-  fs.writeFileSync(file, buf);
+  const saved = decoded.map(({ buf, ext }, i) => {
+    const file = path.join(paths.SHOTS_DIR, fileName(sid, ext, decoded.length > 1 ? i + 1 : 0));
+    fs.writeFileSync(file, buf);
+    return { file, bytes: buf.length };
+  });
   sweep();
 
-  return { file, bytes: buf.length };
+  return saved;
 }
 
 // Переноси рядків усередині запиту — це Enter, тобто відправка. Текст,
@@ -99,31 +113,69 @@ function flat(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Текст, який побачить сесія. Спершу вказівка подивитись картинку —
- * інакше Claude відповідає на коментар, не відкривши її.
- *
- * @param {{file: string, comment?: string, url?: string,
- *          selector?: string, text?: string, size?: string}} shot
- */
-function prompt(shot) {
+// Червона рамка на знімку інтерфейсу виглядає як частина інтерфейсу.
+// Не сказати про позначки — і сесія почне шукати в коді рамку, якої
+// там ніколи не було.
+const MARKS_ONE = 'позначки кольором на знімку мої, на сторінці їх немає.';
+const MARKS_MANY = 'позначки кольором на знімках мої, на сторінках їх немає.';
+
+const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// Що сказати про один знімок, крім шляху: коментар, де це, розмір.
+// `withUrl: false` — адреса та сама, що в попереднього знімка, і
+// повторювати її в кожному пункті послідовності немає сенсу.
+function about(shot, { marks = false, withUrl = true } = {}) {
   const tail = [];
 
   const comment = flat(shot.comment);
   if (comment) tail.push(/[.!?]$/.test(comment) ? comment : `${comment}.`);
 
+  if (marks) tail.push(tail.length ? capital(MARKS_ONE) : MARKS_ONE);
+
   const where = [];
   if (shot.selector) where.push(`елемент ${flat(shot.selector)}`);
   if (shot.text) where.push(`текст «${flat(shot.text).slice(0, 80)}»`);
-  if (shot.url) where.push(flat(shot.url));
+  if (shot.url && withUrl) where.push(flat(shot.url));
   if (where.length) tail.push(`${tail.length ? 'Це' : 'це'} ${where.join(', ')}.`);
 
   if (shot.size) tail.push(`Зона ${flat(shot.size)}.`);
 
-  // Тире, а не крапка: крапка одразу після .png приклеїлась би до шляху,
-  // і Read пішов би шукати неіснуючий файл.
-  const head = `Подивись скріншот: ${shot.file}`;
-  return tail.length ? `${head} — ${tail.join(' ')}` : head;
+  return tail;
 }
 
-module.exports = { save, prompt, KEEP_FILES, KEEP_DAYS };
+// Тире, а не крапка: крапка одразу після .png приклеїлась би до шляху,
+// і Read пішов би шукати неіснуючий файл.
+const withTail = (head, tail) => (tail.length ? `${head} — ${tail.join(' ')}` : head);
+
+/**
+ * Текст, який побачить сесія. Спершу вказівка подивитись картинку —
+ * інакше Claude відповідає на коментар, не відкривши її.
+ *
+ * @param {{file: string, comment?: string, url?: string,
+ *          selector?: string, text?: string, size?: string,
+ *          marked?: boolean}} shot
+ */
+function prompt(shot) {
+  return withTail(`Подивись скріншот: ${shot.file}`, about(shot, { marks: shot.marked }));
+}
+
+/**
+ * Те саме для кількох знімків, знятих по черзі: «спершу тут, потім
+ * отут». Один рядок, пункти пронумеровані — порядок і є сенс
+ * послідовності, тож губити його не можна.
+ *
+ * @param {Array<Parameters<typeof prompt>[0]>} list
+ */
+function sequence(list) {
+  const marked = list.some((s) => s.marked);
+  const head = `Подивись скріншоти по черзі, це одна послідовність${marked ? `; ${MARKS_MANY}` : '.'}`;
+
+  const items = list.map((shot, i) => withTail(
+    `${i + 1}) ${shot.file}`,
+    about(shot, { withUrl: !i || flat(shot.url) !== flat(list[i - 1].url) }),
+  ));
+
+  return `${head} ${items.join(' ')}`;
+}
+
+module.exports = { save, prompt, sequence, KEEP_FILES, KEEP_DAYS, MAX_SERIES };

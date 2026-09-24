@@ -35,6 +35,11 @@
     padding: 3px 6px; margin-right: 2px;
   }
   code { font-size: 11px; color: rgba(242,244,248,0.55); word-break: break-all; }
+  select {
+    font: inherit; color: #f2f4f8; background: rgba(255,255,255,0.08);
+    border: 0; border-radius: 6px; padding: 5px 8px; cursor: pointer;
+  }
+  select:hover { background: rgba(255,255,255,0.14); }
 </style>
 
 <h1>Laserbeak</h1>
@@ -53,8 +58,20 @@
 <h2 data-i18n="whereItGoes"></h2>
 <div id="binds"></div>
 
+<h2 data-i18n="language"></h2>
+<div class="row">
+  <select id="language" class="grow">
+    <option value="auto" data-i18n="languageAuto"></option>
+    <option value="uk" lang="uk">Українська</option>
+    <option value="en" lang="en">English</option>
+    <option value="cs" lang="cs">Čeština</option>
+  </select>
+</div>
+<div class="muted" style="margin-top:8px" data-i18n="languageHint"></div>
+
 <h2 data-i18n="thisExtension"></h2>
 <div class="row"><code id="id"></code></div>
 <div class="muted" style="margin-top:8px" data-i18n="extensionIdHint"></div>
 
+<script src="i18n.js"></script>
 <script src="popup.js"></script>

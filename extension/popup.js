@@ -1,15 +1,35 @@
-// Вікно налаштувань. Нічого не вирішує — показує стан і дає забути
-// привʼязку, якщо група вкладок дісталась іншій сесії.
+// Вікно налаштувань. Нічого не вирішує — показує стан, дає забути
+// привʼязку, якщо група вкладок дісталась іншій сесії, і вибрати мову.
 
 const DAEMON = 'http://127.0.0.1:8787';
-const msg = (key, ...args) => chrome.i18n.getMessage(key, args.map(String));
+let msg = LaserbeakI18n.bind(null);
 
 document.getElementById('id').textContent = chrome.runtime.id;
 
-// Розмітка тримає лише ключі: HTML до chrome.i18n не дотягнеться сам.
-for (const el of document.querySelectorAll('[data-i18n]')) {
-  el.textContent = msg(el.dataset.i18n);
+const picker = document.getElementById('language');
+
+// Мова міняється на льоту: це вікно перемальовується одразу, service
+// worker підхоплює зміну сам (storage.onChanged), а оверлей — на
+// наступному виділенні.
+async function applyLanguage() {
+  const { language = 'auto' } = await chrome.storage.local.get('language');
+  msg = LaserbeakI18n.bind(await LaserbeakI18n.load(language).catch(() => null));
+  picker.value = language;
+  document.documentElement.lang = LaserbeakI18n.LANGUAGES.includes(language)
+    ? language
+    : chrome.i18n.getUILanguage();
+
+  // Розмітка тримає лише ключі: HTML до перекладу не дотягнеться сам.
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    el.textContent = msg(el.dataset.i18n);
+  }
 }
+
+picker.addEventListener('change', async () => {
+  await chrome.storage.local.set({ language: picker.value });
+  await applyLanguage();
+  show();
+});
 
 async function show() {
   const dot = document.getElementById('dot');
@@ -80,4 +100,4 @@ async function showBinds(state) {
   }
 }
 
-show();
+applyLanguage().then(show);

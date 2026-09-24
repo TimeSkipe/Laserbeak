@@ -46,7 +46,9 @@ const STRINGS = {
     'err.badOrigin': 'цьому джерелу сюди не можна',
     'err.needSidText': 'потрібні sid і text',
     'err.needSidImage': 'потрібні sid і image',
+    'err.tooManyShots': 'забагато знімків в одній послідовності — не більше {max}',
     'err.badCommand': 'невідома команда або значення',
+    'err.notInCodex': 'у сесії Codex цього немає — там режими й модель влаштовані інакше',
     'err.required': 'обовʼязковий',
   },
 
@@ -74,7 +76,9 @@ const STRINGS = {
     'err.badOrigin': 'this origin is not allowed here',
     'err.needSidText': 'sid and text are required',
     'err.needSidImage': 'sid and image are required',
+    'err.tooManyShots': 'too many shots in one sequence — {max} at most',
     'err.badCommand': 'unknown command or value',
+    'err.notInCodex': 'not available in a Codex session — modes and models work differently there',
     'err.required': 'required',
   },
 
@@ -102,7 +106,9 @@ const STRINGS = {
     'err.badOrigin': 'tento zdroj sem nesmí',
     'err.needSidText': 'je potřeba sid a text',
     'err.needSidImage': 'je potřeba sid a image',
+    'err.tooManyShots': 'příliš mnoho snímků v jedné sekvenci — nejvýš {max}',
     'err.badCommand': 'neznámý příkaz nebo hodnota',
+    'err.notInCodex': 'v relaci Codex to není — režimy a modely tam fungují jinak',
     'err.required': 'povinný',
   },
 };

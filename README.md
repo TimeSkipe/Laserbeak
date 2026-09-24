@@ -365,6 +365,45 @@ Across 140 elements on GitHub and react.dev, all 140 came out exact.
 Hashed classes (`sc-a1b2c3d`, `css-1x2y3z`) are discarded — you could
 never grep them anyway.
 
+### Draw on it
+
+Some things are easier to show than to say: "this box wider, the button
+over here". The preview has a **Mark up** button (clicking the preview
+does the same): the shot opens over the page, enlarged if the region was
+small, and you draw on it — freehand, an arrow, a circle, a rectangle, in
+red, yellow, green, blue, black or white.
+
+```
+Shift   a perfect circle, a square, an arrow at 45°
+⌘Z      undo the last shape
+Enter   done — back to the comment field
+Esc     cancel what you drew this time
+```
+
+Reopening the editor brings back the same shapes, still editable. The
+session is told the coloured marks are yours, so it does not go looking
+for a red box in the code.
+
+### Several shots, in order
+
+"First I click here — then this opens, and it should be a dialog
+instead." **Next shot** under the preview puts the current shot aside
+with its comment, and the frame comes right back for the next one; the
+page scrolls under it. Thumbnails of the shots so far run along the card,
+and Enter sends them all as one numbered prompt:
+
+```
+Look at the screenshots in order, they are one sequence.
+1) …/a1b2c3d4-20260924-113012-1.png — I click here. …
+2) …/a1b2c3d4-20260924-113012-2.png — and instead of this banner there
+   should be a dialog. …
+```
+
+The next step is on another page? Press Esc — the shots taken so far
+stay queued — go there, and ⌘⇧E carries on with the next number. Esc only
+ever drops the shot in front of you; one already queued goes with the ×
+on its thumbnail. Up to 8 shots per sequence.
+
 ### Where exactly it goes
 
 You never pick it. When Claude in Chrome opens a tab group, the extension
@@ -442,10 +481,13 @@ defaults write com.laserbeak.desktop AppleLanguages -array en
 defaults delete com.laserbeak.desktop AppleLanguages
 ```
 
-**The browser extension follows the browser.** Its strings live in
-`extension/_locales/`, and Chrome picks the folder matching its own UI
-language — not the system one. So a browser in English shows an English
-overlay even on a Ukrainian Mac.
+**The browser extension follows the browser — unless you pick.** Its
+strings live in `extension/_locales/`, and by default Chrome picks the
+folder matching its own UI language — not the system one. So a browser in
+English shows an English overlay even on a Ukrainian Mac. The extension's
+settings window (right-click its icon → "Laserbeak: settings") has a
+**Language** picker to pin it to Ukrainian, English or Czech; it applies
+at once, to the next capture.
 
 Log files stay in one language deliberately: hunting for "session not
 found" in three languages inside `daemon.log` would be worse than in one.
@@ -1205,6 +1247,33 @@ start() {
 window and on the phone. Without a label, the first 6 characters of the
 session id are used.
 
+### Codex: `start codex "name"`
+
+The same command starts **Codex** instead of Claude Code:
+
+```bash
+start codex "api"              # Codex in tmux, labelled api
+start codex api "fix the build"
+start -n codex api             # no documentation request
+```
+
+It is connected the same way: the session shows up in the Mac window,
+on the phone and in the browser extension's picker (marked "Codex"),
+with statuses — working, done, **permission needed** — banners, and
+typing into it from anywhere. `codex` does not have to be on `PATH`:
+`start` finds the one bundled inside ChatGPT.app.
+
+**The first time**, Codex stops with "Hooks need review — 6 hooks are
+new or changed". Those are Laserbeak's (all of them call `hook.sh`): pick
+"Review hooks" or "Trust all and continue". This is Codex's own
+safeguard, asked once; Laserbeak does not skip it. Until they are
+trusted, Codex runs fine, it just stays invisible to Laserbeak.
+
+What is Claude-only for now: tokens and the conversation archive
+(Codex keeps its history in a different format), and switching the
+permission mode or the model from the app — Codex organises those
+differently, and the daemon answers such a request with a clear refusal.
+
 ### The first prompt reads the documentation
 
 Asking a session to read `docs/` before it starts guessing is the kind of
@@ -1214,7 +1283,8 @@ project actually has.
 
 Two files are deliberately left out. `CLAUDE.md` — Claude Code loads it
 by itself, and asking again would only mean reading what is already in
-context. And `README.md`, whenever `docs/` exists: there it retells the
+context. (Codex does not: it loads `AGENTS.md`. So for `start codex`,
+`CLAUDE.md` goes first on the list whenever there is no `AGENTS.md`.) And `README.md`, whenever `docs/` exists: there it retells the
 documentation for the user, which is tens of thousands of tokens spent on
 a duplicate. With no `docs/`, the README is the only documentation there
 is, and it goes in.

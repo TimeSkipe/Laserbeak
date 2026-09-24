@@ -107,8 +107,14 @@ function decorate(session, now) {
   // тому лічильник токенів живий навіть посеред довгого турна.
   const usage = tokens.scan(session.sid, session.transcript);
 
+  // Режим зі смужки й рівень зусиль із ~/.claude/settings.json — це
+  // Claude Code. Для Codex вони були б чужими даними, тож порожні.
+  const claude = (session.agent || 'claude') === 'claude';
+
   return {
     ...session,
+    // Сесії, збережені до появи Codex, поля не мають — вони всі Claude.
+    agent: session.agent || 'claude',
     // Своя назва застосовується тут, на боці демона, тому всі клієнти
     // одразу бачать однакове.
     alias: custom?.alias || '',
@@ -122,9 +128,9 @@ function decorate(session, now) {
     // самому зрозуміти, якій сесії належить нова група вкладок.
     lastBrowserUse: archive.lastBrowserUse(session.sid),
     // Режим дозволів Claude Code пише в транскрипт, тож читаємо звідти.
-    permissionMode: modes.read(session),
+    permissionMode: claude ? modes.read(session) : '',
     // Рівень зусиль видно в тій самій смужці — одним читанням із режимом.
-    effort: modes.readEffort(session),
+    effort: claude ? modes.readEffort(session) : '',
     tokens: usage,
     ageSeconds: Math.round((now - session.since) / 1000),
     turnSeconds: inTurn ? Math.round(currentTurn) : null,

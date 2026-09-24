@@ -125,6 +125,15 @@ echo "▸ підключаю хуки Claude Code"
 chmod +x "$ROOT/hooks/hook.sh"
 node "$ROOT/scripts/patch-settings.js"
 
+# Codex — якщо він є: окремо в PATH або вбудований у ChatGPT.app. Нових
+# хуків він не запустить, доки їх не підтвердять у ньому самому, — тож
+# на першому `start codex` Codex попросить їх переглянути.
+if command -v codex >/dev/null 2>&1 || [ -x /Applications/ChatGPT.app/Contents/Resources/codex ]; then
+  echo "▸ підключаю хуки Codex"
+  node "$ROOT/scripts/patch-settings.js" --codex
+  echo "  Codex попросить підтвердити ці хуки при першому запуску — це нормально."
+fi
+
 # ---------------------------------------------------------------- 5. перевірка
 
 echo "▸ перевіряю"

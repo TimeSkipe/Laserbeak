@@ -20,11 +20,101 @@
   "hintDrag": {
     "message": "Obtáhni oblast · Esc zruší"
   },
+  "hintDragNext": {
+    "message": "Snímek $N$ · obtáhni oblast · Esc — později přes ⌘⇧E",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
   "commentPlaceholder": {
     "message": "Co je s tím špatně?"
   },
+  "commentPlaceholderNext": {
+    "message": "A co tady?"
+  },
   "footHint": {
     "message": "Enter odešle · Esc zruší"
+  },
+  "footHintSeries": {
+    "message": "Enter odešle všechny $COUNT$ · Esc zruší",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "markButton": {
+    "message": "Označit"
+  },
+  "markButtonTitle": {
+    "message": "Nakresli do snímku, co je špatně a jak to má vypadat"
+  },
+  "toolPen": {
+    "message": "Od ruky"
+  },
+  "toolArrow": {
+    "message": "Šipka"
+  },
+  "toolEllipse": {
+    "message": "Kruh"
+  },
+  "toolRect": {
+    "message": "Obdélník"
+  },
+  "colorRed": {
+    "message": "Červená"
+  },
+  "colorYellow": {
+    "message": "Žlutá"
+  },
+  "colorGreen": {
+    "message": "Zelená"
+  },
+  "colorBlue": {
+    "message": "Modrá"
+  },
+  "colorBlack": {
+    "message": "Černá"
+  },
+  "colorWhite": {
+    "message": "Bílá"
+  },
+  "markUndo": {
+    "message": "Zpět (⌘Z)"
+  },
+  "markClear": {
+    "message": "Smazat vše"
+  },
+  "markCancel": {
+    "message": "Zrušit"
+  },
+  "markDone": {
+    "message": "Hotovo"
+  },
+  "markHint": {
+    "message": "Shift — pravidelný kruh, čtverec nebo šipka po 45° · Enter — hotovo · Esc — zrušit"
+  },
+  "errMark": {
+    "message": "značky se nepodařilo uložit"
+  },
+  "nextButton": {
+    "message": "Další snímek"
+  },
+  "nextTitle": {
+    "message": "Odlož tento snímek a vyfoť další — odejdou spolu, v pořadí"
+  },
+  "seriesDrop": {
+    "message": "Odebrat ze sekvence"
+  },
+  "seriesKept": {
+    "message": "Snímků ve frontě: $COUNT$ · ⌘⇧E pokračuje",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "noSessions": {
     "message": "žádné relace, do kterých lze psát"
@@ -51,6 +141,9 @@
   },
   "errOpenOverlay": {
     "message": "nepodařilo se otevřít výběr"
+  },
+  "errSeriesFull": {
+    "message": "fronta snímků je plná — nejdřív odešli tyto"
   },
   "daemonDown": {
     "message": "Laserbeak neodpovídá"
@@ -89,6 +182,15 @@
   },
   "whereItGoes": {
     "message": "Kam to letí"
+  },
+  "language": {
+    "message": "Jazyk"
+  },
+  "languageAuto": {
+    "message": "Podle prohlížeče"
+  },
+  "languageHint": {
+    "message": "Jen pro rozšíření. Jazyk oznámení Laserbeaku určuje \"language\" v ~/.laserbeak/config.json."
   },
   "thisExtension": {
     "message": "Toto rozšíření"

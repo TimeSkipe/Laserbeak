@@ -23,6 +23,15 @@ const log = require('./log');
 // один-два процеси: оболонка, яка запускає сам хук.
 const MAX_DEPTH = 6;
 
+// Як звуться процеси агентів. Codex запускає хуки сам, зі свого
+// процесу в панелі (MCP-сервери — його прямі нащадки, перевірено), тож
+// підйом деревом від $PPID хука знаходить і його.
+//
+// Лічити живі процеси codex по проєктах, як claude в inspect.js, не
+// можна: застосунок ChatGPT тримає купу власних процесів із тим самим
+// іменем. Тому codex тут — лише для точного звʼязку «сесія → її pid».
+const AGENTS = new Set(['claude', 'codex']);
+
 function processTable() {
   try {
     const out = execFileSync('/bin/ps', ['-eo', 'pid=,ppid=,comm='], {
@@ -54,10 +63,10 @@ function basename(command) {
 }
 
 /**
- * Знайти процес claude, від якого походить цей pid.
- * @returns {number} pid процесу claude, або 0
+ * Знайти процес агента (claude чи codex), від якого походить цей pid.
+ * @returns {number} pid процесу агента, або 0
  */
-function nearestClaude(pid) {
+function nearestAgent(pid) {
   const start = Number(pid);
   if (!start || start <= 1) return 0;
 
@@ -68,7 +77,7 @@ function nearestClaude(pid) {
     const entry = table.get(current);
     if (!entry) return 0;
 
-    if (basename(entry.comm) === 'claude') return current;
+    if (AGENTS.has(basename(entry.comm))) return current;
 
     if (!entry.ppid || entry.ppid <= 1) return 0;
     current = entry.ppid;
@@ -78,10 +87,10 @@ function nearestClaude(pid) {
 }
 
 /**
- * Знайти claude серед нащадків цього процесу.
- * Потрібно для панелей tmux: там відомий pid оболонки, а claude — її дитина.
+ * Знайти агента серед нащадків цього процесу.
+ * Потрібно для панелей tmux: там відомий pid оболонки, а агент — її дитина.
  */
-function claudeDescendant(pid) {
+function agentDescendant(pid) {
   const start = Number(pid);
   if (!start) return 0;
 
@@ -98,7 +107,7 @@ function claudeDescendant(pid) {
     const next = [];
     for (const current of queue) {
       const entry = table.get(current);
-      if (entry && basename(entry.comm) === 'claude') return current;
+      if (entry && AGENTS.has(basename(entry.comm))) return current;
       next.push(...(children.get(current) || []));
     }
     queue.length = 0;
@@ -108,8 +117,8 @@ function claudeDescendant(pid) {
   return 0;
 }
 
-/** Чи живий ще цей процес claude. */
-function isClaudeAlive(pid) {
+/** Чи живий ще цей процес агента. */
+function isAgentAlive(pid) {
   const target = Number(pid);
   if (!target) return false;
 
@@ -122,7 +131,7 @@ function isClaudeAlive(pid) {
 
   // Pid могли перевикористати під зовсім інший процес.
   const entry = processTable().get(target);
-  return Boolean(entry && basename(entry.comm) === 'claude');
+  return Boolean(entry && AGENTS.has(basename(entry.comm)));
 }
 
-module.exports = { nearestClaude, claudeDescendant, isClaudeAlive, processTable };
+module.exports = { nearestAgent, agentDescendant, isAgentAlive, processTable };
