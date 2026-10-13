@@ -401,6 +401,43 @@ both a global `* { box-sizing: border-box }` and a
 severs that link in both directions: the page cannot reach us, and we
 leave nothing behind in its CSS.
 
+### A Shadow DOM hides styles, not events
+
+Open a modal, then the extension, start dragging a region — and the modal
+is gone. A Radix dialog closes on any `pointerdown` outside itself,
+listening on `document`. An event from inside our shadow tree reaches
+`document` retargeted to the host, i.e. to an element outside the dialog,
+so the dialog closed on the first press of the frame, before the shot was
+even taken.
+
+Two more of the same kind, read in Radix's code and then confirmed on a
+test page with the real library:
+
+- **Escape.** Radix catches it on `document` in the capture phase, ahead
+  of our own listener there — Esc cancelled the frame and closed the modal
+  with it. Our listener now sits on `window`, the first stop on the path.
+- **Focus.** Moving focus from the modal's input to our comment field
+  fires `focusout` on the page's input, with our host as `relatedTarget`.
+  Radix's focus trap pulled focus straight back, and the comment was typed
+  into the modal instead of the card.
+
+So the page hears nothing from the overlay. Pointer, mouse and key events
+stop at the shadow root once our own handlers have run; focus events that
+tell the page "focus went to the overlay" are stopped on `window`. Default
+actions — focusing, typing, opening a `select` — do not depend on
+propagation and keep working. When the overlay closes, focus goes back to
+where it was; the page never learnt it had left.
+
+Headless UI needed none of this: its dialogs treat every direct child of
+`<html>` and `<body>` as a "third-party root" and ignore clicks there, and
+our host is exactly that.
+
+Still out of reach: listeners a page put on `window` in the capture phase
+before the overlay arrived, and a native `<dialog>` opened with
+`showModal()`. That one lives in the top layer, above any `z-index`, and
+the frame ends up under its backdrop — the dialog stays, but no region can
+be dragged.
+
 ### The browser sorts session tabs out for us
 
 It seemed the "tab → session" link would have to be guessed from

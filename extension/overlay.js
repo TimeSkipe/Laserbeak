@@ -177,6 +177,35 @@
   const root = host.attachShadow({ mode: 'closed' });
   root.innerHTML = `<style>${STYLES}</style>`;
 
+  // Сторінка не має чути оверлей. Модалки закриваються від кліку повз
+  // себе, а будь-яка подія з тіньового дерева доходить до document як
+  // подія від host'а — тобто ззовні модалки. Radix закривав діалог на
+  // першому ж натисканні рамки, ще до знімка.
+  //
+  // Тож назовні не виходить нічого: свої обробники вже відпрацювали, далі
+  // — тиша. Типові дії (фокус, набір тексту, відкриття select) від цього
+  // не залежать.
+  for (const type of ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick',
+    'auxclick', 'contextmenu', 'touchstart', 'touchend', 'wheel', 'keydown', 'keyup', 'keypress']) {
+    root.addEventListener(type, (e) => e.stopPropagation());
+  }
+
+  // Фокус — ще й на вікні, найпершому кроці шляху. Коли він іде з поля в
+  // модалці до нашого textarea, focusout летить від поля сторінки — повз
+  // тіньове дерево, — і пастка фокуса тягне його назад. Глушимо все, що
+  // каже сторінці «фокус пішов до оверлея»; повернення на сторінку — її
+  // власна подія, ту не чіпаємо. Слухачів фокуса в оверлеї немає, тож
+  // самих себе ми цим не глушимо.
+  const hush = (e) => {
+    const leaving = e.type === 'focusout' || e.type === 'blur';
+    if (e.target === host || (leaving && e.relatedTarget === host)) e.stopImmediatePropagation();
+  };
+  for (const type of ['focusin', 'focusout', 'focus', 'blur']) window.addEventListener(type, hush, true);
+
+  // Що було у фокусі до оверлея — туди він і повертається. Сторінка
+  // не бачила, що фокус кудись ходив, тож і не мусить його шукати.
+  let back = null;
+
   let veil = null;
   let hole = null;
   let hint = null;
@@ -210,11 +239,20 @@
   const clear = () => {
     unplace?.();
     unplace = null;
+
+    // Фокус у нас або загубився (вимкнене на час відправки поле скидає
+    // його на body) — повертаємо. Клікнули кудись на сторінці — лишаємо.
+    const active = document.activeElement;
+    const ours = !active || active === host || active === document.body;
+
     for (const el of [veil, hole, hint, card, studio?.el]) el?.remove();
     veil = hole = hint = card = studio = base = null;
     marks = [];
     start = null;
-    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('keydown', onKey, true);
+
+    if (ours && back?.isConnected && back !== document.body) back.focus({ preventScroll: true });
+    back = null;
   };
 
   const el = (tag, cls) => {
@@ -330,7 +368,12 @@
       if (series.length) own.textContent = msg('hintDragNext', series.length + 1);
     });
 
-    document.addEventListener('keydown', onKey, true);
+    back = document.activeElement;
+
+    // На вікні, а не на document: Radix ловить Escape на document у фазі
+    // перехоплення, і він спрацьовував раніше — Esc закривав разом із
+    // рамкою й модалку під нею.
+    window.addEventListener('keydown', onKey, true);
 
     veil.addEventListener('mousedown', (e) => {
       e.preventDefault();
