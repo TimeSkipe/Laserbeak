@@ -11,12 +11,11 @@ options:
   # Українська — мова оригіналу; решта беруться з Localizable.xcstrings.
   # Без knownRegions Xcode мовчки не покладе переклади в бандл.
   developmentLanguage: uk
-  knownRegions: [uk, en, cs, Base]
+  knownRegions: [uk, en, cs, ru, kk, Base]
   bundleIdPrefix: com.laserbeak
   createIntermediateGroups: true
   deploymentTarget:
     macOS: "14.0"
-    iOS: "17.0"
 
 settings:
   base:
@@ -32,7 +31,6 @@ targets:
     type: application
     platform: macOS
     sources:
-      - path: Shared
       - path: macOS
       - path: Resources/Assets.xcassets
       - path: Resources/Localizable.xcstrings
@@ -45,8 +43,8 @@ targets:
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         # true — програма-значок: живе в меню-барі, у доці й у ⌘Tab її
         # немає. Так і має бути: вікно тут не головне, головне — що вона
-        # завжди працює і тримає канал до телефона. Іконка в доці лише
-        # вдавала б, що програму «відкрито», хоч закривати її не можна.
+        # завжди працює і показує банери. Іконка в доці лише вдавала б,
+        # що програму «відкрито», і напрошувалась би на ⌘Q.
         #
         # Вікно від цього нікуди не дінеться: воно відкривається з
         # меню-бару й поводиться як звичайне.
@@ -73,59 +71,3 @@ targets:
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: NO
         COMBINE_HIDPI_IMAGES: YES
-
-  # ---------------------------------------------------------------- iOS
-  LaserbeakPhone:
-    type: application
-    platform: iOS
-    sources:
-      - path: Shared
-      - path: iOS
-      - path: Resources/Assets.xcassets
-      - path: Resources/Localizable.xcstrings
-    info:
-      path: iOS/Info.generated.plist
-      properties:
-        CFBundleName: Laserbeak
-        CFBundleDisplayName: Laserbeak
-        CFBundleShortVersionString: "$(MARKETING_VERSION)"
-        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        UILaunchScreen: {}
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
-
-        # iOS 14+ вимагає явно пояснити, навіщо програмі локальна мережа.
-        # Без цього рядка Bonjour мовчки нічого не знайде.
-        NSLocalNetworkUsageDescription: >-
-          Щоб знайти твій комп'ютер поруч і показати активні сесії Claude Code.
-
-        # Обидва сервіси мають бути тут перелічені поіменно: iOS не
-        # покаже застосунку жодного, якого немає в цьому списку.
-        #   _laserbeak-p2p._tcp — прямий зашифрований канал до програми
-        #                         на маку, головний шлях;
-        #   _laserbeak._tcp     — сам демон, запасний шлях по HTTP.
-        NSBonjourServices:
-          - _laserbeak-p2p._tcp
-          - _laserbeak._tcp
-
-        # Камера потрібна лише для сканування коду підключення.
-        NSCameraUsageDescription: >-
-          Щоб відсканувати код підключення з екрана компʼютера.
-
-        # Демон говорить звичайним HTTP у межах твоєї мережі.
-        # Дозволяємо це лише для локальних адрес, назовні — ні.
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.laserbeak.phone
-        PRODUCT_NAME: Laserbeak
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIconPhone
-        CODE_SIGN_STYLE: Automatic
-        # Підставляється при збірці з сертифіката цієї машини —
-        # див. scripts/team-id.sh. Зашитий тут Team ID означав би,
-        # що зібрати проєкт може лише його власник.
-        DEVELOPMENT_TEAM: $(LASERBEAK_TEAM)
-        TARGETED_DEVICE_FAMILY: "1,2"

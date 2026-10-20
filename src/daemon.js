@@ -7,7 +7,6 @@ const fs = require('fs');
 const config = require('./config');
 const { CONFIG_PATH, DATA_DIR } = require('./paths');
 const { createServer } = require('./server');
-const bonjour = require('./bonjour');
 const notify = require('./notify');
 const state = require('./state');
 const archive = require('./archive');
@@ -16,6 +15,7 @@ const tmux = require('./tmux');
 const modes = require('./modes');
 const reaper = require('./reaper');
 const appguard = require('./appguard');
+const updates = require('./updates');
 const log = require('./log');
 
 if (!fs.existsSync(CONFIG_PATH)) {
@@ -36,23 +36,25 @@ server.on('error', (e) => {
   process.exit(1);
 });
 
-server.listen(cfg.port, cfg.bindHost, () => {
-  log.info(`laserbeak слухає ${cfg.bindHost}:${cfg.port} (pid ${process.pid})`);
+// Лише 127.0.0.1, і це не налаштовується: усі клієнти — програма,
+// розширення браузера, hook.sh — живуть на цьому ж компʼютері. Старий
+// конфіг із "bindHost": "0.0.0.0" нічого вже не відкриває.
+const HOST = '127.0.0.1';
+
+server.listen(cfg.port, HOST, () => {
+  log.info(`laserbeak слухає ${HOST}:${cfg.port} (pid ${process.pid})`);
   log.info(`дані: ${DATA_DIR}`);
 
   if (!notify.isNotifierInstalled()) {
     log.warn('terminal-notifier не знайдено — банери через osascript (менш надійно)');
   }
 
-  if (cfg.bindHost !== '127.0.0.1') {
-    bonjour.start({ name: cfg.serviceName, port: cfg.port });
-  } else {
-    log.info('bindHost = 127.0.0.1 — у мережі нас не видно; телефон ходить через програму на маку');
-  }
-
-  // Програма на маку тримає єдиний канал до телефона, тож стежимо, щоб
-  // вона була жива. Подробиці, зокрема чому не KeepAlive, — у appguard.js.
+  // Програма на маку — це меню-бар і банери з іконкою проєкту, тож
+  // стежимо, щоб вона була жива. Чому не KeepAlive — у appguard.js.
   appguard.start();
+
+  // Чи вийшла нова версія на GitHub — раз на кілька годин.
+  updates.start();
 });
 
 // Переписку живих сесій дочитуємо постійно, а не лише на подіях хуків.
@@ -109,7 +111,6 @@ process.on('unhandledRejection', (e) => log.error(`unhandled: ${(e && e.stack) |
 for (const sig of ['SIGTERM', 'SIGINT']) {
   process.on(sig, () => {
     log.info(`отримав ${sig}, зупиняюсь`);
-    bonjour.stop();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 1000).unref();
   });

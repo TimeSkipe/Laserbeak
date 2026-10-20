@@ -1,7 +1,6 @@
 import Foundation
 
-// Дзеркало того, що демон віддає на GET /state.
-// Ці типи спільні для macOS та iOS — один файл, обидві платформи.
+// Дзеркало того, що демон віддає на GET /state, /settings і /update.
 //
 // ВАЖЛИВО про розбір JSON.
 //
@@ -90,44 +89,13 @@ enum ProjectStatus: String, Codable {
     }
 }
 
-// MARK: - Токени
-
-/// Фактичні цифри з транскрипту сесії — не оцінка, а те, що повернув API.
-struct TokenUsage: Codable, Hashable {
-    var input: Int = 0        // свіжий контекст повз кеш
-    var cacheWrite: Int = 0   // запис у кеш
-    var cacheRead: Int = 0    // читання з кешу, зазвичай найбільша частина
-    var output: Int = 0
-    var thinking: Int = 0     // частина output
-    var total: Int = 0
-    var messages: Int = 0
-    var model: String = ""
-
-    var isEmpty: Bool { total == 0 }
-
-    init() {}
-
-    enum CodingKeys: String, CodingKey {
-        case input, cacheWrite, cacheRead, output, thinking, total, messages, model
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        input      = c.value(.input, 0)
-        cacheWrite = c.value(.cacheWrite, 0)
-        cacheRead  = c.value(.cacheRead, 0)
-        output     = c.value(.output, 0)
-        thinking   = c.value(.thinking, 0)
-        total      = c.value(.total, 0)
-        messages   = c.value(.messages, 0)
-        model      = c.value(.model, "")
-    }
-}
-
 // MARK: - Сесія
 
 struct Session: Identifiable, Codable, Hashable {
     var sid: String = ""
+    /// claude або codex. Те, що вміє лише Claude Code (режими, модель,
+    /// зусилля), для Codex не показуємо — демон однаково відмовить.
+    var agent: String = "claude"
     var label: String = ""
     var project: String = ""
     var cwd: String = ""
@@ -141,21 +109,20 @@ struct Session: Identifiable, Codable, Hashable {
     var turnSeconds: Int?
 
     // Своя назва та вимикач сповіщень приходять уже застосованими з демона,
-    // тому на маку й на телефоні видно однакове.
+    // тому у вікні, в меню-барі й у банерах видно однакове.
     var alias: String = ""
     var displayName: String = ""
     var notifyEnabled: Bool = true
 
     // Копиться, доки сесію не закриють остаточно.
     var totalWorkSeconds: Int = 0
-    var lastTurnTokens: Int = 0
-    var tokens: TokenUsage = TokenUsage()
 
     /// Сесію запустив сам Laserbeak — вона працює в його терміналі.
     var hosted: Bool = false
 
-    /// У сесію можна писати: або її запустив демон, або вона працює
-    /// через tmux у терміналі WebStorm.
+    /// У сесію можна передати клавіші: перемкнути режим, модель, стиснути
+    /// контекст. Можна, коли вона працює через tmux (`start`) або її
+    /// запустив демон.
     var canInput: Bool = false
 
     /// Режим дозволів: auto, plan, default, acceptEdits.
@@ -163,12 +130,14 @@ struct Session: Identifiable, Codable, Hashable {
     var permissionMode: String = ""
 
     /// Рівень зусиль: low, medium, high, xhigh, max.
-    /// Читається з тієї ж смужки, що й режим.
+    /// Демон бере його з ~/.claude/settings.json.
     var effort: String = ""
 
     var id: String { sid }
 
     var state: SessionStatus { SessionStatus(rawValue: status) ?? .idle }
+
+    var isCodex: Bool { agent == "codex" }
 
     /// Що показувати користувачу. displayName рахує демон; якщо його раптом
     /// немає — падаємо назад на мітку з CLAUDE_LABEL.
@@ -184,16 +153,17 @@ struct Session: Identifiable, Codable, Hashable {
     init() {}
 
     enum CodingKeys: String, CodingKey {
-        case sid, label, project, cwd, term, status, since
+        case sid, agent, label, project, cwd, term, status, since
         case turnStartedAt, lastTurnSeconds, turns, ageSeconds, turnSeconds
         case alias, displayName, notifyEnabled
-        case totalWorkSeconds, lastTurnTokens, tokens, hosted, canInput, permissionMode
+        case totalWorkSeconds, hosted, canInput, permissionMode
         case effort
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         sid              = c.value(.sid, "")
+        agent            = c.value(.agent, "claude")
         label            = c.value(.label, "")
         project          = c.value(.project, "")
         cwd              = c.value(.cwd, "")
@@ -209,8 +179,6 @@ struct Session: Identifiable, Codable, Hashable {
         displayName      = c.value(.displayName, "")
         notifyEnabled    = c.value(.notifyEnabled, true)
         totalWorkSeconds = c.value(.totalWorkSeconds, 0)
-        lastTurnTokens   = c.value(.lastTurnTokens, 0)
-        tokens           = c.value(.tokens, TokenUsage())
         hosted           = c.value(.hosted, false)
         canInput         = c.value(.canInput, false)
         permissionMode   = c.value(.permissionMode, "")
@@ -252,12 +220,14 @@ enum ClaudeModel: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    // Без номера версії: /model opus завжди бере найсвіжіший Opus, і
+    // цифра в меню застаріла б з першим же релізом.
     var title: String {
         switch self {
-        case .opus:   return "Opus 5"
-        case .fable:  return "Fable 5"
-        case .sonnet: return "Sonnet 5"
-        case .haiku:  return "Haiku 4.5"
+        case .opus:   return "Opus"
+        case .fable:  return "Fable"
+        case .sonnet: return "Sonnet"
+        case .haiku:  return "Haiku"
         }
     }
 
@@ -268,12 +238,6 @@ enum ClaudeModel: String, CaseIterable, Identifiable {
         case .sonnet: return String(localized: "швидко, для рутини")
         case .haiku:  return String(localized: "найшвидша, для дрібниць")
         }
-    }
-
-    /// Чи це та модель, яку демон бачить у транскрипті
-    /// (там повні назви: claude-opus-5, claude-haiku-4-5-…).
-    func matches(_ full: String) -> Bool {
-        full.contains(rawValue)
     }
 }
 
@@ -460,109 +424,7 @@ struct ActivityEvent: Identifiable, Codable, Hashable {
     }
 }
 
-// MARK: - Архів переписки
-
-/// Одне повідомлення зі збереженої переписки.
-struct ArchivedMessage: Identifiable, Codable, Hashable {
-    var ts: Double = 0
-    var role: String = ""       // "user" або "assistant"
-    var text: String = ""
-    var tools: [String] = []
-    var uuid: String = ""
-    var sidechain: Bool = false
-
-    /// Скільки тривала відповідь на попередню репліку користувача.
-    /// Рахує демон і ставить лише на останній відповіді турна.
-    var replySeconds: Double?
-
-    var id: String { uuid.isEmpty ? "\(ts)-\(role)-\(text.prefix(16))" : uuid }
-    var date: Date { Date(timeIntervalSince1970: ts / 1000) }
-    var isUser: Bool { role == "user" }
-
-    init() {}
-
-    /// Повідомлення без тексту, лише з інструментами. Такі показуємо
-    /// тонким рядком, а не бульбашкою — інакше стрічка тоне в них.
-    var isToolsOnly: Bool { text.isEmpty && !tools.isEmpty }
-
-    enum CodingKeys: String, CodingKey {
-        case ts, role, text, tools, uuid, sidechain, replySeconds
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        ts        = c.value(.ts, 0)
-        role      = c.value(.role, "")
-        text      = c.value(.text, "")
-        tools     = c.value(.tools, [String]())
-        uuid      = c.value(.uuid, "")
-        sidechain = c.value(.sidechain, false)
-        replySeconds = try? c.decodeIfPresent(Double.self, forKey: .replySeconds)
-    }
-}
-
-struct ArchivedSession: Codable {
-    var sid: String = ""
-    var label: String = ""
-    var project: String = ""
-    var messages: Int = 0
-    var firstTs: Double = 0
-    var lastTs: Double = 0
-
-    init() {}
-
-    enum CodingKeys: String, CodingKey { case sid, label, project, messages, firstTs, lastTs }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        sid      = c.value(.sid, "")
-        label    = c.value(.label, "")
-        project  = c.value(.project, "")
-        messages = c.value(.messages, 0)
-        firstTs  = c.value(.firstTs, 0)
-        lastTs   = c.value(.lastTs, 0)
-    }
-}
-
-struct ArchiveResponse: Codable {
-    var ok: Bool = false
-    var session: ArchivedSession = ArchivedSession()
-    var messages: [ArchivedMessage] = []
-
-    init() {}
-
-    enum CodingKeys: String, CodingKey { case ok, session, messages }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        ok       = c.value(.ok, false)
-        session  = c.value(.session, ArchivedSession())
-        messages = c.value(.messages, [ArchivedMessage]())
-    }
-}
-
 // MARK: - Стан демона
-
-/// Адреса компʼютера в локальній мережі — для QR-коду.
-struct DaemonAddress: Codable, Hashable, Identifiable {
-    var interfaceName: String = ""
-    var address: String = ""
-
-    var id: String { address }
-
-    init() {}
-
-    enum CodingKeys: String, CodingKey {
-        case interfaceName = "interface"
-        case address
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        interfaceName = c.value(.interfaceName, "")
-        address       = c.value(.address, "")
-    }
-}
 
 struct DaemonState: Codable {
     var ok: Bool = false
@@ -570,18 +432,20 @@ struct DaemonState: Codable {
     var host: String = ""
     var port: Int = 8787
 
-    /// На чому слухає демон. "127.0.0.1" означає, що запасного шляху по
-    /// HTTP немає: телефон дістається лише через програму на маку.
-    var bindHost: String = ""
+    /// Мова, якою говорить демон, — уже розвʼязана з "auto". Нею ж має
+    /// говорити й вікно: якщо ні, мову змінили, поки програма працювала.
+    var language: String = ""
 
-    var addresses: [DaemonAddress] = []
+    /// Чи є на GitHub новіша версія.
+    var update: UpdateSummary = UpdateSummary()
+
     var projects: [Project] = []
     var sessions: [Session] = []
     var history: [ActivityEvent] = []
     var notifierInstalled: Bool = false
 
     /// Показуємо лише те, що відкрито просто зараз. Демон памʼятає всі
-    /// проєкти — вони знадобляться, коли зʼявляться власні налаштування.
+    /// проєкти разом із їхніми кольорами й іконками.
     ///
     /// Порядок: спершу ті, що чекають на тебе, потім активні, потім решта
     /// за свіжістю.
@@ -617,13 +481,14 @@ struct DaemonState: Codable {
         sessions.filter { $0.state == .working }.count
     }
 
+    var waitingCount: Int {
+        sessions.filter { $0.state == .waiting }.count
+    }
+
     init() {}
 
-    /// Чи відкритий запасний шлях по HTTP у локальній мережі.
-    var hasNetworkFallback: Bool { !bindHost.isEmpty && bindHost != "127.0.0.1" }
-
     enum CodingKeys: String, CodingKey {
-        case ok, uptimeSeconds, host, port, bindHost, addresses
+        case ok, uptimeSeconds, host, port, language, update
         case projects, sessions, history, notifierInstalled
     }
 
@@ -633,8 +498,8 @@ struct DaemonState: Codable {
         uptimeSeconds     = c.value(.uptimeSeconds, 0)
         host              = c.value(.host, "")
         port              = c.value(.port, 8787)
-        bindHost          = c.value(.bindHost, "")
-        addresses         = c.value(.addresses, [DaemonAddress]())
+        language          = c.value(.language, "")
+        update            = c.value(.update, UpdateSummary())
         projects          = c.value(.projects, [Project]())
         sessions          = c.value(.sessions, [Session]())
         history           = c.value(.history, [ActivityEvent]())
@@ -642,27 +507,167 @@ struct DaemonState: Codable {
     }
 }
 
+// MARK: - Оновлення
+
+/// Коротко — те, що приходить у кожному /state.
+struct UpdateSummary: Codable, Hashable {
+    /// unknown | current | available | ahead | error
+    var state: String = "unknown"
+    var behind: Int = 0
+    /// Нових комітів більше, ніж демон бачив у списку.
+    var more: Bool = false
+    var checkedAt: Double = 0
+    /// idle | running | done | failed
+    var install: String = "idle"
+
+    var isAvailable: Bool { state == "available" }
+    var isInstalling: Bool { install == "running" }
+
+    /// «3» або «50+».
+    var behindText: String { more ? "\(behind)+" : "\(behind)" }
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey { case state, behind, more, checkedAt, install }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        state     = c.value(.state, "unknown")
+        behind    = c.value(.behind, 0)
+        more      = c.value(.more, false)
+        checkedAt = c.value(.checkedAt, 0)
+        install   = c.value(.install, "idle")
+    }
+}
+
+struct UpdateCommit: Codable, Hashable, Identifiable {
+    var sha: String = ""
+    var message: String = ""
+    var date: String = ""
+    var url: String = ""
+
+    var id: String { sha }
+
+    var when: Date? { ISO8601DateFormatter().date(from: date) }
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey { case sha, message, date, url }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sha     = c.value(.sha, "")
+        message = c.value(.message, "")
+        date    = c.value(.date, "")
+        url     = c.value(.url, "")
+    }
+}
+
+/// Повністю — для розділу «Оновлення».
+struct UpdateDetails: Codable, Hashable {
+    var summary = UpdateSummary()
+    var enabled: Bool = true
+    var checking: Bool = false
+    var version: String = ""
+    var head: String = ""
+    var url: String = ""
+    var error: String = ""
+    var commits: [UpdateCommit] = []
+    /// На якому кроці впало оновлення: pull | install | stale.
+    var installStep: String = ""
+    var installFinishedAt: Double = 0
+    var installTo: String = ""
+    var log: String = ""
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey {
+        case enabled, checking, version, head, url, error, commits
+        case installStep, installFinishedAt, installTo, log
+    }
+
+    init(from decoder: Decoder) throws {
+        // Ті самі поля, що й у короткому вигляді, лежать на тому ж рівні.
+        summary = (try? UpdateSummary(from: decoder)) ?? UpdateSummary()
+
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled           = c.value(.enabled, true)
+        checking          = c.value(.checking, false)
+        version           = c.value(.version, "")
+        head              = c.value(.head, "")
+        url               = c.value(.url, "")
+        error             = c.value(.error, "")
+        commits           = c.value(.commits, [UpdateCommit]())
+        installStep       = c.value(.installStep, "")
+        installFinishedAt = c.value(.installFinishedAt, 0)
+        installTo         = c.value(.installTo, "")
+        log               = c.value(.log, "")
+    }
+
+    func encode(to encoder: Encoder) throws {}
+}
+
+struct UpdateReply: Decodable {
+    var update = UpdateDetails()
+
+    enum CodingKeys: String, CodingKey { case update }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        update = c.value(.update, UpdateDetails())
+    }
+}
+
+// MARK: - Налаштування
+
+/// Загальні налаштування — те, що лежить у config.json і міняється з вікна.
+struct AppSettings: Codable, Hashable {
+    var language: String = "auto"
+    var notify: [String: Bool] = [:]
+    var sounds: [String: String] = [:]
+    var checkUpdates: Bool = true
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey { case language, notify, sounds, updates }
+    enum UpdatesKeys: String, CodingKey { case check }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        language = c.value(.language, "auto")
+        notify   = c.value(.notify, [String: Bool]())
+        sounds   = c.value(.sounds, [String: String]())
+        let updates = try? c.nestedContainer(keyedBy: UpdatesKeys.self, forKey: .updates)
+        checkUpdates = updates?.value(.check, true) ?? true
+    }
+
+    func encode(to encoder: Encoder) throws {}
+}
+
+/// Відповідь /settings: значення плюс те, з чого дозволено вибирати.
+struct SettingsReply: Decodable {
+    var settings = AppSettings()
+    /// Мова, якою все говорить просто зараз, з урахуванням "auto".
+    var language: String = ""
+    var languages: [String] = []
+    var kinds: [String] = []
+    var sounds: [String] = []
+
+    enum CodingKeys: String, CodingKey { case settings, language, languages, kinds, sounds }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        settings  = c.value(.settings, AppSettings())
+        language  = c.value(.language, "")
+        languages = c.value(.languages, [String]())
+        kinds     = c.value(.kinds, [String]())
+        sounds    = c.value(.sounds, [String]())
+    }
+}
+
 // MARK: - Форматування
 
 enum Format {
-    /// Компактно: 1234 → «1.2k», 3 400 000 → «3.4M»
-    static func tokens(_ n: Int) -> String {
-        if n < 1_000 { return "\(n)" }
-        if n < 1_000_000 {
-            let k = Double(n) / 1_000
-            return n < 10_000 ? String(format: "%.1fk", k) : String(format: "%.0fk", k)
-        }
-        return String(format: "%.1fM", Double(n) / 1_000_000)
-    }
-
-    /// Повне число з розділювачами: 38 647 322
-    static func tokensFull(_ n: Int) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.groupingSeparator = " "
-        return f.string(from: NSNumber(value: n)) ?? "\(n)"
-    }
-
     static func duration(_ seconds: Double) -> String {
         if seconds < 60 { return String(format: String(localized: "%dс"), Int(seconds.rounded())) }
         let m = Int(seconds) / 60

@@ -186,11 +186,11 @@
   "language": {
     "message": "Мова"
   },
-  "languageAuto": {
-    "message": "Як у браузері"
-  },
   "languageHint": {
-    "message": "Лише для розширення. Мову сповіщень Laserbeak задає \"language\" у ~/.laserbeak/config.json."
+    "message": "Як у Laserbeak. Змінити: програма Laserbeak → Налаштування → Загальні."
+  },
+  "languageBrowser": {
+    "message": "як у браузері (Laserbeak не відповідає)"
   },
   "thisExtension": {
     "message": "Це розширення"

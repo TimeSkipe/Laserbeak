@@ -32,8 +32,8 @@
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>NODE_ENV</key>
         <string>production</string>
-        <key>LASERBEAK_LANG</key>
-        <string>__LANG__</string>
+        <!-- LASERBEAK_LANG тут немає навмисно: змінна сильніша за конфіг,
+             і перемикач мови в програмі тоді нічого б не міняв. -->
     </dict>
 
     <key>ProcessType</key>

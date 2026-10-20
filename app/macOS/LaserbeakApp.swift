@@ -5,36 +5,66 @@ import AppKit
 // (LSUIElement у project.yml). Вікно відкривається з меню-бару, а
 // закриття вікна нічого не гасить — програма працює далі.
 //
-// Так і має бути. Вона тримає єдиний канал до телефона, тобто мусить
-// працювати завжди; іконка в доці лише вдавала б, що її «відкрито», і
-// напрошувалась би на ⌘Q.
+// Так і має бути. Вона показує банери від імені Laserbeak і тримає
+// меню-бар, тобто мусить працювати завжди; іконка в доці лише вдавала б,
+// що її «відкрито», і напрошувалась би на ⌘Q.
 
 @main
 struct LaserbeakApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
-    // Ключ доступу тут не потрібен: демон пускає без нього все, що
-    // прийшло з цього ж компʼютера.
-    @StateObject private var client = DaemonClient(
-        transport: LocalDaemon.transport(),
-        autoStart: true
-    )
+    @StateObject private var client = DaemonClient(baseURL: LocalDaemon.baseURL())
+    @StateObject private var router = AppRouter.shared
+
+    init() {
+        // До першого вікна: якою мовою малювати, macOS вирішує рано.
+        AppLanguage.applyFromConfig()
+    }
 
     var body: some Scene {
-        WindowGroup(id: "main") {
-            MacRootView(client: client)
-                .frame(minWidth: 440, minHeight: 340)
+        Window("Laserbeak", id: AppRouter.mainWindow) {
+            MainWindow(client: client, router: router)
+                .frame(minWidth: 760, minHeight: 480)
         }
-        .defaultSize(width: 520, height: 460)
+        .defaultSize(width: 980, height: 640)
+        .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) { }   // вікно тут одне
         }
 
         MenuBarExtra {
-            MenuBarContent(client: client)
+            MenuBarContent(client: client, router: router)
         } label: {
-            Text(client.badge)
+            MenuBarLabel(client: client)
         }
+    }
+}
+
+/// Куди дивиться вікно, і як його відкрити звідки завгодно: з меню-бару,
+/// з банера, з повторного запуску програми.
+@MainActor
+final class AppRouter: ObservableObject {
+    static let shared = AppRouter()
+    static let mainWindow = "main"
+
+    @Published var section: SidebarItem = .sessions
+
+    /// Відкрити вікно сцени вміє лише SwiftUI зсередини якоїсь вʼюшки.
+    /// Дію сюди кладе підпис у меню-барі — він живе весь час роботи
+    /// програми, на відміну від самого вікна.
+    var openMainWindow: (() -> Void)?
+
+    func show(_ item: SidebarItem? = nil) {
+        if let item { section = item }
+
+        if let openMainWindow {
+            openMainWindow()
+        } else {
+            NSApp.windows.first { $0.identifier?.rawValue == Self.mainWindow }?
+                .makeKeyAndOrderFront(nil)
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
 
@@ -53,26 +83,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Слухати чергу сповіщень треба весь час роботи програми, а не
         // лише поки відкрите вікно.
         NotificationService.shared.start(baseURL: LocalDaemon.baseURL())
-
-        // Те саме стосується зʼєднання з телефоном: воно має жити, доки
-        // живе програма. Ключ читаємо з демона — він же покаже його в
-        // QR-коді, тому пароль в обох місцях завжди той самий.
-        //
-        // Перечитуємо періодично, бо ключ можуть замінити й повз вікно
-        // підключення: викликом /auth/rotate або просто видаленням файла.
-        // Тоді слухач лишився б зі старим паролем, і телефон мовчки
-        // з'їхав би на запасний шлях. start() нічого не робить, якщо
-        // пароль не змінився, тож перевірка майже безкоштовна.
-        Task { @MainActor in
-            while true {
-                PeerServer.shared.start(
-                    daemonURL: LocalDaemon.baseURL(),
-                    passcode: await LocalDaemon.token(),
-                    serviceName: LocalDaemon.serviceName()
-                )
-                try? await Task.sleep(for: .seconds(60))
-            }
-        }
 
         // Разом із доком у програми-значка зникає і смужка меню, а з нею
         // ⌘W. Хрестик у вікні лишається, але рука тягнеться до
@@ -105,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// програми (Spotlight, `open -a`) не плодить процес, а показує вікно.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         if !hasVisibleWindows {
-            NSApp.windows.first?.makeKeyAndOrderFront(nil)
+            Task { @MainActor in AppRouter.shared.show() }
         }
         return true
     }
@@ -113,8 +123,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 /// Свідомий вихід із програми.
 ///
-/// Демон піднімає програму назад, якщо вона замовкла: вона тримає єдиний
-/// канал до телефона, і випадково закрити її не має бути можливо.
+/// Демон піднімає програму назад, якщо вона замовкла: без неї банери
+/// стають безликими, а меню-бар зникає.
 ///
 /// Але «Вийти» мусить справді вийти, інакше пункт меню виглядає
 /// зламаним. Тому лишаємо по собі позначку: доки вона є, демон нас не
@@ -138,9 +148,11 @@ enum AppPresence {
 /// Демон на цьому ж комп'ютері. Порт читаємо з його конфігу, щоб
 /// не розходився, якщо користувач його змінить.
 enum LocalDaemon {
+    static let dataDirectory = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".laserbeak")
+
     static func port() -> Int {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".laserbeak/config.json")
+        let url = dataDirectory.appendingPathComponent("config.json")
 
         guard let data = try? Data(contentsOf: url),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -152,66 +164,5 @@ enum LocalDaemon {
 
     static func baseURL() -> URL? {
         URL(string: "http://127.0.0.1:\(port())")
-    }
-
-    /// Імʼя, під яким ноут видно в мережі.
-    ///
-    /// Мусить збігатися з тим, що оголошує демон: телефон зводить два
-    /// сервіси — прямий канал і HTTP — саме за іменем. Тому читаємо той
-    /// самий конфіг, а коли його немає, повторюємо те саме значення за
-    /// замовчуванням, що й демон: імʼя вузла без ".local".
-    static func serviceName() -> String {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".laserbeak/config.json")
-
-        if let data = try? Data(contentsOf: url),
-           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let name = object["serviceName"] as? String, !name.isEmpty {
-            return name
-        }
-
-        var host = ProcessInfo.processInfo.hostName
-        if host.hasSuffix(".local") { host.removeLast(6) }
-        return host
-    }
-
-    static func transport() -> DaemonTransport? {
-        guard let url = baseURL() else { return nil }
-        return HTTPTransport(baseURL: url, token: "")
-    }
-
-    /// Ключ доступу до демона. Він же пароль зʼєднання з телефоном.
-    ///
-    /// Питаємо в самого демона, а не читаємо файл: так програма бачить
-    /// саме той ключ, яким демон користується просто зараз — зокрема
-    /// одразу після заміни ключа.
-    static func token() async -> String {
-        guard let base = baseURL() else { return "" }
-
-        var request = URLRequest(url: base.appendingPathComponent("auth/token"))
-        request.timeoutInterval = 5
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-
-        guard let (data, _) = try? await URLSession.shared.data(for: request),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return "" }
-
-        return object["token"] as? String ?? ""
-    }
-
-    /// Замінити ключ. Усі підключені телефони відпадуть, доки не
-    /// відсканують новий код.
-    static func rotateToken() async -> String {
-        guard let base = baseURL() else { return "" }
-
-        var request = URLRequest(url: base.appendingPathComponent("auth/rotate"))
-        request.httpMethod = "POST"
-        request.timeoutInterval = 5
-
-        guard let (data, _) = try? await URLSession.shared.data(for: request),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return "" }
-
-        return object["token"] as? String ?? ""
     }
 }

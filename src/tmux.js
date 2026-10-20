@@ -9,7 +9,8 @@
 // Тому між терміналом і claude ставиться посередник — tmux. Зовні все
 // лишається як було: та сама вкладка WebStorm, той самий вигляд, той
 // самий ввід з клавіатури. Але тепер у панель можна написати ще й
-// ззовні, командою send-keys — і саме це дає запити з телефону.
+// ззовні, командою send-keys — і саме це дає скріншоти з браузера,
+// перемикання режиму й команди з програми.
 //
 // Адресу панелі (наприклад %3) tmux кладе у змінну TMUX_PANE, а hook.sh
 // передає її демону заголовком. Тобто звʼязок сесія → панель відомий,
@@ -18,6 +19,7 @@
 const fs = require('fs');
 const { execFile, execFileSync } = require('child_process');
 const log = require('./log');
+const { t } = require('./i18n');
 
 let binary = null;
 
@@ -63,9 +65,9 @@ function paneExists(pane) {
  */
 function send(pane, text) {
   const bin = tmuxPath();
-  if (!bin) throw new Error('tmux не встановлено');
-  if (!pane) throw new Error('сесія працює не в tmux');
-  if (!paneExists(pane)) throw new Error('панель tmux уже закрита');
+  if (!bin) throw new Error(t('err.noTmux'));
+  if (!pane) throw new Error(t('err.notInTmux'));
+  if (!paneExists(pane)) throw new Error(t('err.paneGone'));
 
   execFileSync(bin, ['send-keys', '-t', pane, '-l', String(text)], { timeout: 5000 });
   execFileSync(bin, ['send-keys', '-t', pane, 'Enter'], { timeout: 5000 });

@@ -14,13 +14,28 @@ const DAEMON = 'http://127.0.0.1:8787';
 
 importScripts('i18n.js');
 
-// Тексти лежать в _locales/<мова>/messages.json. Мова — як у браузері
-// (не в системі!) або та, що вибрана у вікні налаштувань.
+// Тексти лежать в _locales/<мова>/messages.json. Мова — та сама, що в
+// усього Laserbeak: її вибирають під час установки або у вікні програми,
+// а демон віддає вже розвʼязану (auto → мова системи). Так вибрана
+// чеська — це чеська й тут, а не мова браузера.
+//
+// Демон може лежати. Тоді — остання відома мова, а якщо й її немає,
+// мова браузера (chrome.i18n): краще так, ніж порожні кнопки.
 let msg = LaserbeakI18n.bind(null);
 let strings = null;
+let language = '';
 
 async function applyLanguage() {
-  const { language = 'auto' } = await chrome.storage.local.get('language');
+  let wanted = '';
+  try {
+    wanted = (await daemon('/settings')).language || '';
+    await chrome.storage.local.set({ lastLanguage: wanted });
+  } catch {
+    ({ lastLanguage: wanted = '' } = await chrome.storage.local.get('lastLanguage'));
+  }
+
+  if (wanted === language && strings) return;
+  language = wanted;
   strings = await LaserbeakI18n.load(language).catch(() => null);
   msg = LaserbeakI18n.bind(strings);
 
@@ -33,14 +48,21 @@ async function applyLanguage() {
   chrome.action.setTitle({ title: msg('actionTitle') });
 }
 
-// Воркер засинає й прокидається, тож мову читаємо щоразу на старті, а
-// все, що говорить із людиною, чекає на неї.
-const languageReady = applyLanguage()
-  .catch((err) => console.warn('[Laserbeak] мова:', err.message));
+// Воркер засинає й прокидається, тож мову читаємо щоразу на старті і
+// ще раз на початку кожного виділення: її могли змінити в програмі, поки
+// воркер спав чи не спав. Усе, що говорить із людиною, чекає на неї.
+let languageReady = null;
+refreshLanguage();
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.language) applyLanguage();
-});
+function refreshLanguage() {
+  languageReady = applyLanguage()
+    .catch((err) => console.warn('[Laserbeak] мова:', err.message));
+  return languageReady;
+}
+
+// Колись мову вибирали тут, у вікні розширення. Тепер вона одна на весь
+// Laserbeak, і старий вибір лише заважав би.
+chrome.storage.local.remove('language');
 
 // Скільки чекати, поки браузер перемалює сторінку без нашого оверлея.
 // Знімок робиться відразу після того, як оверлей сховався, — без цієї
@@ -60,7 +82,7 @@ async function daemon(path, options = {}) {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
   if (!res.ok) {
-    let message = `демон відповів ${res.status}`;
+    let message = `${msg('daemonDown')} (HTTP ${res.status})`;
     try { message = (await res.json()).error || message; } catch { /* лишаємо код */ }
     throw new Error(message);
   }
@@ -222,6 +244,8 @@ async function startCapture(tab) {
   if (!/^https?:|^file:/.test(tab.url || '')) return;
 
   try {
+    await refreshLanguage();
+
     // Стилі не вставляємо: оверлей живе у Shadow DOM і несе їх у собі,
     // тож у CSS сторінки ми не лишаємо нічого.
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['i18n.js', 'overlay.js'] });

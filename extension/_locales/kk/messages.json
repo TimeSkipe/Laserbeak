@@ -1,0 +1,204 @@
+{
+  "extName": {
+    "message": "Laserbeak"
+  },
+  "extDescription": {
+    "message": "Беттегі аймақты бөлектеп, оны Claude Code сессиясына жіберу"
+  },
+  "actionTitle": {
+    "message": "Аймақты бөлектеп, сессияға жіберу (⌘⇧E)"
+  },
+  "commandCapture": {
+    "message": "Аймақты бөлектеп, сессияға жіберу"
+  },
+  "menuCapture": {
+    "message": "Аймақты Claude Code сессиясына жіберу"
+  },
+  "menuSettings": {
+    "message": "Laserbeak: баптаулар"
+  },
+  "hintDrag": {
+    "message": "Аймақты бөлекте · Esc — бас тарту"
+  },
+  "hintDragNext": {
+    "message": "Сурет $N$ · аймақты бөлекте · Esc — кейінірек, ⌘⇧E арқылы",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "commentPlaceholder": {
+    "message": "Мұның несі дұрыс емес?"
+  },
+  "commentPlaceholderNext": {
+    "message": "Ал мұнда ше?"
+  },
+  "footHint": {
+    "message": "Enter — жіберу · Esc — бас тарту"
+  },
+  "footHintSeries": {
+    "message": "Enter — $COUNT$ суреттің бәрін жіберу · Esc — бас тарту",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "markButton": {
+    "message": "Белгілеу"
+  },
+  "markButtonTitle": {
+    "message": "Суретке нақты не дұрыс емес екенін және қалай болуы керек екенін сызып көрсету"
+  },
+  "toolPen": {
+    "message": "Қолмен"
+  },
+  "toolArrow": {
+    "message": "Нұсқар"
+  },
+  "toolEllipse": {
+    "message": "Шеңбер"
+  },
+  "toolRect": {
+    "message": "Тіктөртбұрыш"
+  },
+  "colorRed": {
+    "message": "Қызыл"
+  },
+  "colorYellow": {
+    "message": "Сары"
+  },
+  "colorGreen": {
+    "message": "Жасыл"
+  },
+  "colorBlue": {
+    "message": "Көк"
+  },
+  "colorBlack": {
+    "message": "Қара"
+  },
+  "colorWhite": {
+    "message": "Ақ"
+  },
+  "markUndo": {
+    "message": "Артқа (⌘Z)"
+  },
+  "markClear": {
+    "message": "Бәрін өшіру"
+  },
+  "markCancel": {
+    "message": "Бас тарту"
+  },
+  "markDone": {
+    "message": "Дайын"
+  },
+  "markHint": {
+    "message": "Shift — дәл шеңбер, шаршы немесе 45° нұсқар · Enter — дайын · Esc — бас тарту"
+  },
+  "errMark": {
+    "message": "белгілерді сақтау мүмкін болмады"
+  },
+  "nextButton": {
+    "message": "Келесі сурет"
+  },
+  "nextTitle": {
+    "message": "Бұл суретті шетке қойып, келесісін түсіру — бірге, ретімен жіберіледі"
+  },
+  "seriesDrop": {
+    "message": "Тізбектен алып тастау"
+  },
+  "seriesKept": {
+    "message": "Кезектегі суреттер: $COUNT$ · ⌘⇧E — жалғастыру",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "noSessions": {
+    "message": "жазуға болатын сессия жоқ"
+  },
+  "sentTo": {
+    "message": "Жіберілді: «$NAME$»",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "errCapture": {
+    "message": "аймақты түсіру мүмкін болмады"
+  },
+  "errSend": {
+    "message": "жіберу мүмкін болмады"
+  },
+  "errEmptyRegion": {
+    "message": "аймақ бос"
+  },
+  "errLostShot": {
+    "message": "сурет жоғалып кетті — қайта көр"
+  },
+  "errOpenOverlay": {
+    "message": "бөлектеуді ашу мүмкін болмады"
+  },
+  "errSeriesFull": {
+    "message": "суреттер кезегі толы — алдымен осыларды жібер"
+  },
+  "daemonDown": {
+    "message": "Laserbeak жауап бермейді"
+  },
+  "daemonUp": {
+    "message": "Laserbeak байланыста"
+  },
+  "sessionsAvailable": {
+    "message": "жазуға болатын сессиялар: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "tabGroup": {
+    "message": "қойындылар тобы"
+  },
+  "sessionGone": {
+    "message": "сессия енді жоқ"
+  },
+  "noBindings": {
+    "message": "әзірге ештеңе байланыстырылмаған — сессия алғашқы бөлектеуде таңдалады"
+  },
+  "forget": {
+    "message": "Ұмыту"
+  },
+  "popupSubtitle": {
+    "message": "Беттегі аймақты бөлектеп, оны Claude Code сессиясына жіберу"
+  },
+  "howToSelect": {
+    "message": "Қалай бөлектеу керек"
+  },
+  "howToSelectHint": {
+    "message": "белгішені шерту · бетте оң жақпен шерту"
+  },
+  "whereItGoes": {
+    "message": "Қайда жіберіледі"
+  },
+  "language": {
+    "message": "Тіл"
+  },
+  "languageHint": {
+    "message": "Laserbeak тілімен бірдей. Өзгерту: Laserbeak қолданбасы → Баптаулар → Жалпы."
+  },
+  "languageBrowser": {
+    "message": "браузердегідей (Laserbeak жауап бермейді)"
+  },
+  "thisExtension": {
+    "message": "Бұл кеңейтім"
+  },
+  "extensionIdHint": {
+    "message": "Егер Laserbeak «бұл дереккөзге мұнда кіруге рұқсат жоқ» деп бас тартса, осы жолды ~/.laserbeak/config.json ішіне extensionId ретінде жаз"
+  },
+  "errUnknownMessage": {
+    "message": "белгісіз хабарлама"
+  }
+}

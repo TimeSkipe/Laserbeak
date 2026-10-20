@@ -9,7 +9,6 @@ const { EVENTS_PATH } = require('./paths');
 const config = require('./config');
 const projects = require('./projects');
 const sessionSettings = require('./sessionSettings');
-const tokens = require('./tokens');
 const log = require('./log');
 const inspect = require('./inspect');
 const roots = require('./roots');
@@ -17,6 +16,8 @@ const terminals = require('./terminals');
 const archive = require('./archive');
 const tmux = require('./tmux');
 const modes = require('./modes');
+const i18n = require('./i18n');
+const updates = require('./updates');
 
 const sessions = new Map();
 let history = [];
@@ -79,7 +80,6 @@ function touch(sid, patch) {
     since: Date.now(),
     turnStartedAt: null,
     lastTurnSeconds: null,
-    lastTurnTokens: 0,
     totalWorkSeconds: 0,
     turns: 0,
   };
@@ -103,16 +103,16 @@ function decorate(session, now) {
   const inTurn = Boolean(session.turnStartedAt);
   const currentTurn = inTurn ? (now - session.turnStartedAt) / 1000 : 0;
 
-  // Дочитуємо транскрипт на льоту: читання інкрементне й із тротлінгом,
-  // тому лічильник токенів живий навіть посеред довгого турна.
-  const usage = tokens.scan(session.sid, session.transcript);
-
   // Режим зі смужки й рівень зусиль із ~/.claude/settings.json — це
   // Claude Code. Для Codex вони були б чужими даними, тож порожні.
   const claude = (session.agent || 'claude') === 'claude';
 
+  // Лічильника токенів більше немає, але сесії, збережені на диску до
+  // того, ще несуть його поле — у знімок воно не йде.
+  const { lastTurnTokens, ...plain } = session;
+
   return {
-    ...session,
+    ...plain,
     // Сесії, збережені до появи Codex, поля не мають — вони всі Claude.
     agent: session.agent || 'claude',
     // Своя назва застосовується тут, на боці демона, тому всі клієнти
@@ -131,7 +131,6 @@ function decorate(session, now) {
     permissionMode: claude ? modes.read(session) : '',
     // Рівень зусиль видно в тій самій смужці — одним читанням із режимом.
     effort: claude ? modes.readEffort(session) : '',
-    tokens: usage,
     ageSeconds: Math.round((now - session.since) / 1000),
     turnSeconds: inTurn ? Math.round(currentTurn) : null,
     // Сумарний час роботи включає турн, який іде просто зараз.
@@ -267,47 +266,19 @@ function buildProjects(liveSessions) {
   });
 }
 
-/**
- * Адреси цього компʼютера в локальній мережі.
- *
- * Потрібні для QR-коду: телефон сканує його й підключається напряму,
- * коли Bonjour мовчить. Внутрішні та IPv6 відкидаємо — перші нікуди не
- * ведуть із телефона, другі зайві для домашньої мережі.
- */
-function lanAddresses() {
-  const out = [];
-
-  for (const [name, entries] of Object.entries(os.networkInterfaces())) {
-    for (const entry of entries || []) {
-      if (entry.internal) continue;
-      if (entry.family !== 'IPv4' && entry.family !== 4) continue;
-      out.push({ interface: name, address: entry.address });
-    }
-  }
-
-  // 169.254.x — це link-local: така адреса зʼявляється, наприклад, від
-  // телефона, підключеного кабелем. Вона робоча, але для QR потрібна
-  // звичайна адреса Wi-Fi, тому такі відсуваємо в кінець.
-  const isLinkLocal = (a) => a.address.startsWith("169.254.");
-
-  return out.sort((a, b) => {
-    if (isLinkLocal(a) !== isLinkLocal(b)) return isLinkLocal(a) ? 1 : -1;
-    return a.interface.localeCompare(b.interface);
-  });
-}
-
 function snapshot() {
   const now = Date.now();
   const live = [...sessions.values()].map((s) => decorate(s, now));
 
   return {
     uptimeSeconds: Math.round((now - startedAt) / 1000),
-    host: config.get().serviceName,
+    host: os.hostname().replace(/\.local$/, ''),
     port: config.get().port,
-    // Клієнт має знати, чи взагалі існує запасний шлях по HTTP:
-    // інакше він показував би адресу, яка нікуди не веде.
-    bindHost: config.get().bindHost,
-    addresses: lanAddresses(),
+    // Мова, якою говорить усе: програма й розширення беруть її звідси,
+    // тож вибір під час установки діє скрізь, а не лише в банерах.
+    language: i18n.current(),
+    // Чи є на GitHub новіша версія — для позначки у вікні й меню-барі.
+    update: updates.summary(),
     projects: buildProjects(live),
     sessions: live.sort((a, b) => a.since - b.since),
     history: history.slice(0, 40),

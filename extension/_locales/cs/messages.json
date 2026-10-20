@@ -186,11 +186,11 @@
   "language": {
     "message": "Jazyk"
   },
-  "languageAuto": {
-    "message": "Podle prohlížeče"
-  },
   "languageHint": {
-    "message": "Jen pro rozšíření. Jazyk oznámení Laserbeaku určuje \"language\" v ~/.laserbeak/config.json."
+    "message": "Stejný jako v Laserbeaku. Změnit: aplikace Laserbeak → Nastavení → Obecné."
+  },
+  "languageBrowser": {
+    "message": "podle prohlížeče (Laserbeak neodpovídá)"
   },
   "thisExtension": {
     "message": "Toto rozšíření"

@@ -1,48 +1,24 @@
 # HTTP API
 
-The daemon listens on `bindHost:port` from the config — by default
-`127.0.0.1:8787`, meaning it is not on the network at all.
-
-The phone reaches it through the Mac app: the app holds an encrypted
-connection and forwards requests here over loopback. So everything below
-works from the phone as well, just not directly.
-
-`"bindHost": "0.0.0.0"` enables the fallback path — plain HTTP from the
-network, behind the key. See `docs/architecture.md`.
+The daemon listens on `127.0.0.1:<port>` — the port comes from the config
+(8787 by default), the address does not: every client lives on this very
+computer. The Mac app, the browser extension, `hook.sh` and `start`
+reach it over loopback; nothing on the network can.
 
 ## Access
 
-Anything arriving from somewhere other than `127.0.0.1` must bring a key:
+Two checks at the entrance, both in `src/server.js`, in one place — a new
+route needs nothing of its own:
 
-```
-Authorization: Bearer <key>
-```
+| Check | Refused with |
+|-------|--------------|
+| the request did not come from `127.0.0.1` | `403` — a guard: the daemon does not listen anywhere else anyway |
+| `Origin` is a web page | `403`, see below |
 
-An `X-Laserbeak-Token` header with the bare key is accepted too. Without
-a key — `401` and no data.
-
-| From | What is allowed |
-|------|-----------------|
-| `127.0.0.1` | everything, no key needed |
-| network, with key | everything except what is marked below |
-| network, no key | nothing |
-
-"Network" only exists here when the fallback is enabled
-(`bindHost: 0.0.0.0`). By default nothing arrives from the network at
-all.
-
-Only from `127.0.0.1`, even with a key:
-
-- `POST /hook/*` — writes to state;
-- `POST /sessions/spawn` — starts a new process on the machine;
-- `GET /auth/token`, `POST /auth/rotate` — the key itself.
-
-The rest is reading and acting on sessions that already exist, and that
-is exactly what the phone uses.
-
-Complaints about a bad key are logged at most three times per address:
-otherwise someone else's script hammering once a second would inflate the
-log overnight.
+There is no access key any more. It existed for the phone, which reached
+the daemon from the network; with the phone gone, "came from this
+computer" is the whole story. An old `~/.laserbeak/token` is simply
+ignored.
 
 ### Where the request came from
 
@@ -70,25 +46,6 @@ the network are refused either way.
 
 ---
 
-## The access key
-
-The key lives in `~/.laserbeak/token` (mode `0600`) and is created on
-first run. The same key serves as the password for the encrypted
-connection with the phone — so the secret is transferred exactly once,
-from a QR code.
-
-### `GET /auth/token`
-
-Localhost only. `{ ok, token }` — precisely what the Mac app shows in the
-QR code.
-
-### `POST /auth/rotate`
-
-Localhost only. A new key. Every connected phone loses access until it
-scans the code again.
-
----
-
 ## State
 
 ### `GET /state`
@@ -100,8 +57,13 @@ Everything an app needs. Polled every 2 seconds.
   "ok": true,
   "host": "my-macbook",
   "port": 8787,
-  "bindHost": "127.0.0.1",    // 0.0.0.0 = HTTP fallback enabled
-  "addresses": [{ "interface": "en0", "address": "192.168.1.137" }],
+  "language": "cs",           // the language everything speaks, "auto" already resolved
+  "update": {                 // is there a newer version on GitHub
+    "state": "available",     // unknown | current | available | ahead | error
+    "behind": 3, "more": false,
+    "checkedAt": 0,
+    "install": "idle"         // idle | running | done | failed
+  },
 
   "projects": [{
     "path": "/…/storefront",
@@ -144,15 +106,16 @@ Everything an app needs. Polled every 2 seconds.
     "turns": 12,
     "turnSeconds": null,        // set while a turn is running
     "lastTurnSeconds": 64.2,
-    "totalWorkSeconds": 2832,
-    "tokens": { "input": 0, "cacheWrite": 0, "cacheRead": 0,
-                "output": 0, "thinking": 0, "total": 0,
-                "messages": 0, "model": "claude-opus-5" }
+    "totalWorkSeconds": 2832
   }],
 
   "history": [{ "ts": 0, "sid": "…", "kind": "stop", "message": "…" }]
 }
 ```
+
+History messages are written in the chosen language at the moment of the
+event. A permission request's original English text from Claude Code is
+kept in `events.jsonl` as `detail`, not shown.
 
 ### `POST /refresh`
 
@@ -196,6 +159,10 @@ Headers: `X-Agent` (`claude` or `codex`; missing means `claude`),
 { "sid": "…", "text": "prompt" }
 ```
 
+The app no longer has a conversation view, so nothing of ours calls this
+route; it stays as the primitive everything else is built on (`shot`,
+`command`) and for `curl`.
+
 Response: `{ "ok": true, "via": "tmux" }` or `"terminal"`.
 
 `409` if the session was started without a go-between — there is no way
@@ -231,7 +198,7 @@ Claude Code slash commands. Exactly one field per request:
 | `compact` | `true` |
 
 Technically this is the same input into a session, but with an allow-list:
-the phone must not be able to send an arbitrary string as a command. An
+a client must not be able to send an arbitrary string as a command. An
 unknown value gives `400`, a session without a go-between gives `409`.
 So does `model` or `effort` to a Codex session — Codex names and picks
 them differently; `compact` works in both.
@@ -263,7 +230,8 @@ user's and are not on the page; otherwise a red box drawn over an
 interface reads as part of the interface.
 
 The daemon writes the image into `~/.laserbeak/shots/` and sends the
-session an ordinary text prompt with the path to it:
+session an ordinary text prompt with the path to it — in the language
+picked for Laserbeak, since these are the user's own words:
 
 ```
 Look at this screenshot: /Users/…/shots/a1b2c3d4-20260821-113612.png — the
@@ -323,7 +291,9 @@ Ctrl-C into the session: stop the work without closing it.
 
 ### `POST /sessions/spawn`
 
-Localhost only — it starts a new process.
+Starts `claude` in the daemon's own pseudo-terminal. The app no longer
+offers it: without the conversation view such a session has no screen at
+all. It stays in the API.
 
 ```json
 { "projectPath": "/…", "label": "name", "prompt": "first prompt" }
@@ -369,28 +339,85 @@ Remove a project from the registry.
 
 ## Conversation archive
 
-### `GET /archive`
+### `GET /archive`, `GET /archive/<sid>?limit=300&subagents=1`
 
-List of sessions whose conversations have been saved.
+The distilled conversations the daemon keeps after Claude Code's own
+transcripts expire. The app no longer shows them; the archive is still
+written, because the extension's "who drove the browser" (`lastBrowserUse`)
+comes from the same reading of transcripts.
 
-### `GET /archive/<sid>?limit=300&subagents=1`
+---
+
+## Settings
+
+### `GET /settings`
 
 ```jsonc
 {
-  "session": { "sid": "…", "project": "…", "messages": 568 },
-  "messages": [{
-    "ts": 0,
-    "role": "user",           // or "assistant"
-    "text": "…",
-    "tools": ["Bash"],        // tool names; contents are omitted on purpose
-    "uuid": "…",
-    "sidechain": false,       // a subagent's message
-    "replySeconds": 43.8      // only on the last reply of a turn
-  }]
+  "ok": true,
+  "settings": {
+    "language": "auto",                      // auto | uk | en | cs | ru | kk
+    "notify": { "stop": true, "permission": true, "idle": false, "update": true },
+    "sounds": { "stop": "Glass", "permission": "Funk", "idle": "Tink", "update": "Ping" },
+    "updates": { "check": true }
+  },
+  "language": "cs",                          // what "auto" resolved to
+  "languages": ["auto", "uk", "en", "cs", "ru", "kk"],
+  "kinds": ["stop", "permission", "idle", "update"],
+  "sounds": ["Basso", "Blow", "Bottle", "…"] // /System/Library/Sounds
 }
 ```
 
-`limit` returns the tail of the conversation; without it, everything.
+### `POST /settings`
+
+Any part of the same shape: `{ "notify": { "idle": true } }`,
+`{ "language": "cs" }`, `{ "sounds": { "stop": "" } }` (`""` = silent).
+Written into `~/.laserbeak/config.json` next to everything else, applied
+at once. The answer is the same as `GET /settings`.
+
+Only these four groups get through, and only valid values — a port or an
+`extensionId` cannot be changed this way. Anything else is `400`; a
+`config.json` that does not parse is `409` and is not overwritten (it may
+hold hand edits).
+
+---
+
+## Updates
+
+### `GET /update`
+
+```jsonc
+{ "ok": true, "update": {
+  "state": "available", "behind": 3, "more": false, "checkedAt": 0,
+  "install": "idle",               // idle | running | done | failed
+  "enabled": true,                 // config.updates.check
+  "checking": false,
+  "version": "0.2.0", "head": "ca638cf",
+  "repo": "TimeSkipe/Laserbeak", "branch": "main",
+  "url": "https://github.com/TimeSkipe/Laserbeak/commits/main",
+  "error": "",
+  "commits": [{ "sha": "1a2b3c4", "message": "…", "date": "…", "url": "…" }],
+  "installStep": "",               // pull | install | stale — where it failed
+  "installFinishedAt": 0, "installTo": "",
+  "log": "/Users/…/.laserbeak/update.log"
+} }
+```
+
+`commits` are the new ones, newest first, at most 20. `more: true` means
+this copy's `HEAD` was not among the last 50 commits on GitHub.
+
+### `POST /update/check`
+
+Checks now and answers as `GET /update`. A check already running is
+joined, not repeated.
+
+### `POST /update/install`
+
+Starts `scripts/update.sh` (`git pull --ff-only`, then `install.sh`)
+detached from the daemon and answers at once; `409` if one is already
+running. The script restarts the daemon and the app on its way, so the
+result is read by the new daemon from `~/.laserbeak/update-result.json`
+and reported with a banner.
 
 ---
 
@@ -410,7 +437,7 @@ Long-poll: the request hangs until an event appears, or for 20 seconds.
   "seq": 12, "kind": "stop", "sid": "…",
   "session": "backend", "project": "storefront",
   "color": "orange", "icon": "rocket",
-  "message": "Finished\n1m 4s · 45k tokens",
+  "message": "Finished\n1m 4s",
   "sound": "Glass", "appBundle": "com.jetbrains.WebStorm"
 }] }
 ```

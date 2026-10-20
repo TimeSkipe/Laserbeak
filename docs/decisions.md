@@ -103,177 +103,6 @@ number and filtered the event out itself. Now **only the daemon** filters
 
 ---
 
-## Connecting to the phone
-
-### Plain Bluetooth is no good for this
-
-It feels natural: a Mac and an iPhone find each other instantly anyway.
-But CoreBluetooth is GATT with ~180-byte packets and a real-world speed of
-a few KB/s. A state snapshot is 12 KB and is fetched every two seconds; a
-single session's archive is 1.9 MB. Over BLE that would take minutes.
-
-What you need instead is `includePeerToPeer` in Network.framework.
-Bluetooth is used there only to **find** the device, while the data flows
-over AWDL — direct Wi-Fi between devices, no router. That is how AirDrop
-and Handoff work. No shared network is needed, and the speed is Wi-Fi
-speed.
-
-Measured on this channel: 1.86 MB of archive in 66 ms, a state snapshot
-in 2 ms.
-
-### The listener is held by the app, not by the daemon
-
-Network.framework is Apple's, and the daemon is written in Node. So p2p
-cannot be brought up inside the daemon at all. The listener lives in the
-Mac app, which in turn talks to the daemon over `127.0.0.1`.
-
-The consequence — which was the whole point — is that the daemon need not
-be on the network at all (`"bindHost": "127.0.0.1"`) and the phone keeps
-working.
-
-The price is that the Mac app has to be running. That is exactly why the
-daemon watches over it (see below): it went from decorative to the thing
-without which the phone sees nothing.
-
-### TLS-PSK: the cipher suite must be set explicitly
-
-There are no certificates here and there must not be: the secret is
-carried by eye, from screen to camera. So it is TLS with a pre-shared key
-that both sides derive from a password via HMAC-SHA256 (the password
-itself is shorter than 32 bytes, and a PSK must be exactly that).
-
-`sec_protocol_options_add_pre_shared_key` alone is not enough: without an
-explicit
-`sec_protocol_options_append_tls_ciphersuite(…, .AES_128_GCM_SHA256)`
-the handshake does not come together at all.
-
-Verified that a wrong password does not get through: the connection dies
-with `-9846: bad MAC` during the handshake.
-
-### Continuations in Network.framework do not know about cancellation — and that hangs forever
-
-The most expensive find of all. `PeerTransport` wraps a request in a task
-group with a timeout: one task does the exchange, another sleeps and
-throws. It looks solid. It does not work.
-
-`withThrowingTaskGroup` waits for **all** child tasks, even after
-`cancelAll()`. And the exchange sits on a
-`withCheckedThrowingContinuation` around an `NWConnection` callback,
-which knows nothing about cancellation. If the Mac has gone to sleep or
-the password did not match, the connection is stuck in `.preparing` —
-nobody will ever wake the continuation, and the group will never finish.
-
-So there was a timeout, and the request hung forever anyway. On the phone
-that would mean a permanently frozen screen.
-
-The cure is `withTaskCancellationHandler`, which on cancellation tears
-down the connection itself: it moves to `.cancelled`, the callback fires,
-the continuation is released.
-
-### Header and body get separate lengths, and the body stays raw bytes
-
-A frame looks like this:
-
-```
-[4 bytes: header length][JSON header][4 bytes: body length][body]
-```
-
-The temptation to put the body inside the JSON header is strong, but then
-every state snapshot would be re-encoded twice on each side — and it
-arrives every two seconds. Raw bytes pass straight through without any
-parsing.
-
-Reading collapses into four `receive` calls where `minimum` and `maximum`
-are equal: Network.framework delivers exactly as much as you asked for,
-and no buffer of our own is needed.
-
-### Both services must be in NSBonjourServices
-
-iOS will not show an app any service that is not in that list — silently,
-with no error. So both are listed there: `_laserbeak-p2p._tcp` and
-`_laserbeak._tcp`.
-
-They are advertised under a single name (`serviceName` from the config),
-so on the phone they merge into one laptop. Because of that the Mac app
-reads the same `serviceName` from `config.json` rather than using
-`Host.current().localizedName`: that one gives "My MacBook", with a space
-where the daemon says "my-macbook".
-
-### An actor is not a queue
-
-`PeerChannel` is an actor, and a comment claimed "requests run one after
-another". They do not: an actor re-enters on **every** `await`. So while
-one request sat on `receive`, a second walked in and sent its own frame.
-Replies were matched up correctly only thanks to the order in which
-Network.framework happened to queue the calls — that is, by accident.
-
-It becomes visible where the phone polls two things at once: the state
-feed every two seconds and the conversation every two seconds. The frame
-has an `id` field, but nobody was checking it.
-
-So now the queue is real: an explicit lock with a queue of continuations
-inside the actor. That fixed the timeout as a bonus — it now starts
-counting when the request actually goes on the wire, not when it was
-created. Previously a state poll with a 5 s timeout could die queued
-behind a two-megabyte archive and take the channel down with it.
-
-### Cancelling one request tore the channel down for everyone
-
-`cancellable` tears down the connection on cancellation — otherwise
-nobody wakes the continuation (see above). But there is one connection for
-everyone: leaving the conversation screen while its request was in flight
-was enough for SwiftUI to cancel the task — and the channel fell with it.
-The next state poll saw a break out of nowhere.
-
-Now the exchange itself runs as a separate, non-cancellable task: the
-frame is read to the end no matter what. It cannot be otherwise —
-abandoning a read mid-frame means handing the next request the tail of
-somebody else's response.
-
-### Keepalive 2/2/3 broke the connection more often than the network did
-
-It seemed sensible: a break is detected within eight seconds. But AWDL
-does not lie flat — the radio is shared with the main Wi-Fi and sleeps
-along with the screen, so a pause of a few seconds is normal there. Over
-an hour of use the phone reconnected 14 times.
-
-A break will be noticed by the request timeout anyway, so what is needed
-here is slack, not vigilance: 10/5/3.
-
-### You can only fall back to where somebody is
-
-A single failure of the direct channel used to enable a minute of "HTTP
-fallback". But the daemon listens on `127.0.0.1` only by default and is
-not advertised on the network at all — so the fallback went to the
-address from the QR code, where nobody answers. The result: one failed
-frame bought a minute of blank screen instead of one reconnect.
-
-Now the direct channel is only abandoned if `_laserbeak._tcp` really is
-found on the network. And a single failure means nothing at all: the
-client reports a break only after two in a row.
-
-### An empty key is not a new key
-
-The app re-reads the key from the daemon every minute so as not to be
-left with a stale password. But when the daemon happens to be restarting
-(which it does after every edit in `src/`), the request fails and returns
-an empty string. The old code would first tear down the listener and only
-then notice there was no key — leaving the phone without a channel until
-the next check, i.e. for a minute.
-
-No answer means touch nothing.
-
-### The Bonjour browser does not revive itself
-
-After the phone sleeps, `NWBrowser` can wake up `.failed`. The handler
-recorded that in `lastError` — and that was all. The laptop vanished from
-the list forever, and with it any way to connect: the phone no longer had
-anywhere to go.
-
-Now `.failed` restarts the search after three seconds, and returning to
-the app (`scenePhase == .active`) verifies that the search is alive at
-all.
-
 ## The browser extension
 
 ### An image can be handed to a session as text
@@ -497,30 +326,12 @@ the context menu all grant `activeTab` by **themselves**: permission for
 the tab you just acted in, and only for now. The extension never sees the
 rest of your pages.
 
-## The access key
-
-### The daemon listened on the network with no protection at all
-
-`bindHost: 0.0.0.0` is needed so the phone can see the daemon. But it
-also meant anyone on the Wi-Fi could read `GET /state` — project names,
-session labels, history — and, worse, send `POST /sessions/input`
-straight into a live Claude Code session.
-
-Now anything not coming from `127.0.0.1` must bring a key. Localhost
-requests stayed key-free: only someone already sitting at this computer
-can make them.
-
-### The key and the connection password are one and the same
-
-Splitting them into two secrets is tempting, but then the QR code would
-have to carry both, and rotating the key would mean syncing two places.
-One secret: over HTTP it travels as a header, over p2p it becomes the TLS
-password. Transferred exactly once.
+## The Mac app watchdog
 
 ### launchd's KeepAlive does not go with launching via `open`
 
-The app now holds the only channel to the phone, so it must always be
-alive. `KeepAlive: true` looks sufficient — it is not.
+The app is the menu bar and the banners with project icons, so it should
+always be alive. `KeepAlive: true` looks sufficient — it is not.
 
 It has to be launched via `open`, otherwise LaunchServices does not
 register it and notifications break. And `open` exits immediately, handing
@@ -564,24 +375,12 @@ So a deliberate quit leaves `~/.laserbeak/app-quit` behind. While that
 file exists, the daemon leaves the app alone; the app itself removes it on
 next launch — including at login.
 
-### Complaints to the log need muting
-
-Somebody else's script hammering once a second would inflate
-`daemon.log` to gigabytes overnight. So at most three complaints are
-written per address, and then silence.
-
 ## Claude Code's data
 
 ### Transcripts live for about 30 days
 
 Verified: 518 MB, 758 files, the oldest exactly 31 days old. So
 conversations disappear on their own. Hence the archive.
-
-### The same record appears in a transcript several times
-
-83 duplicates in a real file, all with identical `usage`. Without
-deduplication by `message.id` the token count is inflated roughly
-one-and-a-half times (73.9M instead of 48.3M).
 
 ### `permission-mode` in a transcript is not the current mode
 
@@ -652,13 +451,6 @@ the app as the default value.
 A side effect I got burned by while testing: these commands rewrite the
 user's `~/.claude/settings.json`. When trying them out, remember the
 original values and put them back.
-
-### The model is visible in the transcript, the effort level is not
-
-`tokens.model` comes from the `message.model` field in the transcript,
-i.e. it is a fact: what the session actually replied with last. There is
-no such field for effort — hence the two different sources for two
-adjacent values in the interface.
 
 ## Processes
 
@@ -886,19 +678,20 @@ you with a blank button.
 
 That is why the key sets are compared against the code as a check: every
 key used in `.js`, in `data-i18n` attributes and in the manifest must
-exist in all three locales. Cheap to run, and it catches the one failure
-mode that is invisible by eye.
-
-By default the extension follows the **browser's** UI language, not the
-system's — worth knowing when the two differ.
+exist in every locale (`npm run check:l10n`). Cheap to run, and it
+catches the one failure mode that is invisible by eye.
 
 ### chrome.i18n cannot be switched
 
 There is no API to make `chrome.i18n.getMessage()` answer in a language
-other than the browser's. So a language picked in the extension's
-settings means reading `_locales/<lang>/messages.json` ourselves
-(`i18n.js`) and doing the `$NAME$` → `$1` substitution the way chrome.i18n
-does it. The strings stay in the same files; only the lookup moved.
+other than the browser's. So following Laserbeak's language means reading
+`_locales/<lang>/messages.json` ourselves (`i18n.js`) and doing the
+`$NAME$` → `$1` substitution the way chrome.i18n does it. The strings
+stay in the same files; only the lookup moved.
+
+The extension used to have a language picker of its own. It went away
+when the language became one for all of Laserbeak: two switches for the
+same thing only meant the browser could disagree with the banners.
 
 Two consequences. The overlay lives in a page and gets the table from the
 service worker by message, so `_locales` is not made web-accessible. And
@@ -913,20 +706,22 @@ loop in `popup.js` fills them in. There is no declarative way: unlike
 SwiftUI, where `Text("…")` localises for free, a static HTML page has no
 access to the extension API until a script runs.
 
-### Two languages of text, two different places to translate it
+### One language, four places that translate
 
-The interface strings live in the apps, but the banner text is assembled
+The interface strings live in the app, but the banner text is assembled
 by Laserbeak — and in the `terminal-notifier` fallback there is no app in
-the picture at all. Translating banners on the client would therefore
-lose them exactly when the app is closed.
+the picture at all. Translating banners on the client would lose them
+exactly when the app is closed.
 
-So the split is: Laserbeak translates what it writes (`src/i18n.js`,
-language from config or `LASERBEAK_LANG`), and the apps translate their
-own screens through a String Catalog, taking the language from the
-device. A Mac in Ukrainian and a phone in English work at the same time.
+So each part translates its own text — the daemon (`src/i18n.js`), the
+app (String Catalog), the extension (`_locales`), `start`/`stop` (a table
+in `shell/laserbeak.zsh`) — but the **choice** of language is one, in
+`config.json`, and everybody asks the daemon for it. It used to be split
+("banners from the config, the app from the device"), and a Czech install
+then greeted you with a window in whatever the system was set to.
 
 Logs are deliberately left untranslated. They are read by whoever opened
-`daemon.log`, and grepping for "session not found" in three languages
+`daemon.log`, and grepping for "session not found" in five languages
 would be worse than in one.
 
 ### SwiftUI localises literals for free, but only inside its own views
@@ -937,6 +732,12 @@ enough — 85 strings started working with no code change at all. But
 `Text(flag ? "on" : "off")`: those needed wrapping in
 `String(localized:)` by hand. Out of 189 interface strings, 120 needed
 the wrapper.
+
+The build extracts the first kind into the catalog by itself; the
+`String(localized:)` kind it does not, in this project at least — such a
+string silently stays Ukrainian in every language. Hence
+`scripts/check-l10n.py`, which reads the code rather than trusting the
+catalog.
 
 Strings with interpolation are a third case: `"\(count) сесій"` cannot be
 a key at all. Those were rewritten as `String(format:)` with real
@@ -965,111 +766,109 @@ references it as `$(LASERBEAK_TEAM)`. So the repository no longer
 contains anybody's identity, and the same clone builds for anyone with a
 free Apple ID.
 
-### Window sizes break the phone
+### One Ukrainian word, two English ones
 
-`.frame(minWidth: 540)` is sensible for a window on the Mac, but on the
-phone it pushes content off screen — the send button ended up outside the
-visible area. Use `.windowSize(...)`.
+"Оновити" was both the Refresh button over the session list and the
+Update button in Updates. In a catalog keyed by the Ukrainian text that
+is one key — so English got one of "Refresh"/"Update" for both, and Czech
+"Obnovit" for installing a new version. A key is a meaning, not a
+spelling: the refresh button is "Оновити список" now.
 
-### Part of the SwiftUI API is macOS-only
+### ImageRenderer does not draw the contents of a ScrollView
 
-`.buttonStyle(.link)`, for example. Check like this, without building:
-
-```bash
-SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
-swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios17.0-simulator \
-  app/Shared/*.swift app/iOS/*.swift
-```
+Rendering a view to a png to check its look showed empty tiles where a
+code block and a table should have been. There was no layout bug:
+`ImageRenderer` simply does not draw what is inside a `ScrollView`. When
+a test rig shows emptiness, first ask whether the rig can see anything
+at all. To look at the real window, `screencapture -l <window id>`.
 
 ### Node reads HTTP headers as latin-1
 
 A Cyrillic label (`start "проба"`) arrived as mojibake. You need
 `Buffer.from(value, 'latin1').toString('utf8')`.
 
----
+## Settings, language and updates
 
-## iPhone
+### `LASERBEAK_LANG` in the LaunchAgent beat the settings switch
 
-### You need the iOS platform in Xcode
+The installer put the chosen language both into `config.json` and into
+the daemon's LaunchAgent as `LASERBEAK_LANG`. The variable wins over the
+config by design — it is for trying a language with one run. In the
+LaunchAgent that meant the language could never be changed again short
+of reinstalling: the switch in the window wrote the config, and the
+daemon kept speaking the old language. The variable is gone from the
+LaunchAgent; it is for manual runs only.
 
-Without it the device shows up as `connected (no DDI)` and the build
-fails with `iOS 26.5 is not installed`. Install with:
+### Every reinstall reset the language to "auto"
 
-```bash
-xcodebuild -downloadPlatform iOS      # ~8.5 GB
-```
+`install.sh` took `LASERBEAK_LANG` or, without it, `auto` — and wrote
+that into the config. Fine for the first install, wrong for every one
+after: an update from the app runs the same script, and a Czech setup
+quietly became "whatever the system says". Without the variable the
+installer now keeps the language already in the config.
 
-### Developer mode on the phone
+### "auto" is the interface language, not the region
 
-`Settings → Privacy & Security → Developer Mode`. Without it the build
-fails with `Developer Mode disabled`.
+The daemon used to read `AppleLocale` (`uk_CZ`, `en_US`): that is the
+region format, not the language. A Mac with an English interface and
+Czech dates is English. Now "auto" is the first of `AppleLanguages` that
+Laserbeak knows — the same rule macOS uses to pick a language for the
+window, so "auto" lands on one language everywhere. When none is known,
+the daemon says English and the app sets English for itself too;
+otherwise it would fall back to its development language, Ukrainian.
 
-### After pairing, the cable is no longer needed
+### The window's language is decided before our code runs
 
-The device stays reachable over Wi-Fi (`transportType: localNetwork`),
-and `install-phone.sh` works without wires.
+macOS picks the localization from `AppleLanguages` in the app's defaults
+when the process starts. So the language goes there — by `install.sh`
+before the first launch, by the app itself at every launch (from the
+config), and by the settings switch — and a change needs a relaunch,
+which the window offers. Checked with `-AppleLanguages (cs)` on the
+command line: the whole window, menu bar included, follows.
 
-### `devicectl` lists long-forgotten devices
+### The update check reads GitHub, it does not fetch
 
-An iPhone 11 paired three months ago was still in the list, and the
-script kept picking it. Selection has to go by connection activity and
-the freshness of `lastConnectionDate`.
+`git fetch` would answer the same question but rewrites
+`origin/<branch>` in a working copy someone may be using at that very
+moment. One read-only request — the last 50 commits of the branch — and
+looking for our `HEAD` in it gives "behind N" directly; when `HEAD` is a
+local commit GitHub does not have, the first ancestor in the list gives
+"ahead" or "diverged". Verified on a scratch clone in all three states.
+Unauthenticated GitHub allows 60 requests an hour, so the check runs
+every six hours and its result is kept on disk: the daemon restarts after
+every edit in `src/`.
 
----
+### A detached child survives `launchctl bootout`
 
-## Markdown in conversations
+The Update button runs `install.sh`, and `install.sh` restarts the
+daemon — the process that started it. launchd, stopping a job, kills its
+process group; a child spawned with `detached: true` has its own
+(`setsid`), and was verified to survive a bootout of its parent. The
+outcome cannot be reported by the daemon that started the update, so the
+script leaves `update-result.json` and the next daemon reads it.
 
-### SwiftUI only handles inline markdown
+## Quick commands and the reply mod
 
-`AttributedString(markdown:)` gives you bold, italics, code and links.
-Headings, lists, tables and code blocks it leaves as-is — which is why raw
-`## Appearance` and `| a | b |` were visible in the chat.
+### `start` lived in one person's `~/.zshrc`
 
-Writing our own parser was unavoidable, but it stayed small: first I
-counted what actually occurs across 2,402 replies in the archive.
+Everything that types into a session — screenshots from the browser,
+mode and model from the app — needs the session to run inside tmux, and
+`start` is what puts it there. But `start` and `stop` were written
+straight into the author's `~/.zshrc`, so an install on any other machine
+(by a person or by a Claude Code session following CLAUDE.md) ended up
+without them, and nothing said so. They live in `shell/laserbeak.zsh`
+now, and `install.sh` adds one `source` line. An existing `start()` in
+`~/.zshrc` is left alone and reported: it is the person's file.
 
-```
-inline code `…`  56%     code block ```   7%
-bold **…**       47%     list 1.          4%
-list -           12%     italics *…*      3%
-table |          10%     rule ---         1%
-heading ##        9%     quote >          1%
-```
+### A mod written in a session loads only in that session
 
-So tables occur more often than code blocks — by eye I would have guessed
-the opposite. Exactly this set is supported, and parsing costs 0.05 ms per
-reply.
-
-### ImageRenderer does not draw the contents of a ScrollView
-
-The most expensive trap in this part. I was checking the appearance by
-rendering a bubble to a png — and saw an empty tile instead of a code
-block and emptiness instead of a table. I spent half an hour looking for a
-layout bug.
-
-There was no bug: `ImageRenderer` simply does not draw what is inside a
-`ScrollView`. In the app itself everything was in place. This takes a
-minute to check — render a `ScrollView { Text("something") }` next to a
-plain `Text`.
-
-The moral is broader than this case: when your test rig shows emptiness,
-first ask whether the rig can see anything at all.
-
-### The heading was smaller than the body text
-
-`.subheadline` is 15pt, and `.callout`, which the body is set in, is 16pt.
-A second-level heading came out smaller than an ordinary paragraph, so the
-hierarchy worked backwards. Types show nothing of this; I only saw it by
-eye, on a rendered image.
-
-### A UUID as an identifier breaks SwiftUI silently
-
-Blocks and list items initially had `let id = UUID()`. It looks harmless,
-but parsing happens on every redraw — so fresh identifiers were born each
-time, and SwiftUI considered the list to be entirely different.
-
-Blocks are defined by their position in the text, so they must be
-enumerated by index.
+The reply-cards mod was written into `~/.claude/dev-mods/<session id>/`,
+the folder Claude Code hot-loads for the session that wrote it. Every
+other session ran without it, and the cards seemed to come and go. A
+plugin that loads everywhere has to be installed, and the cheapest
+source is a folder marketplace: the repository carries
+`.claude-plugin/marketplace.json`, and a plugin from a folder marketplace
+is read in place, so `git pull` updates it without a reinstall.
 
 ## Icons
 

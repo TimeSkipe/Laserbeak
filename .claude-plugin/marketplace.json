@@ -1,0 +1,11 @@
+{
+  "name": "laserbeak",
+  "owner": { "name": "Laserbeak" },
+  "plugins": [
+    {
+      "name": "reply-cards",
+      "source": "./claude/reply-cards",
+      "description": "Replies as numbered cards: what changed, important to know, questions"
+    }
+  ]
+}

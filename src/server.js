@@ -2,25 +2,22 @@
 
 // HTTP API демона.
 //
-//   POST /hook/<event>   ← hook.sh із сесії Claude Code (тільки з localhost)
-//   GET  /state          → знімок для застосунків на маку й телефоні
+//   POST /hook/<event>   ← hook.sh із сесії Claude Code
+//   GET  /state          → знімок для програми на маку й розширення
 //   GET  /health         → пінг
 //
-// Слухає bindHost із конфігу. За замовчуванням 0.0.0.0, щоб телефон
-// у тій же Wi-Fi бачив демон.
+// Слухає лише 127.0.0.1 (див. daemon.js): клієнтів поза цим компʼютером
+// у демона немає. Тож доступ вирішують дві перевірки на вході, обидві
+// тут, в одному місці:
 //
-// Три рівні доступу:
+//   адреса   не 127.0.0.1 — 403. Сюди й так нічого не долетить, але
+//            одна стрічка коштує менше, ніж віра в те, що bind ніхто
+//            ніколи не поміняє;
+//   Origin   сторінка з мережі — 403, навіть із localhost (див. нижче).
 //
-//   лише localhost   події хуків і запуск процесів — те, що пише в стан
-//                    або створює щось нове на компʼютері;
-//   ключ             усе інше, що приходить із мережі;
-//   без обмежень     нічого.
-//
-// Запити з 127.0.0.1 ключа не потребують: там і так може писати лише
-// той, хто вже сидить за цим компʼютером.
+// Новий маршрут нічого робити не мусить — обидві перевірки вже стоять.
 
 const http = require('http');
-const auth = require('./auth');
 const state = require('./state');
 const events = require('./events');
 const projects = require('./projects');
@@ -33,6 +30,8 @@ const modes = require('./modes');
 const input = require('./input');
 const shots = require('./shots');
 const config = require('./config');
+const settings = require('./settings');
+const updates = require('./updates');
 const { t } = require('./i18n');
 const reaper = require('./reaper');
 const inspect = require('./inspect');
@@ -123,33 +122,8 @@ function originAllowed(req) {
   return origin.startsWith('chrome-extension://');
 }
 
-// Скільки скарг на невірний ключ писати в лог з однієї адреси, перш ніж
-// замовкнути. Без цього чужий скрипт, який довбиться раз на секунду,
-// за ніч роздує лог до гігабайтів.
-const COMPLAINTS_PER_HOST = 3;
-
-// І скільки адрес узагалі памʼятати: сканер, що ходить із сотень адрес,
-// інакше поволі роздував би цю мапу.
-const COMPLAINT_HOSTS = 200;
-
-const complaints = new Map();
-
-function complainOnce(address, path) {
-  const count = complaints.get(address) || 0;
-  if (count >= COMPLAINTS_PER_HOST) return;
-
-  if (!complaints.has(address) && complaints.size >= COMPLAINT_HOSTS) {
-    // Забуваємо найдавнішу: Map зберігає порядок додавання.
-    complaints.delete(complaints.keys().next().value);
-  }
-
-  complaints.set(address, count + 1);
-  log.warn(`відмовлено ${address} → ${path}: невірний ключ доступу`
-    + (count + 1 === COMPLAINTS_PER_HOST ? ' (далі мовчу про цю адресу)' : ''));
-}
-
 // Дозволені команди й значення. Список тут, а не в програмі: демон —
-// єдине джерело істини, і телефон не має вигадувати назви.
+// єдине джерело істини, і клієнт не має вигадувати назви.
 const MODELS = ['default', 'opus', 'fable', 'sonnet', 'haiku'];
 
 function buildCommand(body) {
@@ -191,29 +165,20 @@ function createServer() {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': res._extensionOrigin || 'null',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Max-Age': '86400',
         'Vary': 'Origin',
       });
       return res.end();
     }
 
-    // Усе, що прийшло з мережі, має принести ключ. Виняток лише для
-    // хуків і /sessions/spawn — вони й так дозволені тільки з localhost
-    // і відмовляють нижче самі.
-    if (!isLocal(req) && !auth.isAuthorized(req)) {
-      complainOnce(req.socket.remoteAddress || '?', p);
-      return json(res, 401, {
-        ok: false,
-        error: t('err.needToken'),
-      });
+    // Лише з цього компʼютера. Демон і слухає тільки 127.0.0.1, тож це
+    // запобіжник на випадок, якщо адресу колись поміняють.
+    if (!isLocal(req)) {
+      return json(res, 403, { ok: false, error: t('err.onlyLocal') });
     }
 
-    // Події приймаємо лише з цього комп'ютера — писати в стан ззовні
-    // не має права ніхто, навіть у своїй мережі.
     if (req.method === 'POST' && p.startsWith('/hook/')) {
-      if (!isLocal(req)) return json(res, 403, { ok: false });
-
       const raw = await readBody(req);
       json(res, 200, { ok: true });   // відповідаємо одразу, сесія не чекає
 
@@ -271,15 +236,13 @@ function createServer() {
       });
     }
 
-    // Налаштування проєкту — це користувацькі вподобання, тому їх можна
-    // міняти і з телефона. Події хуків, на відміну від цього, приймаються
-    // лише з цього комп'ютера.
+    // Колір та іконка проєкту.
     if (req.method === 'POST' && p === '/projects/settings') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
-      if (!body.path) return json(res, 400, { ok: false, error: 'path обовʼязковий' });
+      if (!body.path) return json(res, 400, { ok: false, error: t('err.missing', { field: 'path' }) });
 
       const updated = projects.updateSettings(body.path, body.settings);
       if (!updated) return json(res, 404, { ok: false, error: t('err.noProject') });
@@ -292,9 +255,9 @@ function createServer() {
     if (req.method === 'POST' && p === '/sessions/settings') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
-      if (!body.sid) return json(res, 400, { ok: false, error: 'sid обовʼязковий' });
+      if (!body.sid) return json(res, 400, { ok: false, error: t('err.missing', { field: 'sid' }) });
 
       const patch = {};
       if ('alias' in body) patch.alias = body.alias;
@@ -308,7 +271,7 @@ function createServer() {
     if (req.method === 'POST' && p === '/projects/forget') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
       const removed = projects.forget(body.path);
       return json(res, removed ? 200 : 404, { ok: removed });
@@ -345,15 +308,12 @@ function createServer() {
     }
 
     // Запустити нову сесію Claude Code у власному терміналі демона.
-    // Лише з цього компʼютера: це запуск процесу, не налаштування.
     if (req.method === 'POST' && p === '/sessions/spawn') {
-      if (!isLocal(req)) return json(res, 403, { ok: false });
-
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
-      if (!body.projectPath) return json(res, 400, { ok: false, error: 'projectPath обовʼязковий' });
+      if (!body.projectPath) return json(res, 400, { ok: false, error: t('err.missing', { field: 'projectPath' }) });
 
       try {
         const entry = terminals.start({
@@ -371,7 +331,7 @@ function createServer() {
     if (req.method === 'POST' && p === '/sessions/input') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
       if (!body.sid || !body.text) {
         return json(res, 400, { ok: false, error: t('err.needSidText') });
@@ -402,7 +362,7 @@ function createServer() {
     if (req.method === 'POST' && p === '/sessions/shot') {
       const raw = await readBody(req, MAX_SHOT_BODY);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
       // Один знімок приходить полями самого тіла, послідовність — масивом
       // `shots`. Далі обидва випадки — це просто список.
@@ -464,11 +424,11 @@ function createServer() {
     //
     // Технічно це той самий ввід у сесію, але маршрути окремі й зі
     // списком дозволеного: програма має показувати справжні варіанти,
-    // а не давати телефону слати в сесію будь-який рядок як команду.
+    // а не давати клієнту слати в сесію будь-який рядок як команду.
     if (req.method === 'POST' && p === '/sessions/command') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
       const command = buildCommand(body);
       if (!command) {
@@ -504,7 +464,7 @@ function createServer() {
     if (req.method === 'POST' && p === '/sessions/interrupt') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
       if (terminals.isHosted(body.sid)) {
         return json(res, 200, { ok: terminals.interrupt(body.sid) });
@@ -522,7 +482,7 @@ function createServer() {
     if (req.method === 'POST' && p === '/sessions/mode') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
       const session = state.get(body.sid);
       if (!session) return json(res, 404, { ok: false, error: t('err.noSession') });
@@ -565,7 +525,7 @@ function createServer() {
     if (req.method === 'POST' && p === '/sessions/forget') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
       const session = state.get(body.sid);
       if (!session) return json(res, 404, { ok: false, error: t('err.noSession') });
@@ -577,7 +537,7 @@ function createServer() {
         label: session.label,
         project: session.project,
         kind: 'session-end',
-        message: 'прибрано вручну',
+        message: t('history.forgotten'),
       });
 
       log.info(`сесію ${session.label} прибрано вручну`);
@@ -587,7 +547,7 @@ function createServer() {
     if (req.method === 'POST' && p === '/sessions/stop') {
       const raw = await readBody(req);
       let body = {};
-      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
 
       return json(res, 200, { ok: terminals.stop(body.sid) });
     }
@@ -619,25 +579,57 @@ function createServer() {
       });
     }
 
-    // Ключ доступу. Лише з localhost: його показує програма на маку —
-    // у QR-коді й як пароль зашифрованого зʼєднання з телефоном.
-    if (req.method === 'GET' && p === '/auth/token') {
-      if (!isLocal(req)) return json(res, 403, { ok: false });
-      return json(res, 200, { ok: true, token: auth.get() });
+    // Загальні налаштування: мова, банери, звуки, оновлення.
+    if (req.method === 'GET' && p === '/settings') {
+      return json(res, 200, { ok: true, ...settings.get() });
     }
 
-    // Новий ключ: старі телефони відпадуть, доки не відсканують код знову.
-    if (req.method === 'POST' && p === '/auth/rotate') {
-      if (!isLocal(req)) return json(res, 403, { ok: false });
-      complaints.clear();
-      return json(res, 200, { ok: true, token: auth.rotate() });
+    if (req.method === 'POST' && p === '/settings') {
+      const raw = await readBody(req);
+      let body = {};
+      try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: t('err.badJson') }); }
+
+      try {
+        const saved = settings.save(body);
+        log.info(`налаштування: ${JSON.stringify(saved.patch)}`);
+
+        // Щойно ввімкнули перевірку — не чекаємо шість годин до першої.
+        if (saved.patch.updates?.check) updates.check({ quiet: true }).catch(() => {});
+
+        delete saved.patch;
+        return json(res, 200, { ok: true, ...saved });
+      } catch (err) {
+        if (err.code === 'EINVAL') return json(res, 400, { ok: false, error: err.message });
+        if (err.code === 'EBROKEN') return json(res, 409, { ok: false, error: t('err.configBroken') });
+        throw err;
+      }
+    }
+
+    // Оновлення з GitHub. Перевірка — читання, установка — git pull і
+    // повна перезбірка, див. src/updates.js.
+    if (req.method === 'GET' && p === '/update') {
+      return json(res, 200, { ok: true, update: updates.details() });
+    }
+
+    if (req.method === 'POST' && p === '/update/check') {
+      await updates.check({ quiet: true });
+      return json(res, 200, { ok: true, update: updates.details() });
+    }
+
+    if (req.method === 'POST' && p === '/update/install') {
+      try {
+        updates.install();
+        return json(res, 200, { ok: true, update: updates.details() });
+      } catch (err) {
+        return json(res, err.code === 'EBUSY' ? 409 : 500, { ok: false, error: err.message });
+      }
     }
 
     if (p === '/health') {
       return json(res, 200, { ok: true, pid: process.pid, outbox: outbox.stats() });
     }
 
-    json(res, 404, { ok: false, error: 'not found' });
+    json(res, 404, { ok: false, error: t('err.notFound') });
   });
 }
 

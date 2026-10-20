@@ -22,6 +22,7 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const log = require('./log');
+const { t } = require('./i18n');
 
 // Скільки чекати між текстом і Enter. Одного такту event loop мало:
 // Claude Code має встигти прийняти рядок як ввід, а не як вставку.
@@ -82,7 +83,7 @@ function claudePath() {
     }
   }
 
-  throw new Error('не знайшов claude — перевір, чи він у PATH');
+  throw new Error(t('err.noClaude'));
 }
 
 /**
@@ -91,7 +92,7 @@ function claudePath() {
  */
 function start({ projectPath, label = '', prompt = '' }) {
   if (!projectPath || !fs.existsSync(projectPath)) {
-    throw new Error('немає такої теки проєкту');
+    throw new Error(t('err.noProjectDir'));
   }
 
   const sid = crypto.randomUUID();
@@ -153,8 +154,8 @@ function start({ projectPath, label = '', prompt = '' }) {
 /** Надіслати текст у сесію так, ніби його набрали з клавіатури. */
 function write(sid, text) {
   const entry = hosted.get(sid);
-  if (!entry) throw new Error('сесія не належить Laserbeak');
-  if (!entry.alive) throw new Error('сесія вже завершилась');
+  if (!entry) throw new Error(t('err.notHosted'));
+  if (!entry.alive) throw new Error(t('err.sessionEnded'));
 
   // Текст і Enter — двома окремими записами, з паузою між ними.
   //

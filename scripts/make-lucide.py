@@ -5,7 +5,7 @@
 
 SwiftUI не вміє SVG, а тягнути заради цього бібліотеку — зайве. Тому
 геометрія іконок один раз перетворюється на команди SwiftUI Path і
-лягає у згенерований файл app/Shared/LucideIcons.swift.
+лягає у згенерований файл app/macOS/LucideIcons.swift.
 
 Іконки Lucide намальовані обведенням у полі 24×24 з товщиною лінії 2,
 тому у Swift вони й малюються обведенням — колір і товщина задаються
@@ -22,7 +22,7 @@ from pathlib import Path as FSPath
 from xml.etree import ElementTree
 
 ROOT = FSPath(__file__).resolve().parent.parent
-OUT = ROOT / "app" / "Shared" / "LucideIcons.swift"
+OUT = ROOT / "app" / "macOS" / "LucideIcons.swift"
 
 DEFAULT_SOURCE = FSPath.home() / "WebstormProjects/lucide/lucide-source/icons"
 

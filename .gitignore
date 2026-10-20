@@ -6,3 +6,6 @@ node_modules/
 app/*.xcodeproj/
 app/**/Info.generated.plist
 app/**/xcuserdata/
+
+# Типи для редактора, які Claude Code пише сам при завантаженні мода.
+claude/*/.claude-plugin/types/

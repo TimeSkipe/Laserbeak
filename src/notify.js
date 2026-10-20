@@ -128,8 +128,50 @@ function send(n) {
   log.info(`сповіщено [${n.kind}] ${n.subtitle} → terminal-notifier (програму закрито)`);
 }
 
+/**
+ * Сповіщення не про сесію, а про сам Laserbeak — скажімо, що вийшла
+ * нова версія. Правила ті самі (config.notify і config.sounds), шлях
+ * той самий — через програму або terminal-notifier. Немає лише вимикача
+ * сесії й кольору проєкту: ні сесії, ні проєкту тут немає.
+ *
+ * @param {{kind:string, title:string, message:string}} n
+ */
+function announce(n) {
+  const cfg = config.get();
+
+  if (cfg.notify[n.kind] === false) {
+    log.info(`тихо [${n.kind}]: вимкнено в config.notify`);
+    return;
+  }
+
+  const sound = cfg.sounds?.[n.kind] || '';
+
+  if (outbox.hasDesktopClient()) {
+    outbox.push({
+      kind: n.kind,
+      sid: '',
+      session: n.title,
+      project: '',
+      color: 'blue',
+      icon: 'package',
+      message: n.message,
+      sound,
+      appBundle: '',
+    });
+    log.info(`сповіщено [${n.kind}] → Laserbeak`);
+    return;
+  }
+
+  // sid тут лише для групування банерів у terminal-notifier.
+  const plain = { ...n, sid: n.kind, subtitle: '' };
+  if (notifierPath) viaNotifier(plain, sound);
+  else viaOsascript(plain, sound);
+  log.info(`сповіщено [${n.kind}] → terminal-notifier (програму закрито)`);
+}
+
 module.exports = {
   send,
+  announce,
   isNotifierInstalled: () => Boolean(notifierPath),
   notifierPath: () => notifierPath,
 };

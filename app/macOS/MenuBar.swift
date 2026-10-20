@@ -1,24 +1,24 @@
 import SwiftUI
 import AppKit
 
-// Головне вікно програми на маку.
-
-struct MacRootView: View {
+/// Значок у меню-барі. Живе весь час роботи програми — тому саме він
+/// віддає роутеру вміння відкривати вікно (див. AppRouter).
+struct MenuBarLabel: View {
     @ObservedObject var client: DaemonClient
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(spacing: 0) {
-            ConnectionBar(client: client)
-            Divider()
-            ProjectsView(client: client)
-        }
+        Text(verbatim: client.badge)
+            .onAppear {
+                AppRouter.shared.openMainWindow = { openWindow(id: AppRouter.mainWindow) }
+            }
     }
 }
 
-/// Те, що видно з меню-бару: коротка зведення і кілька дій.
+/// Те, що видно з меню-бару: коротке зведення і кілька дій.
 struct MenuBarContent: View {
     @ObservedObject var client: DaemonClient
-    @Environment(\.openWindow) private var openWindow
+    @ObservedObject var router: AppRouter
 
     var body: some View {
         if let state = client.state, client.isConnected {
@@ -28,10 +28,17 @@ struct MenuBarContent: View {
                 Text("Активних сесій немає")
             } else {
                 ForEach(live) { project in
-                    Text("\(project.displayName) — \(project.sessionCountText)")
+                    Text(verbatim: "\(project.displayName) — \(project.sessionCountText)")
                     ForEach(project.sessions.sorted { $0.since < $1.since }) { session in
-                        Text("    \(menuLine(for: session))")
+                        Text(verbatim: "    \(menuLine(for: session))")
                     }
+                }
+            }
+
+            if state.update.isAvailable {
+                Divider()
+                Button(String(format: String(localized: "Доступне оновлення (%@)…"), state.update.behindText)) {
+                    router.show(.updates)
                 }
             }
         } else {
@@ -40,10 +47,11 @@ struct MenuBarContent: View {
 
         Divider()
 
-        Button("Відкрити вікно") {
-            openWindow(id: "main")
-            NSApp.activate(ignoringOtherApps: true)
-        }
+        Button("Відкрити Laserbeak") { router.show(.sessions) }
+            .keyboardShortcut("o")
+
+        Button("Налаштування…") { router.show(.general) }
+            .keyboardShortcut(",")
 
         Divider()
 

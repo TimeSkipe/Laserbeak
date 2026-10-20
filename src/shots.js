@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const paths = require('./paths');
 const log = require('./log');
+const { t } = require('./i18n');
 
 // Скільки скрінів тримати. Вони потрібні рівно доти, доки сесія їх
 // читає, тобто хвилини; але видаляти одразу не можна — сесія може
@@ -35,13 +36,13 @@ const TYPES = {
 // розширенні, і так її не доводиться перекодовувати дорогою.
 function decodeDataUrl(dataUrl) {
   const m = /^data:([^;,]+);base64,(.+)$/s.exec(String(dataUrl || ''));
-  if (!m) throw new Error('очікував data URL із base64');
+  if (!m) throw new Error(t('err.shotNotDataUrl'));
 
   const ext = TYPES[m[1]];
-  if (!ext) throw new Error(`незрозумілий тип картинки: ${m[1]}`);
+  if (!ext) throw new Error(t('err.shotType', { type: m[1] }));
 
   const buf = Buffer.from(m[2], 'base64');
-  if (!buf.length) throw new Error('порожня картинка');
+  if (!buf.length) throw new Error(t('err.shotEmpty'));
 
   return { buf, ext };
 }
@@ -113,11 +114,12 @@ function flat(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
+// Текст іде в сесію від імені людини, тож мовою, яку вона вибрала, —
+// Claude однаково зрозуміє будь-яку.
+//
 // Червона рамка на знімку інтерфейсу виглядає як частина інтерфейсу.
-// Не сказати про позначки — і сесія почне шукати в коді рамку, якої
-// там ніколи не було.
-const MARKS_ONE = 'позначки кольором на знімку мої, на сторінці їх немає.';
-const MARKS_MANY = 'позначки кольором на знімках мої, на сторінках їх немає.';
+// Не сказати про позначки (shot.marksOne/Many) — і сесія почне шукати в
+// коді рамку, якої там ніколи не було.
 
 const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -130,15 +132,18 @@ function about(shot, { marks = false, withUrl = true } = {}) {
   const comment = flat(shot.comment);
   if (comment) tail.push(/[.!?]$/.test(comment) ? comment : `${comment}.`);
 
-  if (marks) tail.push(tail.length ? capital(MARKS_ONE) : MARKS_ONE);
+  if (marks) tail.push(tail.length ? capital(t('shot.marksOne')) : t('shot.marksOne'));
 
   const where = [];
-  if (shot.selector) where.push(`елемент ${flat(shot.selector)}`);
-  if (shot.text) where.push(`текст «${flat(shot.text).slice(0, 80)}»`);
+  if (shot.selector) where.push(t('shot.element', { selector: flat(shot.selector) }));
+  if (shot.text) where.push(t('shot.text', { text: flat(shot.text).slice(0, 80) }));
   if (shot.url && withUrl) where.push(flat(shot.url));
-  if (where.length) tail.push(`${tail.length ? 'Це' : 'це'} ${where.join(', ')}.`);
+  if (where.length) {
+    const sentence = t('shot.where', { where: where.join(', ') });
+    tail.push(tail.length ? capital(sentence) : sentence);
+  }
 
-  if (shot.size) tail.push(`Зона ${flat(shot.size)}.`);
+  if (shot.size) tail.push(t('shot.region', { size: flat(shot.size) }));
 
   return tail;
 }
@@ -156,7 +161,7 @@ const withTail = (head, tail) => (tail.length ? `${head} — ${tail.join(' ')}` 
  *          marked?: boolean}} shot
  */
 function prompt(shot) {
-  return withTail(`Подивись скріншот: ${shot.file}`, about(shot, { marks: shot.marked }));
+  return withTail(t('shot.one', { file: shot.file }), about(shot, { marks: shot.marked }));
 }
 
 /**
@@ -168,7 +173,7 @@ function prompt(shot) {
  */
 function sequence(list) {
   const marked = list.some((s) => s.marked);
-  const head = `Подивись скріншоти по черзі, це одна послідовність${marked ? `; ${MARKS_MANY}` : '.'}`;
+  const head = `${t('shot.many')}${marked ? `; ${t('shot.marksMany')}` : '.'}`;
 
   const items = list.map((shot, i) => withTail(
     `${i + 1}) ${shot.file}`,

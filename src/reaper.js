@@ -30,6 +30,7 @@ const procs = require('./procs');
 const inspect = require('./inspect');
 const roots = require('./roots');
 const log = require('./log');
+const { t } = require('./i18n');
 
 /**
  * Для сесій у tmux pid можна дізнатись одразу, не чекаючи події від
@@ -61,7 +62,7 @@ function drop(session, reason, removed) {
     label: session.label,
     project: session.project,
     kind: 'session-end',
-    message: 'сесія зникла (термінал закрито)',
+    message: t('history.gone'),
   });
 
   log.info(`прибрав мертву сесію ${session.label} (${session.sid.slice(0, 8)}): ${reason}`);

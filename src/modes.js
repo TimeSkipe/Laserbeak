@@ -38,6 +38,7 @@ const path = require('path');
 const tmux = require('./tmux');
 const terminals = require('./terminals');
 const log = require('./log');
+const { t } = require('./i18n');
 
 const TAIL_BYTES = 96 * 1024;
 const MAX_PRESSES = 8;
@@ -241,7 +242,7 @@ function title(mode) {
  */
 async function switchTo({ session, press, target }) {
   if (!KNOWN.includes(target)) {
-    throw new Error(`невідомий режим: ${target}`);
+    throw new Error(t('err.unknownMode', { mode: target }));
   }
 
   const before = (await readNow(session)).mode;

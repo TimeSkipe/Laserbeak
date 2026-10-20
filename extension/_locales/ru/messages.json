@@ -1,0 +1,204 @@
+{
+  "extName": {
+    "message": "Laserbeak"
+  },
+  "extDescription": {
+    "message": "Обвести область на странице и отправить её в сессию Claude Code"
+  },
+  "actionTitle": {
+    "message": "Выделить область и отправить в сессию (⌘⇧E)"
+  },
+  "commandCapture": {
+    "message": "Выделить область и отправить в сессию"
+  },
+  "menuCapture": {
+    "message": "Отправить область в сессию Claude Code"
+  },
+  "menuSettings": {
+    "message": "Laserbeak: настройки"
+  },
+  "hintDrag": {
+    "message": "Обведи область · Esc — отменить"
+  },
+  "hintDragNext": {
+    "message": "Снимок $N$ · обведи область · Esc — позже, через ⌘⇧E",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "commentPlaceholder": {
+    "message": "Что с этим не так?"
+  },
+  "commentPlaceholderNext": {
+    "message": "А здесь что?"
+  },
+  "footHint": {
+    "message": "Enter — отправить · Esc — отменить"
+  },
+  "footHintSeries": {
+    "message": "Enter — отправить все $COUNT$ · Esc — отменить",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "markButton": {
+    "message": "Разметить"
+  },
+  "markButtonTitle": {
+    "message": "Нарисовать на снимке, что именно не так и как должно быть"
+  },
+  "toolPen": {
+    "message": "От руки"
+  },
+  "toolArrow": {
+    "message": "Стрелка"
+  },
+  "toolEllipse": {
+    "message": "Круг"
+  },
+  "toolRect": {
+    "message": "Прямоугольник"
+  },
+  "colorRed": {
+    "message": "Красный"
+  },
+  "colorYellow": {
+    "message": "Жёлтый"
+  },
+  "colorGreen": {
+    "message": "Зелёный"
+  },
+  "colorBlue": {
+    "message": "Синий"
+  },
+  "colorBlack": {
+    "message": "Чёрный"
+  },
+  "colorWhite": {
+    "message": "Белый"
+  },
+  "markUndo": {
+    "message": "Назад (⌘Z)"
+  },
+  "markClear": {
+    "message": "Стереть всё"
+  },
+  "markCancel": {
+    "message": "Отмена"
+  },
+  "markDone": {
+    "message": "Готово"
+  },
+  "markHint": {
+    "message": "Shift — ровный круг, квадрат или стрелка под 45° · Enter — готово · Esc — отменить"
+  },
+  "errMark": {
+    "message": "не удалось сохранить разметку"
+  },
+  "nextButton": {
+    "message": "Следующий снимок"
+  },
+  "nextTitle": {
+    "message": "Отложить этот снимок и сделать следующий — уйдут вместе, по порядку"
+  },
+  "seriesDrop": {
+    "message": "Убрать из последовательности"
+  },
+  "seriesKept": {
+    "message": "В очереди снимков: $COUNT$ · ⌘⇧E — продолжить",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "noSessions": {
+    "message": "нет сессий, куда можно писать"
+  },
+  "sentTo": {
+    "message": "Отправлено в «$NAME$»",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "errCapture": {
+    "message": "не удалось сделать снимок области"
+  },
+  "errSend": {
+    "message": "не удалось отправить"
+  },
+  "errEmptyRegion": {
+    "message": "область пуста"
+  },
+  "errLostShot": {
+    "message": "снимок потерялся — попробуй ещё раз"
+  },
+  "errOpenOverlay": {
+    "message": "не удалось открыть выделение"
+  },
+  "errSeriesFull": {
+    "message": "очередь снимков заполнена — сначала отправь эти"
+  },
+  "daemonDown": {
+    "message": "Laserbeak не отвечает"
+  },
+  "daemonUp": {
+    "message": "Laserbeak на связи"
+  },
+  "sessionsAvailable": {
+    "message": "сессий, куда можно писать: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "tabGroup": {
+    "message": "группа вкладок"
+  },
+  "sessionGone": {
+    "message": "сессии больше нет"
+  },
+  "noBindings": {
+    "message": "пока ничего не привязано — сессию выберут при первом выделении"
+  },
+  "forget": {
+    "message": "Забыть"
+  },
+  "popupSubtitle": {
+    "message": "Обвести область на странице и отправить её в сессию Claude Code"
+  },
+  "howToSelect": {
+    "message": "Как выделить"
+  },
+  "howToSelectHint": {
+    "message": "клик по иконке · правый клик на странице"
+  },
+  "whereItGoes": {
+    "message": "Куда летит"
+  },
+  "language": {
+    "message": "Язык"
+  },
+  "languageHint": {
+    "message": "Как в Laserbeak. Изменить: приложение Laserbeak → Настройки → Общие."
+  },
+  "languageBrowser": {
+    "message": "как в браузере (Laserbeak не отвечает)"
+  },
+  "thisExtension": {
+    "message": "Это расширение"
+  },
+  "extensionIdHint": {
+    "message": "Если Laserbeak отказывает с «этому источнику сюда нельзя» — впиши эту строку как extensionId в ~/.laserbeak/config.json"
+  },
+  "errUnknownMessage": {
+    "message": "неизвестное сообщение"
+  }
+}

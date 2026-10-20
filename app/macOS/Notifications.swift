@@ -82,6 +82,16 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     // ------------------------------------------------------------ дозвіл
 
+    /// Перечитати, чи дозволено нам показувати банери: людина могла
+    /// змінити це в системних налаштуваннях, поки програма працювала.
+    func checkAuthorization() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let allowed = settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional
+            Task { @MainActor in self.authorized = allowed }
+        }
+    }
+
     private func requestAuthorization() {
         let center = UNUserNotificationCenter.current()
 
@@ -110,12 +120,19 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         [.banner, .sound]
     }
 
-    /// Клік по банеру відкриває редактор, з якого сесію запущено.
+    /// Клік по банеру відкриває редактор, з якого сесію запущено. Банер
+    /// про нову версію — розділ «Оновлення» у вікні.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
         let info = response.notification.request.content.userInfo
+
+        if info["kind"] as? String == "update" {
+            await MainActor.run { AppRouter.shared.show(.updates) }
+            return
+        }
+
         guard let bundleId = info["appBundle"] as? String, !bundleId.isEmpty else { return }
 
         await MainActor.run {
@@ -171,14 +188,15 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         content.title = item.session
         if !item.project.isEmpty { content.subtitle = item.project }
         content.body = item.message
-        content.userInfo = ["appBundle": item.appBundle, "sid": item.sid]
+        content.userInfo = ["appBundle": item.appBundle, "sid": item.sid, "kind": item.kind]
 
         if !item.sound.isEmpty {
             content.sound = UNNotificationSound(named: UNNotificationSoundName(item.sound + ".aiff"))
         }
 
-        // Сповіщення однієї сесії групуються разом.
-        content.threadIdentifier = item.sid
+        // Сповіщення однієї сесії групуються разом; про сам Laserbeak —
+        // окремо від усіх сесій.
+        content.threadIdentifier = item.sid.isEmpty ? item.kind : item.sid
 
         // Іконка проєкту в його кольорі — банер упізнається, не читаючи текст.
         if let attachment = iconAttachment(for: item) {
@@ -205,22 +223,40 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 // MARK: - Картинка для банера
 
 extension NotificationService {
-    /// Малює іконку проєкту в його кольорі й віддає як вкладення банера.
+    /// Малює іконку проєкту в його кольорі, а в кутку — значок події,
+    /// той самий, що в розділі «Сповіщення»: зелена галочка, помаранчева
+    /// рука, пісочний годинник. Так банер каже і «чий», і «що сталося»
+    /// ще до того, як прочитаєш текст.
     ///
     /// UNNotificationAttachment приймає лише файл, тому картинка щоразу
     /// пишеться в тимчасову теку. Файли дрібні, система прибирає їх сама.
     func iconAttachment(for item: DaemonNotification) -> UNNotificationAttachment? {
         let color = Palette.color(item.color) ?? .secondary
         let icon = item.icon.isEmpty ? Lucide.fallback : item.icon
+        let kind = NotificationKind(id: item.kind)
 
-        let card = ZStack {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(color.opacity(0.18))
+        let card = ZStack(alignment: .bottomTrailing) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(color.opacity(0.18))
 
-            LucideIcon(name: icon, size: 60)
-                .foregroundStyle(color)
+                LucideIcon(name: icon, size: 56)
+                    .foregroundStyle(color)
+            }
+            .frame(width: 100, height: 100)
+
+            Circle()
+                .fill(kind.color)
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Image(systemName: kind.symbol)
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .overlay { Circle().strokeBorder(.white, lineWidth: 3) }
+                .offset(x: 6, y: 6)
         }
-        .frame(width: 100, height: 100)
+        .frame(width: 112, height: 112, alignment: .topLeading)
 
         let renderer = ImageRenderer(content: card)
         renderer.scale = 2
@@ -241,7 +277,7 @@ extension NotificationService {
             try png.write(to: url)
             // Система забирає файл собі, тому з тимчасової теки він зникає.
             let attachment = try UNNotificationAttachment(identifier: "icon-\(item.seq)", url: url)
-            AppLog.write("іконка в банері: \(icon), колір \(item.color.isEmpty ? "типовий" : item.color)")
+            AppLog.write("іконка в банері: \(icon) + \(item.kind), колір \(item.color.isEmpty ? "типовий" : item.color)")
             return attachment
         } catch {
             AppLog.write("іконку в банер не додано: \(error.localizedDescription)")

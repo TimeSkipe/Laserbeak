@@ -21,19 +21,43 @@ mkdir -p "$DATA" "$AGENTS" "$ROOT/build"
 
 # ---------------------------------------------------------------- 0. мова
 #
-# Мовою банерів і помилок керує Laserbeak, а не програма: банер складає
-# він сам, і в запасному шляху через terminal-notifier ніякої програми
-# взагалі немає.
+# Одна мова на все: банери, історія, вікно програми, розширення браузера.
+# Живе в config.json; програма й розширення беруть її в демона.
 #
 #   LASERBEAK_LANG=cs npm run install:all   явно
-#   (нічого)                                як у системі
+#   (нічого, перша установка)               як у системі
+#   (нічого, перевстановлення чи оновлення) та, що вже вибрана
+#
+# Останнє важливе: оновлення з програми ганяє цей самий скрипт, і
+# скидати вибрану мову на "auto" щоразу було б підступно.
 
-LANG_CHOICE="${LASERBEAK_LANG:-auto}"
+CURRENT_LANG="$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$DATA/config.json','utf8')).language||'')}catch(e){console.log('')}" 2>/dev/null || true)"
+LANG_CHOICE="${LASERBEAK_LANG:-${CURRENT_LANG:-auto}}"
 case "$LANG_CHOICE" in
-  uk|en|cs|auto) ;;
+  uk|en|cs|ru|kk|auto) ;;
   *) echo "  ⚠ мова «$LANG_CHOICE» невідома — беру auto"; LANG_CHOICE="auto" ;;
 esac
-echo "▸ мова повідомлень: $LANG_CHOICE"
+echo "▸ мова: $LANG_CHOICE"
+
+# У конфіг — одразу, до збірки: програма підніметься наприкінці збірки і
+# має застати вже правильну мову.
+node -e "
+const fs = require('fs'), p = '$DATA/config.json';
+let cfg = {};
+try { cfg = JSON.parse(fs.readFileSync(p, 'utf8')); } catch {}
+cfg.language = '$LANG_CHOICE';
+fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\\n');
+"
+
+# Вікно програми бере мову з того самого конфіга при кожному запуску
+# (LanguageSync.swift). Але macOS вирішує, якою мовою малювати, ще до
+# першого рядка нашого коду, — тож перший запуск після установки мусить
+# застати вибір уже в налаштуваннях програми.
+if [ "$LANG_CHOICE" = "auto" ]; then
+  defaults delete com.laserbeak.desktop AppleLanguages >/dev/null 2>&1 || true
+else
+  defaults write com.laserbeak.desktop AppleLanguages -array "$LANG_CHOICE"
+fi
 
 # ---------------------------------------------------------------- 1. залежності
 
@@ -91,7 +115,6 @@ for name in daemon app; do
       -e "s|__DATA__|$DATA|g" \
       -e "s|__NODE__|$NODE|g" \
       -e "s|__APP__|$APP_PATH|g" \
-      -e "s|__LANG__|$LANG_CHOICE|g" \
       "$ROOT/launchd/$label.plist.template" > "$plist"
 
   # bootout працює асинхронно: якщо одразу викликати bootstrap, launchd
@@ -108,17 +131,6 @@ for name in daemon app; do
 done
 
 
-# Мову кладемо в конфіг: LASERBEAK_LANG у launchd передається теж, але
-# конфіг переживає перевстановлення й читається на льоту.
-node -e "
-const fs = require('fs'), p = '$DATA/config.json';
-let cfg = {};
-try { cfg = JSON.parse(fs.readFileSync(p, 'utf8')); } catch {}
-cfg.language = '$LANG_CHOICE';
-fs.mkdirSync('$DATA', { recursive: true });
-fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
-"
-
 # ---------------------------------------------------------------- 4. хуки
 
 echo "▸ підключаю хуки Claude Code"
@@ -134,7 +146,60 @@ if command -v codex >/dev/null 2>&1 || [ -x /Applications/ChatGPT.app/Contents/R
   echo "  Codex попросить підтвердити ці хуки при першому запуску — це нормально."
 fi
 
-# ---------------------------------------------------------------- 5. перевірка
+# ---------------------------------------------------------------- 5. швидкі команди
+#
+# start і stop — без них сесію не запустити через tmux, а отже Laserbeak
+# не зможе передати в неї ні скріншот, ні режим. Їх легко забути, тому
+# ставимо самі: один рядок source у ~/.zshrc. Сам код живе в репозиторії
+# (shell/laserbeak.zsh) і оновлюється разом із ним.
+#
+# Свою стару копію start() у ~/.zshrc не чіпаємо — це файл людини. Лише
+# кажемо, що її варто замінити цим рядком.
+
+echo "▸ швидкі команди start / stop"
+ZSHRC="$HOME/.zshrc"
+SOURCE_LINE="source \"$ROOT/shell/laserbeak.zsh\""
+
+if grep -qF "$ROOT/shell/laserbeak.zsh" "$ZSHRC" 2>/dev/null; then
+  echo "  ✓ уже підключені в ~/.zshrc"
+elif grep -qE '^[[:space:]]*(function[[:space:]]+)?start[[:space:]]*\(\)' "$ZSHRC" 2>/dev/null; then
+  echo "  ⚠ у ~/.zshrc уже є своя start() — не чіпаю."
+  echo "    Заміни її (разом зі stop і _lb_*) одним рядком:"
+  echo "      $SOURCE_LINE"
+else
+  printf '\n# Laserbeak: start / stop — запуск сесій Claude Code і Codex через tmux\n%s\n' \
+    "$SOURCE_LINE" >> "$ZSHRC"
+  echo "  ✓ додано в ~/.zshrc — діє в нових вкладках термінала"
+fi
+
+case "${SHELL:-}" in
+  */zsh) ;;
+  *) echo "  ⚠ оболонка не zsh (${SHELL:-?}) — start і stop написані для zsh" ;;
+esac
+
+# ---------------------------------------------------------------- 6. картки відповідей
+#
+# Мод Claude Code, що малює відповіді нумерованими картками (що зроблено,
+# важливо знати, питання) і сам додає це правило в системний промпт.
+# Репозиторій — маркетплейс із теки (.claude-plugin/marketplace.json), тож
+# мод читається прямо звідси: git pull оновлює і його.
+
+CLAUDE_BIN="$(command -v claude || true)"
+[ -x "$CLAUDE_BIN" ] || CLAUDE_BIN="$HOME/.local/bin/claude"
+
+echo "▸ картки відповідей (мод reply-cards)"
+if [ -x "$CLAUDE_BIN" ]; then
+  "$CLAUDE_BIN" plugin marketplace add "$ROOT" >/dev/null 2>&1 || true
+  if "$CLAUDE_BIN" plugin install reply-cards@laserbeak --scope user >/dev/null 2>&1; then
+    echo "  ✓ мод увімкнено — діє в нових сесіях Claude Code"
+  else
+    echo "  ⚠ не вдалося поставити мод. Руками: claude plugin install reply-cards@laserbeak"
+  fi
+else
+  echo "  ⚠ claude не знайдено — мод не поставлено"
+fi
+
+# ---------------------------------------------------------------- 7. перевірка
 
 echo "▸ перевіряю"
 sleep 2
@@ -146,18 +211,6 @@ if curl -s -m 3 "http://127.0.0.1:$PORT/health" | grep -q '"ok":true'; then
 else
   echo "  ✖ демон не відповідає. Дивись $DATA/daemon.log"
   exit 1
-fi
-
-# Конфіг, створений до появи ключа доступу, лишився з відкритим портом.
-# Мовчки його не міняємо — це файл користувача, — але сказати варто.
-BIND="$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$DATA/config.json','utf8')).bindHost||'')}catch(e){console.log('')}")"
-if [ "$BIND" = "0.0.0.0" ]; then
-  echo
-  echo "  ⚠ у конфігу bindHost = 0.0.0.0 — демон видно в локальній мережі."
-  echo "    Це запасний шлях для телефона: працює й із закритою програмою,"
-  echo "    але трафік відкритий (захищений лише ключем)."
-  echo "    Замкнути повністю: постав \"bindHost\": \"127.0.0.1\" у"
-  echo "    $DATA/config.json — телефон працюватиме прямим каналом."
 fi
 
 

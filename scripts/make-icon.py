@@ -8,8 +8,7 @@
 просто додати свої поля зверху, знак виходить помітно замалим.
 
 macOS чекає на іконку з заокругленими кутами і полями по краях — інакше
-вона виглядає чужою поруч із рештою програм у доці. iOS, навпаки, ріже
-кути сама, тому там потрібен повний квадрат.
+вона виглядає чужою поруч із рештою програм у доці.
 """
 
 import json
@@ -30,11 +29,7 @@ MAC_RADIUS = 0.225
 # Скільки місця займає сам знак усередині плитки.
 GLYPH_IN_TILE = 0.62
 
-# На iOS кути ріже система, тому плитка — на все полотно.
-IOS_GLYPH = 0.58
-
 MAC_BASES = [16, 32, 128, 256, 512]
-IOS_SIZE = 1024
 
 # Пікселі, темніші за це, вважаються тлом.
 BG_THRESHOLD = 24
@@ -124,9 +119,7 @@ def main() -> int:
         shutil.rmtree(ASSETS)
 
     mac_set = ASSETS / "AppIcon.appiconset"
-    ios_set = ASSETS / "AppIconPhone.appiconset"
     mac_set.mkdir(parents=True)
-    ios_set.mkdir(parents=True)
 
     (ASSETS / "Contents.json").write_text(
         json.dumps({"info": {"author": "xcode", "version": 1}}, indent=2)
@@ -152,25 +145,9 @@ def main() -> int:
         "info": {"author": "xcode", "version": 1},
     }, indent=2))
 
-    # ---------------------------------------------------------- iOS
-    compose(glyph, bg, IOS_SIZE, IOS_GLYPH,
-            rounded=False, tile_ratio=1.0).convert("RGB").save(ios_set / "icon_1024.png")
-
-    (ios_set / "Contents.json").write_text(json.dumps({
-        "images": [{
-            "size": "1024x1024",
-            "idiom": "universal",
-            "filename": "icon_1024.png",
-            "scale": "1x",
-            "platform": "ios",
-        }],
-        "info": {"author": "xcode", "version": 1},
-    }, indent=2))
-
     print(f"✓ іконки: {ASSETS.relative_to(ROOT)}")
     print(f"  macOS: {len(mac_images)} розмірів — плитка {MAC_TILE:.0%} полотна, "
           f"знак {GLYPH_IN_TILE:.0%} плитки")
-    print(f"  iOS:   1024×1024 — знак {IOS_GLYPH:.0%} полотна, кути ріже система")
     return 0
 
 

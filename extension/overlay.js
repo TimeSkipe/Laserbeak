@@ -14,9 +14,9 @@
     return;
   }
 
-  // Тексти дає service worker: мову могли вибрати вручну, а _locales ми
+  // Тексти дає service worker: мову він бере в демона, а _locales ми
   // сторінкам не відкриваємо. Питаємо на початку кожного виділення —
-  // мову могли змінити, поки оверлей жив на сторінці.
+  // мову могли змінити в програмі, поки оверлей жив на сторінці.
   let msg = LaserbeakI18n.bind(null);
   const loadStrings = async () => {
     const res = await chrome.runtime.sendMessage({ type: 'lb:strings' }).catch(() => null);

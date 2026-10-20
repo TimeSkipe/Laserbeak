@@ -186,11 +186,11 @@
   "language": {
     "message": "Language"
   },
-  "languageAuto": {
-    "message": "Same as the browser"
-  },
   "languageHint": {
-    "message": "The extension only. Laserbeak notifications take their language from \"language\" in ~/.laserbeak/config.json."
+    "message": "Same as Laserbeak. To change it: the Laserbeak app → Settings → General."
+  },
+  "languageBrowser": {
+    "message": "same as the browser (Laserbeak is not answering)"
   },
   "thisExtension": {
     "message": "This extension"

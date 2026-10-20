@@ -4,8 +4,8 @@
 
 ```
 ┌─ Claude Code or Codex ───────────────────────────────────┐
-│  a session in a WebStorm tab (inside tmux)               │
-│  or a session the daemon started itself (Claude only)    │
+│  a session in a WebStorm tab, started with `start`       │
+│  (inside tmux — shell/laserbeak.zsh)                     │
 └───────────────┬──────────────────────────────────────────┘
                 │ hooks: SessionStart, UserPromptSubmit,
                 │        Stop, Notification, SessionEnd
@@ -18,39 +18,40 @@
 │                                                          │
 │   state        sessions, projects, history               │
 │   watching     processes, tmux panes, modes              │
-│   actions      typing into a session, mode, spawning     │
-│   storage      project registry, conversation archive    │
+│   actions      keys into a session: mode, model, shots   │
+│   settings     language, banners, sounds — config.json   │
+│   updates      is there a newer version on GitHub        │
 │                                                          │
-│   HTTP on 127.0.0.1:8787 only — invisible on the network │
-└───────┬──────────────────────────────────────────────────┘
-        │ 127.0.0.1
-        ▼
-  Laserbeak.app (macOS)
-  window + menu bar + notifications
-  + listener for the phone  ← the daemon keeps it alive
-        │
-        └─ TLS-PSK over AWDL, bypassing the router ──► Laserbeak (iOS)
+│   HTTP on 127.0.0.1 only — not configurable              │
+└───────┬───────────────────────────────┬──────────────────┘
+        │ 127.0.0.1                     │ 127.0.0.1
+        ▼                               ▼
+  Laserbeak.app (macOS)           browser extension
+  window + menu bar + banners     drag a region on a page →
+  ← the daemon keeps it alive     screenshot into ~/.laserbeak/shots/ →
+                                  a text prompt with the path to it
 
-  The browser extension talks to the daemon too, also over 127.0.0.1:
-  drag a region on a page → screenshot into ~/.laserbeak/shots/ →
-  an ordinary text prompt into the session with the path to it
+  Inside every Claude Code session, the reply-cards mod
+  (claude/reply-cards) draws replies as coloured cards.
 ```
 
 ## Why it is built this way
 
-### The daemon is separate from the apps
+### The daemon is separate from the app
 
 Notifications have to work even when no window is open. State has to
-survive an app restart. The phone has to see exactly what the Mac sees.
+survive an app restart.
 
-All of that requires the logic to live in a process that does not depend
-on any interface. Hence a standalone LaunchAgent, with the apps merely
-rendering its state.
+That requires the logic to live in a process that does not depend on any
+interface. Hence a standalone LaunchAgent, with the app merely rendering
+its state.
 
 The consequence worth holding on to: **clients compute nothing**. A
 custom session name, for instance, is applied in the daemon rather than
 in the app — which is why it reads the same in the window, in the menu
-bar, on the phone and in notifications.
+bar, in the extension and in notifications. Settings follow the same
+rule: they live in `config.json`, the daemon validates and applies them,
+the window only shows them and sends changes back.
 
 ### Hooks are only a bridge
 
@@ -62,6 +63,18 @@ there and every action in the session would drag.
 If the daemon is down, `curl` fails silently and the hook exits 0. The
 user's work never suffers.
 
+### `start` is part of the install, not a tip
+
+Typing into a session from outside is only possible through a terminal
+Laserbeak can reach — tmux (see `docs/decisions.md`). `start` runs the
+agent inside tmux with a label, and without it a session gets neither
+screenshots from the browser nor mode or model switches from the app.
+
+So `start` and `stop` live in the repository (`shell/laserbeak.zsh`) and
+`install.sh` wires them into `~/.zshrc` with one `source` line. They
+used to exist only in one person's `~/.zshrc`, and an install on any
+other machine quietly ended up without them.
+
 ### Two agents, one path
 
 Codex has hooks too, with the same events and the same format as Claude
@@ -72,9 +85,8 @@ the browser) works for both without knowing the difference.
 
 Where the two really differ, the daemon says so instead of guessing:
 the Shift+Tab mode cycle and `/model`/`/effort` are Claude Code's, so a
-Codex session refuses them; its transcript is a different format, so
-tokens and the archive are Claude-only for now. Details in
-`docs/components.md`, the traps in `docs/decisions.md`.
+Codex session refuses them, and the app does not offer them there; its
+transcript is a different format, so the archive is Claude-only for now.
 
 ### Two sources of knowledge about sessions
 
@@ -89,19 +101,14 @@ the daemon never heard of them.
 
 Both sources are merged in `src/state.js`.
 
-### The browser is the third client
+### The browser is the second client
 
-The `extension/` (Chrome, Brave — any Chromium) has no transport of its
-own: it reaches the daemon over the same HTTP on `127.0.0.1` the Mac app
-uses. We deliberately do not route it through the app — that channel
-exists only because the phone has no other way in, while a browser on
-this very machine already has loopback.
+The `extension/` (Chrome, Brave — any Chromium) reaches the daemon over
+the same HTTP on `127.0.0.1` the Mac app uses.
 
-The same rule as for the Mac and the phone applies: **the extension
-computes nothing**. It takes the session list from `/state`, and the
-prompt text is assembled by the daemon in `shots.js` — the extension has
-no opinion of its own about how to talk to a session, and must not have
-one.
+The same rule applies: **the extension computes nothing**. It takes the
+session list and the language from the daemon, and the prompt text is
+assembled by the daemon in `shots.js`.
 
 The image travels as text: the daemon writes it to a file and sends the
 session a path, which Claude Code opens with its own `Read`. That is why
@@ -109,8 +116,29 @@ session a path, which Claude Code opens with its own `Read`. That is why
 prompt.
 
 The price of admitting a browser is that trusting localhost stopped being
-free. The daemon now inspects `Origin`: a page from the network cannot
-reach it even from here.
+free. The daemon inspects `Origin`: a page from the network cannot reach
+it even from here.
+
+### One language for everything
+
+The language is picked once — at install time (`LASERBEAK_LANG`) or later
+in the window — and lives in `config.json`. Everything a person reads
+follows it:
+
+| Where | How it gets there |
+|-------|-------------------|
+| banners, history, API errors, the screenshot prompt | the daemon, `src/i18n.js`, on the fly |
+| the window and menu bar | `AppleLanguages` of the app, set from the config at every launch — takes effect on relaunch |
+| the browser extension | asks the daemon (`/settings`), reads `_locales/<lang>` itself |
+| `start` / `stop` and the first prompt | ask the daemon, fall back to `config.json` |
+
+Ukrainian, English, Czech, Russian and Kazakh. `auto` means the first of
+the macOS interface languages Laserbeak knows — the same rule macOS uses
+for the window, so `auto` also lands on the same language everywhere.
+Logs stay in one language on purpose.
+
+`scripts/check-l10n.py` checks that every string exists in every
+language, in all four places.
 
 ## Data flow
 
@@ -124,7 +152,6 @@ Claude Code
               ├─ roots.resolve(cwd)        which project is this
               ├─ projects.touch()          remember the project
               ├─ archive.ingest()          read new transcript bytes
-              ├─ tokens.scan()             count tokens
               ├─ state.touch()             update the session
               └─ notify.send()             notify if warranted
 ```
@@ -136,21 +163,25 @@ waits.
 
 ```
 app ── GET /state (every 2 s) ──► state.snapshot()
-                                   ├─ live sessions + tokens + mode
+                                   ├─ live sessions + mode
                                    ├─ projects + tabs + processes
-                                   └─ event history
+                                   ├─ event history
+                                   └─ language + update summary
 ```
 
 `snapshot()` must stay fast. Everything expensive — process inspection,
-reading the permission mode — is cached and refreshed in the background.
+reading the permission mode, asking GitHub — is cached and refreshed in
+the background.
 
 ### Notifications
 
 ```
-notify.send()
+notify.send()                   is this kind on in config.notify?
+  │                             is this session muted?
   ├─ is the Mac app listening?  ──► outbox.push()
   │                                   └─ GET /events/wait (long-poll)
-  │                                       └─ banner from Laserbeak
+  │                                       └─ banner from Laserbeak:
+  │                                          project icon + event badge
   └─ no                         ──► terminal-notifier
 ```
 
@@ -158,10 +189,14 @@ Long-polling rather than polling: the request hangs until an event
 appears, so the banner shows up instantly and almost nothing crosses the
 wire.
 
+Which events show a banner and with which sound is set in the window
+(Settings → Notifications) and stored as `notify` and `sounds` in
+`config.json`. Muting a single session is stronger than the general rule.
+
 ### Typing into a session
 
 ```
-POST /sessions/input
+POST /sessions/input | /sessions/shot | /sessions/command | /sessions/mode
   ├─ daemon-started session?  ──► terminals.write()  (its own pty)
   ├─ session inside tmux?     ──► tmux.send()        (send-keys)
   └─ neither                  ──► 409 with an explanation
@@ -169,6 +204,24 @@ POST /sessions/input
 
 Why there is no other way — see the TIOCSTI section in
 `docs/decisions.md`.
+
+### Updates
+
+```
+updates.start()        every 6 h (and when HEAD moved)
+  └─ GET api.github.com/repos/<origin>/commits?sha=<branch>
+       └─ where is our HEAD in that list → behind N / ahead / current
+            └─ new tip? → banner (kind "update")
+
+POST /update/install
+  └─ scripts/update.sh, detached (setsid)
+       ├─ git pull --ff-only
+       └─ install.sh — restarts the daemon and the app on its way
+            └─ update-result.json → the new daemon reads it → banner
+```
+
+Read-only on purpose: the check never touches the working copy. Details
+and traps in `docs/decisions.md`.
 
 ## The life of a session
 
@@ -178,7 +231,7 @@ start "name"
        │
        ├─ SessionStart      → the session appears in state
        ├─ UserPromptSubmit  → status "working", turn timer starts
-       ├─ Stop              → status "done", tokens, notification
+       ├─ Stop              → status "done", notification
        ├─ Notification      → permission needed, or waiting for input
        └─ SessionEnd        → the session disappears
 ```
@@ -192,83 +245,39 @@ Code lives in the repository, user data in `~/.laserbeak/`:
 
 | File | What it is |
 |------|------------|
-| `config.json` | rules, re-read on the fly |
+| `config.json` | settings and rules, re-read on the fly |
 | `projects.json` | project registry with colours and icons |
 | `sessions.json` | custom session names and notification switches |
 | `sessions-live.json` | live sessions, so a daemon restart is survivable |
 | `archive/` | conversations + `index.json` |
 | `shots/` | region screenshots from the browser; last 200 or 7 days |
 | `events.jsonl` | log of every event |
-| `token` | access key, mode `0600` |
+| `update.json` | the last update check and install |
+| `update.log`, `update-result.json` | output and outcome of an update from the app |
 | `extension-key.pem` | the extension's private key, mode `0600` |
 | `app-quit` | marker of a deliberate app quit |
 | `daemon.log`, `app.log` | logs |
 
 ## Network and access
 
-### The key
+The daemon listens on `127.0.0.1` and nowhere else; the address is not
+in the config at all. Every client — the app, the extension, `hook.sh`,
+`start` — is on the same computer.
 
-Anything arriving from somewhere other than `127.0.0.1` must bring a key:
+Two checks stand at the entrance in `src/server.js`: a request not from
+`127.0.0.1` gets `403` (a guard, it cannot arrive anyway), and a request
+whose `Origin` is a web page gets `403` too. There is no access key: it
+existed for the phone app, which is gone.
 
-```
-Authorization: Bearer <key>
-```
-
-The key lives in `~/.laserbeak/token` with mode `0600` and is created on
-first run. The phone gets it from a QR code — that is the only way to
-connect.
-
-Requests from localhost need no key: only someone already sitting at this
-computer can make them.
-
-| From | What is allowed |
-|------|-----------------|
-| `127.0.0.1` | everything, no key |
-| network, with key | everything except `/hook/*`, `/sessions/spawn`, `/auth/*` |
-| network, no key | nothing — `401` |
-
-The key is still needed when the daemon is locked down: the phone goes
-through the Mac app, and there the key serves as the encryption password.
-
-### One path: through the Mac app
-
-```
-phone ──TLS-PSK over AWDL──► Laserbeak.app ──HTTP──► 127.0.0.1:8787
-       (bypassing the router, encrypted)              (daemon)
-```
-
-By default the daemon listens on `127.0.0.1` **only** — it is not on the
-network at all. The phone can only get to it through the Mac app.
-
-The HTTP fallback is still in the code and switches on with one line of
-config (`"bindHost": "0.0.0.0"`). The phone then works even with the app
-closed, but traffic on the local network is in the clear — protected by
-the key alone. `/state` then reports `bindHost`, and the app shows that
-the fallback is enabled.
-
-**The direct channel is held by the Mac app, not by the daemon**:
-Network.framework is Apple's, and the daemon is written in Node. Devices
-find each other over Bluetooth (`includePeerToPeer`), and the data flows
-over AWDL — direct Wi-Fi between devices. No shared network is needed.
-Encryption is TLS with a pre-shared key derived from the same access key.
-
-The phone picks its own path and switches to the direct one the moment it
-appears. If the direct channel goes quiet while the daemon really is
-visible on the network, the phone falls back to HTTP for twenty seconds —
-otherwise it would be stuck whenever the Mac sleeps. If there is nowhere
-to fall back to (the daemon locked to `127.0.0.1`, as by default), the
-phone stays on the direct channel and rebuilds it: the address from the
-QR code is dead anyway in that case.
-
-A break in the channel itself usually goes unnoticed: a request on a
-stale connection is quietly retried on a fresh one, and "no connection"
-is only shown after two failed polls in a row.
+The only outbound request is the update check to `api.github.com`, every
+six hours, switchable off in the window.
 
 ### The Mac app can no longer just vanish
 
-Since it holds the only channel, its death blinds the phone. So the
-daemon checks every ten seconds whether it is reachable and brings it
-back — roughly a minute from crash to recovery.
+It is the menu bar and the banners with project icons; without it,
+banners fall back to the faceless `terminal-notifier`. So the daemon
+checks every ten seconds whether it is reachable and brings it back —
+roughly a minute from crash to recovery.
 
 The sign of life is not a row in the process table (a process can hang
 around doing nothing) but an open request on `/events/wait`.
@@ -280,10 +289,3 @@ Details in `docs/decisions.md`.
 A deliberate quit ("Quit" in the menu bar) leaves `~/.laserbeak/app-quit`
 behind — while that file exists, the daemon leaves the app alone. It is
 removed on the next launch.
-
-### Why not plain Bluetooth
-
-CoreBluetooth gives you ~180-byte packets and a few KB/s. A state
-snapshot is 12 KB every two seconds; a session archive is up to two
-megabytes. Over BLE that would crawl; over AWDL the same archive takes
-66 ms.

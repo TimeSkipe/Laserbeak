@@ -1,20 +1,29 @@
-// Вікно налаштувань. Нічого не вирішує — показує стан, дає забути
-// привʼязку, якщо група вкладок дісталась іншій сесії, і вибрати мову.
+// Вікно налаштувань. Нічого не вирішує — показує стан і дає забути
+// привʼязку, якщо група вкладок дісталась іншій сесії.
+//
+// Мову тут не вибирають: вона одна на весь Laserbeak і міняється в
+// програмі на маку. Тут її лише видно.
 
 const DAEMON = 'http://127.0.0.1:8787';
 let msg = LaserbeakI18n.bind(null);
 
 document.getElementById('id').textContent = chrome.runtime.id;
 
-const picker = document.getElementById('language');
+// Назви мов — кожна своєю мовою: так їх упізнають, навіть коли решта
+// вікна незнайомою.
+const LANGUAGE_NAMES = {
+  uk: '🇺🇦 Українська', en: '🇬🇧 English', cs: '🇨🇿 Čeština', ru: '🇷🇺 Русский', kk: '🇰🇿 Қазақша',
+};
 
-// Мова міняється на льоту: це вікно перемальовується одразу, service
-// worker підхоплює зміну сам (storage.onChanged), а оверлей — на
-// наступному виділенні.
 async function applyLanguage() {
-  const { language = 'auto' } = await chrome.storage.local.get('language');
+  let language = '';
+  try {
+    language = (await (await fetch(`${DAEMON}/settings`)).json()).language || '';
+  } catch {
+    ({ lastLanguage: language = '' } = await chrome.storage.local.get('lastLanguage'));
+  }
+
   msg = LaserbeakI18n.bind(await LaserbeakI18n.load(language).catch(() => null));
-  picker.value = language;
   document.documentElement.lang = LaserbeakI18n.LANGUAGES.includes(language)
     ? language
     : chrome.i18n.getUILanguage();
@@ -23,13 +32,9 @@ async function applyLanguage() {
   for (const el of document.querySelectorAll('[data-i18n]')) {
     el.textContent = msg(el.dataset.i18n);
   }
-}
 
-picker.addEventListener('change', async () => {
-  await chrome.storage.local.set({ language: picker.value });
-  await applyLanguage();
-  show();
-});
+  document.getElementById('language').textContent = LANGUAGE_NAMES[language] || msg('languageBrowser');
+}
 
 async function show() {
   const dot = document.getElementById('dot');

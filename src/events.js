@@ -8,28 +8,19 @@
 //     за текстом, у Codex окрема подія PermissionRequest (у нас approval);
 //   • переривання (Esc посеред ходу) Codex повідомляє окремо — без цього
 //     сесія лишалась би «працює» до наступного запиту;
-//   • транскрипт Codex — зовсім інший формат, тож лічильник токенів і
-//     архів, які вміють читати лише Claude, його не отримують.
+//   • транскрипт Codex — зовсім інший формат, тож архів, який уміє
+//     читати лише Claude, його не отримує.
 
 const path = require('path');
 const state = require('./state');
 const { t } = require('./i18n');
 const projects = require('./projects');
 const sessionSettings = require('./sessionSettings');
-const tokens = require('./tokens');
 const roots = require('./roots');
 const archive = require('./archive');
 const procs = require('./procs');
 const notify = require('./notify');
 const log = require('./log');
-
-/** 1 234 → "1.2k", 3 400 000 → "3.4M" */
-function fmtTokens(n) {
-  if (!n) return '0';
-  if (n < 1000) return String(n);
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`;
-  return `${(n / 1_000_000).toFixed(1)}M`;
-}
 
 function fmtDuration(sec) {
   if (sec == null || !isFinite(sec)) return '';
@@ -70,7 +61,8 @@ function handle(event, payload, meta) {
     // побачили б у ньому нулі або сміття.
     transcript: agent === 'claude' ? payload.transcript_path || '' : '',
     // Адреса панелі tmux, якщо сесія працює через посередника.
-    // Саме вона робить можливим ввід із програми й телефона.
+    // Саме вона робить можливим ввід ззовні: скріншоти з браузера,
+    // перемикання режиму, команди.
     tmuxPane: meta.tmuxPane || '',
   };
 
@@ -114,32 +106,18 @@ function handle(event, payload, meta) {
       const s = state.touch(sid, { ...base, status: 'waiting' });
       const elapsed = s.turnStartedAt ? (Date.now() - s.turnStartedAt) / 1000 : null;
 
-      // Кінець турна — момент, коли транскрипт дописаний, тож рахуємо
-      // без тротлінгу і одразу знаємо, скільки зʼїв саме цей турн.
-      const before = tokens.get(sid).total;
-      const totals = tokens.scan(sid, base.transcript, true);
-      const spent = totals.total - before;
-
       state.touch(sid, {
         turnStartedAt: null,
         lastTurnSeconds: elapsed,
-        lastTurnTokens: spent,
         // Сумарний час роботи копиться, доки сесію не закриють остаточно.
         totalWorkSeconds: (s.totalWorkSeconds || 0) + (elapsed || 0),
       });
 
-      const parts = [elapsed != null
+      const message = elapsed != null
         ? t('history.done', { duration: fmtDuration(elapsed) })
-        : t('history.doneNoTime')];
-      if (spent > 0) parts.push(t('tokens', { count: fmtTokens(spent) }));
-      const message = parts.join(' · ');
+        : t('history.doneNoTime');
 
-      state.record({ sid, label, project, kind: 'stop', message, seconds: elapsed, tokens: spent });
-
-      // У банері перший рядок каже, що саме сталося, другий — подробиці.
-      const details = [];
-      if (elapsed != null) details.push(fmtDuration(elapsed));
-      if (spent > 0) details.push(t('tokens', { count: fmtTokens(spent) }));
+      state.record({ sid, label, project, kind: 'stop', message, seconds: elapsed });
 
       notify.send({
         kind: 'stop',
@@ -150,7 +128,8 @@ function handle(event, payload, meta) {
         term: base.term,
         title: `✅ ${project || product}`,
         subtitle: sessionSettings.displayName(sid, label),
-        message: [t('notify.done'), details.join(' · ')].filter(Boolean).join('\n'),
+        // Перший рядок — що сталося, другий — скільки тривало.
+        message: [t('notify.done'), elapsed != null ? fmtDuration(elapsed) : ''].filter(Boolean).join('\n'),
       });
       break;
     }
@@ -176,9 +155,12 @@ function handle(event, payload, meta) {
         || /permission|approval|approve|дозвол|схвал/i.test(raw);
 
       if (needsApproval) {
-        const why = raw || [t('notify.permission'), payload.tool_name].filter(Boolean).join(': ');
+        // В історію — перекладений текст: від Claude Code приходить
+        // англійською, а людина вибрала свою мову. Оригінал лишається
+        // в events.jsonl полем detail.
+        const why = [t('notify.permission'), payload.tool_name].filter(Boolean).join(': ');
         state.touch(sid, { ...base, status: 'needs-input' });
-        state.record({ sid, label, project, kind: 'permission', message: why });
+        state.record({ sid, label, project, kind: 'permission', message: why, detail: raw });
 
         notify.send({
           kind: 'permission',
@@ -199,7 +181,7 @@ function handle(event, payload, meta) {
       // Сесія просто чекає на тебе. Статус лишається «закінчила», бо
       // роботу вона завершила — нічого не питає.
       state.touch(sid, { ...base, status: 'waiting' });
-      state.record({ sid, label, project, kind: 'idle', message: raw || 'чекає на ввід' });
+      state.record({ sid, label, project, kind: 'idle', message: t('history.waiting'), detail: raw });
 
       notify.send({
         kind: 'idle',
@@ -230,7 +212,6 @@ function handle(event, payload, meta) {
     }
 
     case 'session-end':
-      tokens.forget(sid);
       state.remove(sid);
       state.record({ sid, label, project, kind: 'session-end', message: t('history.closed') });
       break;
@@ -240,4 +221,4 @@ function handle(event, payload, meta) {
   }
 }
 
-module.exports = { handle, fmtDuration, fmtTokens };
+module.exports = { handle, fmtDuration };
