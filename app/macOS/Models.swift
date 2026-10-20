@@ -286,15 +286,17 @@ enum PermissionMode: String, CaseIterable, Identifiable {
 struct ProjectSettings: Codable, Hashable {
     var color: String = ""   // назва з палітри, порожнє = за статусом
     var icon: String = ""    // назва іконки Lucide, порожнє = типова
+    var silent: Bool = false // банери сесій цього проєкту — без звуку
 
     init() {}
 
-    enum CodingKeys: String, CodingKey { case color, icon }
+    enum CodingKeys: String, CodingKey { case color, icon, silent }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        color = c.value(.color, "")
-        icon  = c.value(.icon, "")
+        color  = c.value(.color, "")
+        icon   = c.value(.icon, "")
+        silent = c.value(.silent, false)
     }
 }
 

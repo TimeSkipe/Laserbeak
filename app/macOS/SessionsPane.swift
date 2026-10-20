@@ -261,6 +261,19 @@ private struct ProjectCard: View {
                 StatusPill(text: project.state.title, color: project.state.color)
             }
 
+            // Тиша для всієї групи: банери лишаються, звук — ні.
+            Button {
+                Task { await client.setProjectSilent(path: project.path, silent: !project.settings.silent) }
+            } label: {
+                Image(systemName: project.settings.silent ? "speaker.slash.fill" : "speaker.wave.2")
+                    .foregroundStyle(project.settings.silent ? Color.orange : .secondary)
+                    .frame(width: 18)
+            }
+            .buttonStyle(.borderless)
+            .help(project.settings.silent
+                  ? String(localized: "Увімкнути звук сповіщень цього проєкту")
+                  : String(localized: "Вимкнути звук сповіщень цього проєкту"))
+
             Button {
                 sheet = .project(project)
             } label: {
@@ -296,9 +309,9 @@ private struct SessionRow: View {
                     Text(verbatim: session.title)
                         .font(.body.weight(.semibold))
 
-                    if session.isCodex {
-                        Tag(text: "Codex", color: .teal)
-                    }
+                    // Хто це: Claude Code чи Codex — видно одразу.
+                    Tag(text: session.isCodex ? "Codex" : "Claude",
+                        color: session.isCodex ? .teal : .orange)
 
                     // Видно з першого погляду, що ця сесія мовчить.
                     if !session.notifyEnabled {

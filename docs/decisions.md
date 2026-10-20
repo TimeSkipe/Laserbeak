@@ -847,6 +847,31 @@ process group; a child spawned with `detached: true` has its own
 outcome cannot be reported by the daemon that started the update, so the
 script leaves `update-result.json` and the next daemon reads it.
 
+### An agent app does not come to the front by itself
+
+Opened from the menu bar or a banner, the window appeared — behind the
+editor, in an app that was not active. Since macOS 14 activation is
+cooperative and `activate(ignoringOtherApps:)` ignores its flag; an
+`LSUIElement` app has no Dock icon to be clicked into focus either. To a
+person that reads as "the app cannot be opened from the background", and
+clicks into the half-hidden window only woke it up instead of switching
+sections. So `AppRouter.show` asks for activation and also orders the
+window front explicitly, a tick after SwiftUI created it:
+`makeKeyAndOrderFront` and `orderFrontRegardless`, which works even when
+activation is declined.
+
+Testing this by synthetic clicks at screen coordinates is a trap: the
+click lands on whatever window is on top there — another app, if the
+Laserbeak window is behind it. Section switching was checked through
+accessibility (`AXSelected` on the sidebar rows) instead, which needs
+neither the mouse nor focus.
+
+### A greyed-out menu item looks broken
+
+The menu bar listed projects and sessions as `Text`, and in a menu that
+is a disabled item: grey, and nothing happens on click. They are buttons
+now, opening the window on Sessions.
+
 ## Quick commands and the reply mod
 
 ### `start` lived in one person's `~/.zshrc`

@@ -100,12 +100,13 @@ function send(n) {
     return;
   }
 
-  const sound = cfg.sounds?.[n.kind] || '';
+  // Проєкт можна приглушити окремо: банер буде, звуку — ні.
+  const look = projects.settingsFor(n.cwd);
+  const sound = look.silent ? '' : (cfg.sounds?.[n.kind] || '');
 
   if (outbox.hasDesktopClient()) {
     // Колір та іконка проєкту йдуть у банер, щоб він упізнавався
     // з першого погляду, без читання тексту.
-    const look = projects.settingsFor(n.cwd);
 
     outbox.push({
       kind: n.kind,
@@ -118,7 +119,7 @@ function send(n) {
       sound,
       appBundle: bundleFor(n) || '',
     });
-    log.info(`сповіщено [${n.kind}] ${n.subtitle} → Laserbeak`);
+    log.info(`сповіщено [${n.kind}] ${n.subtitle} → Laserbeak${look.silent ? ' (без звуку)' : ''}`);
     return;
   }
 

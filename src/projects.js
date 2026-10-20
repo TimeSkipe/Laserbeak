@@ -73,15 +73,29 @@ function touch(cwd, editorBundleId) {
  * Змінити налаштування конкретного проєкту.
  * Приймає часткові дані — те, чого немає в патчі, лишається як було.
  */
+// Що проєкт може мати своє: колір, іконку й тишу — банери його сесій
+// без звуку. Решту з тіла запиту не беремо: файл читає кожна подія.
+const SETTINGS = {
+  color: 'string',
+  icon: 'string',
+  silent: 'boolean',
+};
+
 function updateSettings(cwd, patch) {
   const entry = known.get(cwd);
   if (!entry) return null;
 
-  const merged = { ...entry.settings, ...(patch || {}) };
+  const clean = {};
+  for (const [key, value] of Object.entries(patch || {})) {
+    if (SETTINGS[key] && (value == null || typeof value === SETTINGS[key])) clean[key] = value;
+  }
+
+  const merged = { ...entry.settings, ...clean };
 
   // Порожнє значення означає «як типово» — не тримаємо його у файлі.
+  // Для тиші типово — false, тож і його не пишемо.
   for (const [key, value] of Object.entries(merged)) {
-    if (value === '' || value == null) delete merged[key];
+    if (value === '' || value == null || value === false) delete merged[key];
   }
 
   entry.settings = merged;

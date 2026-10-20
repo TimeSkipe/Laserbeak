@@ -57,14 +57,28 @@ final class AppRouter: ObservableObject {
     func show(_ item: SidebarItem? = nil) {
         if let item { section = item }
 
+        NSApp.activate()
         if let openMainWindow {
             openMainWindow()
-        } else {
-            NSApp.windows.first { $0.identifier?.rawValue == Self.mainWindow }?
-                .makeKeyAndOrderFront(nil)
         }
 
-        NSApp.activate(ignoringOtherApps: true)
+        // Програма-значок не стає активною сама: з macOS 14 активація
+        // ввічлива, і вікно, відкрите з меню-бару чи банера, лишалось
+        // позаду редактора — «з фону програму не відкрити». Тож вікно
+        // виводимо наперед явно, наступним тактом, коли SwiftUI його вже
+        // створив; orderFrontRegardless — навіть якщо активацію відхилили.
+        DispatchQueue.main.async {
+            guard let window = Self.window else { return }
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+            NSApp.activate()
+        }
+    }
+
+    /// Вікно сцени "main". SwiftUI дописує до ідентифікатора свій хвіст.
+    static var window: NSWindow? {
+        NSApp.windows.first { $0.identifier?.rawValue.hasPrefix(mainWindow) == true }
     }
 }
 

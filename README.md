@@ -195,9 +195,10 @@ opens the editor the session was started from.
 **On by default.** A new session in any project notifies you about
 finished work straight away. Which events show a banner, and with which
 of the standard macOS sounds, is set in the app: Settings →
-Notifications, with a ▶ to hear each sound. A single session is muted in
-its own menu (⋯ → Name and notifications), and that beats the general
-rule.
+Notifications, with a ▶ to hear each sound. A whole project can be made
+quiet with the speaker on its card — banners still come, without sound.
+A single session is muted in its own menu (⋯ → Name and notifications),
+and that beats the general rule.
 
 ### Two different events under one hook
 
@@ -762,15 +763,17 @@ fires — that is a system prompt, and it only appears once.
 `/Applications/Laserbeak.app` is an agent app: it lives in the menu bar
 and appears neither in the Dock nor in ⌘Tab. Roughly like Docker.
 
-**The window is opened from the menu bar** — "Open Laserbeak" (⌘O), or
-"Settings…" (⌘,) straight into the settings. The close button just closes
+**The window is opened from the menu bar** — "Open Laserbeak" (⌘O), a
+click on any project or session listed there, or "Settings…" (⌘,)
+straight into the settings. It comes to the front even when another app
+is active. The close button just closes
 it; the app keeps working. To quit for real, use "Quit" in the same menu.
 
 The window has a sidebar:
 
 | Section | What is there |
 |---------|---------------|
-| **Sessions** | open projects as cards, sessions in them: status, mode, the ⋯ menu; how many need you, are working, have finished |
+| **Sessions** | open projects as cards, sessions in them marked Claude or Codex: status, mode, the ⋯ menu; a speaker per project to silence its banners; how many need you, are working, have finished |
 | **Activity** | what happened, by day: sessions opened, finished, asked for permission |
 | **General** | language, version, where the data lives, the daemon log |
 | **Notifications** | per event — finished, permission, input reminder, new version — on/off and a sound |

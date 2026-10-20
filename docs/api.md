@@ -326,10 +326,12 @@ Raw terminal output of a session the daemon started. For debugging.
 ### `POST /projects/settings`
 
 ```json
-{ "path": "/…", "settings": { "color": "orange", "icon": "rocket" } }
+{ "path": "/…", "settings": { "color": "orange", "icon": "rocket", "silent": true } }
 ```
 
-An empty value clears the setting.
+`silent: true` — banners of this project's sessions come without a
+sound. An empty value (or `silent: false`) clears the setting; keys other
+than these three are ignored.
 
 ### `POST /projects/forget`
 

@@ -103,6 +103,11 @@ final class DaemonClient: ObservableObject {
         ])
     }
 
+    /// Приглушити проєкт: банери його сесій приходять без звуку.
+    func setProjectSilent(path: String, silent: Bool) async {
+        await act("projects/settings", ["path": path, "settings": ["silent": silent]])
+    }
+
     @discardableResult
     func forgetSession(sid: String) async -> Bool {
         await act("sessions/forget", ["sid": sid])

@@ -76,19 +76,27 @@ struct Sidebar: View {
 
     var body: some View {
         List(selection: $selection) {
+            // Мітка (.tag) — завжди останньою, після .badge: інакше рядок
+            // із лічильником перестає вибиратись, і з «Активності» вже не
+            // повернутись на «Сесії».
             Section {
                 row(.sessions)
                     .badge(client.state?.sessions.count ?? 0)
+                    .tag(SidebarItem.sessions)
                 row(.activity)
+                    .tag(SidebarItem.activity)
             } header: {
                 Brand(client: client)
             }
 
             Section("Налаштування") {
                 row(.general)
+                    .tag(SidebarItem.general)
                 row(.notifications)
+                    .tag(SidebarItem.notifications)
                 row(.updates)
                     .badge(update.isAvailable ? Text(verbatim: update.behindText) : nil)
+                    .tag(SidebarItem.updates)
             }
         }
         .listStyle(.sidebar)
@@ -112,7 +120,6 @@ struct Sidebar: View {
             Image(systemName: item.symbol)
                 .foregroundStyle(item.tint)
         }
-        .tag(item)
     }
 }
 

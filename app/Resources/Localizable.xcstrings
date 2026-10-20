@@ -1051,6 +1051,41 @@
         }
       }
     },
+    "Вимкнути звук сповіщень цього проєкту": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mute this project’s notifications"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ztlumit oznámení tohoto projektu"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнути звук сповіщень цього проєкту"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключить звук уведомлений этого проекта"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Осы жоба хабарландыруларының дыбысын өшіру"
+          }
+        }
+      }
+    },
     "Встановлено найновішу версію": {
       "extractionState": "manual",
       "localizations": {
@@ -4302,6 +4337,41 @@
           "stringUnit": {
             "state": "translated",
             "value": "Мұнда GitHub-та әлі жоқ коммиттер бар — жаңартатын ештеңе жоқ."
+          }
+        }
+      }
+    },
+    "Увімкнути звук сповіщень цього проєкту": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn sound back on for this project’s notifications"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapnout zvuk oznámení tohoto projektu"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Увімкнути звук сповіщень цього проєкту"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включить звук уведомлений этого проекта"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Осы жоба хабарландыруларының дыбысын қосу"
           }
         }
       }

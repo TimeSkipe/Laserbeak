@@ -24,13 +24,24 @@ struct MenuBarContent: View {
         if let state = client.state, client.isConnected {
             let live = state.sortedProjects.filter(\.isLive)
 
+            // Кнопки, а не текст: текст у меню — це сірий пункт, по якому
+            // нічого не стається, і він виглядає зламаним. Клік відкриває
+            // вікно на сесіях.
             if live.isEmpty {
                 Text("Активних сесій немає")
             } else {
                 ForEach(live) { project in
-                    Text(verbatim: "\(project.displayName) — \(project.sessionCountText)")
+                    Button {
+                        router.show(.sessions)
+                    } label: {
+                        Text(verbatim: "\(project.displayName) — \(project.sessionCountText)")
+                    }
                     ForEach(project.sessions.sorted { $0.since < $1.since }) { session in
-                        Text(verbatim: "    \(menuLine(for: session))")
+                        Button {
+                            router.show(.sessions)
+                        } label: {
+                            Text(verbatim: "    \(menuLine(for: session))")
+                        }
                     }
                 }
             }
