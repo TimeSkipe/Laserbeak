@@ -61,8 +61,7 @@ Everything an app needs. Polled every 2 seconds.
   "update": {                 // is there a newer version on GitHub
     "state": "available",     // unknown | current | available | ahead | error
     "behind": 3, "more": false,
-    "checkedAt": 0,
-    "install": "idle"         // idle | running | done | failed
+    "checkedAt": 0
   },
 
   "projects": [{
@@ -391,7 +390,6 @@ hold hand edits).
 ```jsonc
 { "ok": true, "update": {
   "state": "available", "behind": 3, "more": false, "checkedAt": 0,
-  "install": "idle",               // idle | running | done | failed
   "enabled": true,                 // config.updates.check
   "checking": false,
   "version": "0.2.0", "head": "ca638cf",
@@ -399,27 +397,20 @@ hold hand edits).
   "url": "https://github.com/TimeSkipe/Laserbeak/commits/main",
   "error": "",
   "commits": [{ "sha": "1a2b3c4", "message": "…", "date": "…", "url": "…" }],
-  "installStep": "",               // pull | install | stale — where it failed
-  "installFinishedAt": 0, "installTo": "",
-  "log": "/Users/…/.laserbeak/update.log"
+  "root": "/Users/…/Laserbeak",
+  "commands": ["cd /Users/…/Laserbeak", "git pull --ff-only", "npm run install:all"]
 } }
 ```
 
 `commits` are the new ones, newest first, at most 20. `more: true` means
 this copy's `HEAD` was not among the last 50 commits on GitHub.
+`commands` is what the window shows to copy: the daemon does not install
+anything itself.
 
 ### `POST /update/check`
 
 Checks now and answers as `GET /update`. A check already running is
 joined, not repeated.
-
-### `POST /update/install`
-
-Starts `scripts/update.sh` (`git pull --ff-only`, then `install.sh`)
-detached from the daemon and answers at once; `409` if one is already
-running. The script restarts the daemon and the app on its way, so the
-result is read by the new daemon from `~/.laserbeak/update-result.json`
-and reported with a banner.
 
 ---
 

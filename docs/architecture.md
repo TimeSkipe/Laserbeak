@@ -213,15 +213,13 @@ updates.start()        every 6 h (and when HEAD moved)
        └─ where is our HEAD in that list → behind N / ahead / current
             └─ new tip? → banner (kind "update")
 
-POST /update/install
-  └─ scripts/update.sh, detached (setsid)
-       ├─ git pull --ff-only
-       └─ install.sh — restarts the daemon and the app on its way
-            └─ update-result.json → the new daemon reads it → banner
+Settings → Updates
+  └─ what is new + the commands to run: cd <repo>, git pull --ff-only,
+     npm run install:all — installing is the person's (or Claude Code's)
 ```
 
-Read-only on purpose: the check never touches the working copy. Details
-and traps in `docs/decisions.md`.
+Read-only on purpose: Laserbeak never touches the working copy and never
+rebuilds itself. Details in `docs/decisions.md`.
 
 ## The life of a session
 
@@ -252,8 +250,7 @@ Code lives in the repository, user data in `~/.laserbeak/`:
 | `archive/` | conversations + `index.json` |
 | `shots/` | region screenshots from the browser; last 200 or 7 days |
 | `events.jsonl` | log of every event |
-| `update.json` | the last update check and install |
-| `update.log`, `update-result.json` | output and outcome of an update from the app |
+| `update.json` | the last update check |
 | `extension-key.pem` | the extension's private key, mode `0600` |
 | `app-quit` | marker of a deliberate app quit |
 | `daemon.log`, `app.log` | logs |

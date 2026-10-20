@@ -18,14 +18,13 @@
 // перезапускають після кожної правки в src/, і питати щоразу заново було б
 // марнотратно.
 //
-// Саме оновлення — scripts/update.sh: git pull і повна установка. Його
-// запускаємо відірваним від демона, бо install.sh по дорозі демон
-// перезапускає. Результат скрипт лишає у файлі, а прочитає його вже
-// новий демон.
+// Ставить оновлення людина, а не демон: вікно розписує, що виконати
+// (`commands` у details()), — git pull і повна установка. Так нічого не
+// перебудовується за спиною, а помилку видно одразу в терміналі.
 
 const fs = require('fs');
 const path = require('path');
-const { execFile, spawn } = require('child_process');
+const { execFile } = require('child_process');
 const config = require('./config');
 const { PROJECT_DIR, DATA_DIR } = require('./paths');
 const notify = require('./notify');
@@ -33,9 +32,6 @@ const { t } = require('./i18n');
 const log = require('./log');
 
 const STATUS_PATH = path.join(DATA_DIR, 'update.json');
-const RESULT_PATH = path.join(DATA_DIR, 'update-result.json');
-const LOG_PATH = path.join(DATA_DIR, 'update.log');
-const SCRIPT = path.join(PROJECT_DIR, 'scripts', 'update.sh');
 
 const VERSION = require('../package.json').version;
 
@@ -58,20 +54,14 @@ const PAGE = 50;
 const SHOWN = 20;
 const TIMEOUT_MS = 10_000;
 
-// Повна установка зі збіркою програми йде хвилину-дві. Якщо за двадцять
-// результату так і немає, скрипт помер так, що навіть trap не спрацював.
-const INSTALL_STALE_MS = 20 * 60 * 1000;
-const INSTALL_POLL_MS = 3000;
-
 let status = load();
 let inflight = null;
-let installTimer = null;
 
 function load() {
   try {
     return JSON.parse(fs.readFileSync(STATUS_PATH, 'utf8'));
   } catch {
-    return { state: 'unknown', checkedAt: 0, install: { state: 'idle' } };
+    return { state: 'unknown', checkedAt: 0 };
   }
 }
 
@@ -214,103 +204,6 @@ function check({ quiet = false } = {}) {
   return inflight;
 }
 
-// ------------------------------------------------------------ установка
-
-function installState() {
-  return status.install || { state: 'idle' };
-}
-
-function setInstall(patch) {
-  status = { ...status, install: { ...installState(), ...patch } };
-  save();
-}
-
-/**
- * Запустити оновлення: git pull і повна установка.
- *
- * Скрипт відʼєднаний від демона (detached = setsid, своя група процесів):
- * launchd, вимикаючи демон, добиває лише його групу, а install.sh саме
- * це по дорозі й робить.
- */
-function install() {
-  const current = installState();
-  if (current.state === 'running' && Date.now() - (current.startedAt || 0) < INSTALL_STALE_MS) {
-    const busy = new Error(t('update.busy'));
-    busy.code = 'EBUSY';
-    throw busy;
-  }
-
-  try { fs.unlinkSync(RESULT_PATH); } catch { /* і не було */ }
-
-  const out = fs.openSync(LOG_PATH, 'a');
-  const child = spawn('/bin/bash', [SCRIPT], {
-    cwd: PROJECT_DIR,
-    detached: true,
-    stdio: ['ignore', out, out],
-    // node і npm могли прийти з nvm, а в PATH від launchd їх немає.
-    env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH || ''}` },
-  });
-  child.unref();
-  fs.closeSync(out);
-
-  setInstall({
-    state: 'running',
-    startedAt: Date.now(),
-    finishedAt: 0,
-    from: status.head || '',
-    to: '',
-    step: '',
-  });
-  log.info(`оновлення запущено (pid ${child.pid}), лог: ${LOG_PATH}`);
-  watchInstall();
-  return installState();
-}
-
-/** Чекати, доки скрипт оновлення залишить результат. */
-function watchInstall() {
-  if (installTimer || installState().state !== 'running') return;
-
-  installTimer = setInterval(() => {
-    let result = null;
-    try {
-      result = JSON.parse(fs.readFileSync(RESULT_PATH, 'utf8'));
-    } catch {
-      if (Date.now() - (installState().startedAt || 0) > INSTALL_STALE_MS) {
-        finishInstall({ code: -1, step: 'stale', head: '' });
-      }
-      return;
-    }
-
-    try { fs.unlinkSync(RESULT_PATH); } catch { /* уже прибрали */ }
-    finishInstall(result);
-  }, INSTALL_POLL_MS);
-  installTimer.unref();
-}
-
-function finishInstall(result) {
-  clearInterval(installTimer);
-  installTimer = null;
-
-  const ok = result.code === 0;
-  setInstall({
-    state: ok ? 'done' : 'failed',
-    finishedAt: result.at ? result.at * 1000 : Date.now(),
-    to: result.head || '',
-    step: ok ? '' : (result.step || ''),
-  });
-
-  log.info(ok
-    ? `оновлено до ${String(result.head).slice(0, 7)}`
-    : `оновлення не вдалося на кроці ${result.step} (код ${result.code})`);
-
-  notify.announce(ok
-    ? { kind: 'update', title: t('notify.updated'), message: t('notify.updatedTo', { sha: String(result.head).slice(0, 7) }) }
-    : { kind: 'update', title: t('notify.updateFailed'), message: t('notify.updateFailedHint') });
-
-  // HEAD змінився — старе «доступно N змін» уже неправда.
-  if (ok) check({ quiet: true }).catch(() => {});
-}
-
 // ------------------------------------------------------------ нагляд
 
 function start() {
@@ -329,9 +222,6 @@ function start() {
 
   setTimeout(tick, FIRST_TICK_MS).unref();
   setInterval(tick, TICK_MS).unref();
-
-  // Демон міг піднятись посеред оновлення — його ж і перезапустив install.sh.
-  watchInstall();
 }
 
 /** Коротко — для /state: чи показати позначку «є оновлення». */
@@ -341,13 +231,11 @@ function summary() {
     behind: status.behind || 0,
     more: Boolean(status.more),
     checkedAt: status.checkedAt || 0,
-    install: installState().state || 'idle',
   };
 }
 
 /** Повністю — для вікна налаштувань. */
 function details() {
-  const install = installState();
   return {
     ...summary(),
     enabled: Boolean(config.get().updates?.check),
@@ -359,11 +247,20 @@ function details() {
     url: status.repo ? `https://github.com/${status.repo}/commits/${status.branch || 'main'}` : '',
     error: status.error || '',
     commits: status.commits || [],
-    installStep: install.step || '',
-    installFinishedAt: install.finishedAt || 0,
-    installTo: (install.to || '').slice(0, 7),
-    log: LOG_PATH,
+    // Що виконати, щоб оновитись. Мову установка не скине — візьме з
+    // config.json (див. install.sh).
+    root: PROJECT_DIR,
+    commands: [
+      `cd ${shellQuote(PROJECT_DIR)}`,
+      'git pull --ff-only',
+      'npm run install:all',
+    ],
   };
 }
 
-module.exports = { start, check, install, summary, details };
+// Шлях у лапках лише тоді, коли без них оболонка його розірвала б.
+function shellQuote(value) {
+  return /^[\w@%+=:,./~-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+module.exports = { start, check, summary, details };

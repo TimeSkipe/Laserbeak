@@ -200,7 +200,7 @@ function createServer() {
       return;
     }
 
-    // Примусове оновлення на вимогу — кнопка «Оновити» в програмі.
+    // Примусове оновлення на вимогу — кнопка «Оновити список» у програмі.
     //
     // Демон і так перевіряє живучість сесій щопівхвилини, а процеси
     // переглядає раз на кілька секунд. Але коли ти щойно закрив вкладку
@@ -605,8 +605,8 @@ function createServer() {
       }
     }
 
-    // Оновлення з GitHub. Перевірка — читання, установка — git pull і
-    // повна перезбірка, див. src/updates.js.
+    // Оновлення з GitHub: лише перевірка й підказка, що виконати, —
+    // ставить людина сама, див. src/updates.js.
     if (req.method === 'GET' && p === '/update') {
       return json(res, 200, { ok: true, update: updates.details() });
     }
@@ -614,15 +614,6 @@ function createServer() {
     if (req.method === 'POST' && p === '/update/check') {
       await updates.check({ quiet: true });
       return json(res, 200, { ok: true, update: updates.details() });
-    }
-
-    if (req.method === 'POST' && p === '/update/install') {
-      try {
-        updates.install();
-        return json(res, 200, { ok: true, update: updates.details() });
-      } catch (err) {
-        return json(res, err.code === 'EBUSY' ? 409 : 500, { ok: false, error: err.message });
-      }
     }
 
     if (p === '/health') {

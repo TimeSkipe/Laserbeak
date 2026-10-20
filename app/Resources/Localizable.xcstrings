@@ -491,111 +491,6 @@
         }
       }
     },
-    "Laserbeak зробить git pull і перезбере себе. Це хвилина-дві; програма перезапуститься у меню-барі, а результат скаже банер.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Laserbeak will run git pull and rebuild itself. It takes a minute or two; the app relaunches in the menu bar and a banner reports the result."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Laserbeak provede git pull a znovu se sestaví. Trvá to minutu nebo dvě; aplikace se restartuje v liště nabídek a výsledek oznámí banner."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Laserbeak зробить git pull і перезбере себе. Це хвилина-дві; програма перезапуститься у меню-барі, а результат скаже банер."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Laserbeak выполнит git pull и пересоберёт себя. Это минута-две; программа перезапустится в строке меню, а результат покажет баннер."
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Laserbeak git pull жасап, өзін қайта жинайды. Бұл бір-екі минут алады; бағдарлама мәзір жолағында қайта іске қосылады, ал нәтижесін баннер хабарлайды."
-          }
-        }
-      }
-    },
-    "git pull не пройшов — тут є свої зміни, що розходяться з GitHub": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull failed — there are local changes that diverge from GitHub"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull selhal — jsou tu místní změny, které se rozcházejí s GitHubem"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull не пройшов — тут є свої зміни, що розходяться з GitHub"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull не прошёл — здесь есть локальные изменения, расходящиеся с GitHub"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull өтпеді — мұнда GitHub-пен сәйкес келмейтін жергілікті өзгерістер бар"
-          }
-        }
-      }
-    },
-    "git pull і перезбірка — хвилина-дві. Програма перезапуститься сама.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull and a rebuild — a minute or two. The app will relaunch by itself."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull a nové sestavení — minuta nebo dvě. Aplikace se restartuje sama."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull і перезбірка — хвилина-дві. Програма перезапуститься сама."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull и пересборка — минута-две. Программа перезапустится сама."
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "git pull және қайта жинау — бір-екі минут. Бағдарлама өзі қайта іске қосылады."
-          }
-        }
-      }
-    },
     "macOS не дозволяє програмі показувати сповіщення": {
       "extractionState": "manual",
       "localizations": {
@@ -1926,6 +1821,41 @@
         }
       }
     },
+    "Мова й налаштування збережуться: установка бере їх із config.json. Програма перезапуститься сама.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your language and settings stay: the install takes them from config.json. The app relaunches by itself."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jazyk i nastavení zůstanou: instalace je převezme z config.json. Aplikace se restartuje sama."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мова й налаштування збережуться: установка бере їх із config.json. Програма перезапуститься сама."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Язык и настройки сохранятся: установка берёт их из config.json. Приложение перезапустится само."
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тіл мен баптаулар сақталады: орнату оларды config.json-нан алады. Қолданба өзі қайта іске қосылады."
+          }
+        }
+      }
+    },
     "Мову змінено": {
       "extractionState": "manual",
       "localizations": {
@@ -1996,37 +1926,72 @@
         }
       }
     },
-    "На GitHub є нові зміни, або оновлення завершилось": {
+    "Можна й не самому: відкрий цю теку в Claude Code і попроси «Онови Laserbeak» — інструкція для нього є в CLAUDE.md.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "There are new changes on GitHub, or an update has finished"
+            "value": "Or let Claude do it: open this folder in Claude Code and ask “Update Laserbeak” — the instructions for it are in CLAUDE.md."
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Na GitHubu jsou nové změny nebo skončila aktualizace"
+            "value": "Nebo to nech na Claudovi: otevři tuto složku v Claude Code a požádej „Aktualizuj Laserbeak“ — návod pro něj je v CLAUDE.md."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "На GitHub є нові зміни, або оновлення завершилось"
+            "value": "Можна й не самому: відкрий цю теку в Claude Code і попроси «Онови Laserbeak» — інструкція для нього є в CLAUDE.md."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "На GitHub есть новые изменения или обновление завершилось"
+            "value": "Можно и не самому: открой эту папку в Claude Code и попроси «Обнови Laserbeak» — инструкция для него есть в CLAUDE.md."
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "GitHub-та жаңа өзгерістер бар немесе жаңарту аяқталды"
+            "value": "Өзің істемесең де болады: бұл қалтаны Claude Code-та ашып, «Laserbeak-ті жаңарт» деп сұра — оған арналған нұсқаулық CLAUDE.md ішінде."
+          }
+        }
+      }
+    },
+    "На GitHub зʼявилась нова версія": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A new version is out on GitHub"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na GitHubu je nová verze"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На GitHub зʼявилась нова версія"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На GitHub вышла новая версия"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub-та жаңа нұсқа шықты"
           }
         }
       }
@@ -2451,6 +2416,41 @@
         }
       }
     },
+    "Нові хуки й мод карток діють у нових сесіях Claude Code.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New hooks and the cards mod take effect in new Claude Code sessions."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nové hooky a mod karet platí v nových relacích Claude Code."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нові хуки й мод карток діють у нових сесіях Claude Code."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новые хуки и мод карточек действуют в новых сессиях Claude Code."
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жаңа хуктар мен карточкалар моды Claude Code-тың жаңа сессияларында іске қосылады."
+          }
+        }
+      }
+    },
     "Одна мова на все: це вікно, меню-бар, банери, історія подій і розширення браузера.": {
       "extractionState": "manual",
       "localizations": {
@@ -2486,72 +2486,37 @@
         }
       }
     },
-    "Оновити": {
+    "Онови код і перевстанови Laserbeak у терміналі:": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update"
+            "value": "Update the code and reinstall Laserbeak in a terminal:"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aktualizovat"
+            "value": "V terminálu aktualizuj kód a přeinstaluj Laserbeak:"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Оновити"
+            "value": "Онови код і перевстанови Laserbeak у терміналі:"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обновить"
+            "value": "Обнови код и переустанови Laserbeak в терминале:"
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Жаңарту"
-          }
-        }
-      }
-    },
-    "Оновити Laserbeak?": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Update Laserbeak?"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktualizovat Laserbeak?"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Оновити Laserbeak?"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обновить Laserbeak?"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Laserbeak-ті жаңарту керек пе?"
+            "value": "Терминалда кодты жаңартып, Laserbeak-ті қайта орнат:"
           }
         }
       }
@@ -2587,41 +2552,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Қазір жаңарту: сессиялардың тірі екенін тексеру"
-          }
-        }
-      }
-    },
-    "Оновити не вдалося": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Update failed"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktualizace se nezdařila"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Оновити не вдалося"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обновить не удалось"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Жаңарту сәтсіз аяқталды"
           }
         }
       }
@@ -2692,146 +2622,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Жаңартулар"
-          }
-        }
-      }
-    },
-    "Оновлення — це git pull у теці, звідки Laserbeak встановлено, і повна установка: демон, хуки, програма. Розширення браузера після цього треба перезавантажити на сторінці розширень.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Updating means a git pull in the folder Laserbeak was installed from, then a full install: daemon, hooks, app. Reload the browser extension on the extensions page afterwards."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktualizace znamená git pull ve složce, ze které je Laserbeak nainstalovaný, a úplnou instalaci: démon, hooky, aplikace. Rozšíření prohlížeče pak znovu načti na stránce rozšíření."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Оновлення — це git pull у теці, звідки Laserbeak встановлено, і повна установка: демон, хуки, програма. Розширення браузера після цього треба перезавантажити на сторінці розширень."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обновление — это git pull в папке, откуда установлен Laserbeak, и полная установка: демон, хуки, программа. Расширение браузера после этого нужно перезагрузить на странице расширений."
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Жаңарту — бұл Laserbeak орнатылған қалтада git pull жасау және толық орнату: демон, хуктар, бағдарлама. Осыдан кейін браузер кеңейтімін кеңейтімдер бетінде қайта жүктеу керек."
-          }
-        }
-      }
-    },
-    "Оновлено до %1$@ %2$@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Updated to %1$@ %2$@"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktualizováno na %1$@ %2$@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Оновлено до %1$@ %2$@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обновлено до %1$@ %2$@"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ нұсқасына жаңартылды %2$@"
-          }
-        }
-      }
-    },
-    "Оновлюю…": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Updating…"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktualizuji…"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Оновлюю…"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обновляю…"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Жаңартылуда…"
-          }
-        }
-      }
-    },
-    "Останнє оновлення": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Last update"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Poslední aktualizace"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Останнє оновлення"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Последнее обновление"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Соңғы жаңарту"
           }
         }
       }
@@ -2972,6 +2762,41 @@
           "stringUnit": {
             "state": "translated",
             "value": "Автоматты түрде тексеру"
+          }
+        }
+      }
+    },
+    "Перезавантаж розширення браузера на сторінці розширень (chrome://extensions або brave://extensions).": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload the browser extension on the extensions page (chrome://extensions or brave://extensions)."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znovu načti rozšíření prohlížeče na stránce rozšíření (chrome://extensions nebo brave://extensions)."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезавантаж розширення браузера на сторінці розширень (chrome://extensions або brave://extensions)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезагрузи расширение браузера на странице расширений (chrome://extensions или brave://extensions)."
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Браузер кеңейтімін кеңейтімдер бетінде қайта жүкте (chrome://extensions немесе brave://extensions)."
           }
         }
       }
@@ -3147,41 +2972,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Барлығы көрсетілмеген — толық тізім GitHub-та."
-          }
-        }
-      }
-    },
-    "Показати лог": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show log"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zobrazit log"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Показати лог"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Показать лог"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Журналды көрсету"
           }
         }
       }
@@ -3536,37 +3326,37 @@
         }
       }
     },
-    "Раз на шість годин Laserbeak питає GitHub, чи зʼявились нові коміти, і каже банером. Нічого не завантажує, доки не натиснеш «Оновити».": {
+    "Раз на шість годин Laserbeak питає GitHub, чи зʼявились нові коміти, і каже банером. Сам нічого не завантажує й не встановлює.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Every six hours Laserbeak asks GitHub whether there are new commits and tells you with a banner. Nothing is downloaded until you press “Update”."
+            "value": "Every six hours Laserbeak asks GitHub whether there are new commits and tells you with a banner. It never downloads or installs anything by itself."
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Jednou za šest hodin se Laserbeak zeptá GitHubu, jestli přibyly nové commity, a oznámí to bannerem. Nic nestahuje, dokud nestiskneš „Aktualizovat“."
+            "value": "Jednou za šest hodin se Laserbeak zeptá GitHubu, jestli přibyly nové commity, a oznámí to bannerem. Sám nic nestahuje ani neinstaluje."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Раз на шість годин Laserbeak питає GitHub, чи зʼявились нові коміти, і каже банером. Нічого не завантажує, доки не натиснеш «Оновити»."
+            "value": "Раз на шість годин Laserbeak питає GitHub, чи зʼявились нові коміти, і каже банером. Сам нічого не завантажує й не встановлює."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Раз в шесть часов Laserbeak спрашивает GitHub, появились ли новые коммиты, и сообщает баннером. Ничего не загружает, пока не нажмёшь «Обновить»."
+            "value": "Раз в шесть часов Laserbeak спрашивает GitHub, появились ли новые коммиты, и сообщает баннером. Сам ничего не скачивает и не устанавливает."
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Laserbeak алты сағатта бір рет GitHub-тан жаңа коммиттердің бар-жоғын сұрап, баннермен хабарлайды. «Жаңарту» батырмасын баспайынша ештеңе жүктемейді."
+            "value": "Алты сағат сайын Laserbeak GitHub-тан жаңа коммиттер бар-жоғын сұрап, баннермен хабарлайды. Өзі ештеңе жүктемейді және орнатпайды."
           }
         }
       }
@@ -3882,6 +3672,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ысыру"
+          }
+        }
+      }
+    },
+    "Скопійовано": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zkopírováno"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопійовано"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировано"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Көшірілді"
+          }
+        }
+      }
+    },
+    "Скопіювати": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopírovat"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопіювати"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировать"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Көшіру"
           }
         }
       }
@@ -4516,6 +4376,41 @@
         }
       }
     },
+    "Як оновити": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to update"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jak aktualizovat"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Як оновити"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как обновить"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Қалай жаңартуға болады"
+          }
+        }
+      }
+    },
     "Як у системі": {
       "extractionState": "manual",
       "localizations": {
@@ -4792,41 +4687,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "қойынды"
-          }
-        }
-      }
-    },
-    "впала установка або збірка програми": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "the install or the app build failed"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "selhala instalace nebo sestavení aplikace"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "впала установка або збірка програми"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "упала установка или сборка программы"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "орнату немесе бағдарламаны жинау сәтсіз аяқталды"
           }
         }
       }
@@ -6052,41 +5912,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "көк"
-          }
-        }
-      }
-    },
-    "скрипт оновлення так і не відповів": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "the update script never reported back"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "aktualizační skript se nikdy neozval"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "скрипт оновлення так і не відповів"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "скрипт обновления так и не ответил"
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "жаңарту скрипті жауап бермеді"
           }
         }
       }

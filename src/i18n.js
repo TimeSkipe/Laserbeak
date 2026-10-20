@@ -35,10 +35,6 @@ const STRINGS = {
     'notify.update': 'Нова версія Laserbeak',
     'notify.updateCount': 'Нових змін на GitHub: {count}',
     'notify.updateSome': 'На GitHub є нові зміни',
-    'notify.updated': 'Laserbeak оновлено',
-    'notify.updatedTo': 'Тепер на {sha}',
-    'notify.updateFailed': 'Оновити не вдалося',
-    'notify.updateFailedHint': 'Подробиці — у налаштуваннях, розділ «Оновлення»',
 
     'history.waiting': 'чекає на ввід',
     'history.gone': 'сесія зникла (термінал закрито)',
@@ -56,8 +52,6 @@ const STRINGS = {
     'update.notGitHub': 'origin веде не на GitHub — оновлень не відстежити',
     'update.network': 'GitHub не відповів: {reason}',
     'update.rateLimited': 'GitHub тимчасово обмежив запити — спробую пізніше',
-    'update.busy': 'оновлення вже йде',
-    'update.stale': 'оновлення не повідомило про результат — дивись update.log',
 
     'history.done': 'Готово за {duration}',
     'history.doneNoTime': 'Готово',
@@ -106,10 +100,6 @@ const STRINGS = {
     'notify.update': 'New Laserbeak version',
     'notify.updateCount': 'New changes on GitHub: {count}',
     'notify.updateSome': 'There are new changes on GitHub',
-    'notify.updated': 'Laserbeak updated',
-    'notify.updatedTo': 'Now at {sha}',
-    'notify.updateFailed': 'Update failed',
-    'notify.updateFailedHint': 'Details are in Settings → Updates',
 
     'history.waiting': 'waiting for input',
     'history.gone': 'session vanished (terminal closed)',
@@ -127,8 +117,6 @@ const STRINGS = {
     'update.notGitHub': 'origin does not point to GitHub — updates cannot be tracked',
     'update.network': 'GitHub did not answer: {reason}',
     'update.rateLimited': 'GitHub is rate-limiting requests — will try again later',
-    'update.busy': 'an update is already running',
-    'update.stale': 'the update never reported back — see update.log',
 
     'history.done': 'Done in {duration}',
     'history.doneNoTime': 'Done',
@@ -177,10 +165,6 @@ const STRINGS = {
     'notify.update': 'Nová verze Laserbeak',
     'notify.updateCount': 'Nových změn na GitHubu: {count}',
     'notify.updateSome': 'Na GitHubu jsou nové změny',
-    'notify.updated': 'Laserbeak aktualizován',
-    'notify.updatedTo': 'Nyní na {sha}',
-    'notify.updateFailed': 'Aktualizace se nezdařila',
-    'notify.updateFailedHint': 'Podrobnosti najdeš v Nastavení → Aktualizace',
 
     'history.waiting': 'čeká na vstup',
     'history.gone': 'relace zmizela (terminál zavřen)',
@@ -198,8 +182,6 @@ const STRINGS = {
     'update.notGitHub': 'origin nevede na GitHub — aktualizace nelze sledovat',
     'update.network': 'GitHub neodpověděl: {reason}',
     'update.rateLimited': 'GitHub dočasně omezil požadavky — zkusím to později',
-    'update.busy': 'aktualizace už probíhá',
-    'update.stale': 'aktualizace nehlásila výsledek — viz update.log',
 
     'history.done': 'Hotovo za {duration}',
     'history.doneNoTime': 'Hotovo',
@@ -247,10 +229,6 @@ const STRINGS = {
     'notify.update': 'Новая версия Laserbeak',
     'notify.updateCount': 'Новых изменений на GitHub: {count}',
     'notify.updateSome': 'На GitHub есть новые изменения',
-    'notify.updated': 'Laserbeak обновлён',
-    'notify.updatedTo': 'Теперь на {sha}',
-    'notify.updateFailed': 'Обновить не удалось',
-    'notify.updateFailedHint': 'Подробности — в настройках, раздел «Обновления»',
 
     'history.waiting': 'ждёт ввода',
     'history.gone': 'сессия исчезла (терминал закрыт)',
@@ -268,8 +246,6 @@ const STRINGS = {
     'update.notGitHub': 'origin ведёт не на GitHub — обновления не отследить',
     'update.network': 'GitHub не ответил: {reason}',
     'update.rateLimited': 'GitHub временно ограничил запросы — попробую позже',
-    'update.busy': 'обновление уже идёт',
-    'update.stale': 'обновление не сообщило о результате — смотри update.log',
 
     'history.done': 'Готово за {duration}',
     'history.doneNoTime': 'Готово',
@@ -317,10 +293,6 @@ const STRINGS = {
     'notify.update': 'Laserbeak: жаңа нұсқа',
     'notify.updateCount': 'GitHub-та жаңа өзгерістер: {count}',
     'notify.updateSome': 'GitHub-та жаңа өзгерістер бар',
-    'notify.updated': 'Laserbeak жаңартылды',
-    'notify.updatedTo': 'Қазіргі нұсқа: {sha}',
-    'notify.updateFailed': 'Жаңарту сәтсіз аяқталды',
-    'notify.updateFailedHint': 'Толығырақ — баптауларда, «Жаңартулар» бөлімінде',
 
     'history.waiting': 'енгізуді күтуде',
     'history.gone': 'сессия жоғалды (терминал жабылды)',
@@ -338,8 +310,6 @@ const STRINGS = {
     'update.notGitHub': 'origin GitHub-та емес — жаңартуларды бақылау мүмкін емес',
     'update.network': 'GitHub жауап бермеді: {reason}',
     'update.rateLimited': 'GitHub сұраныстарды уақытша шектеді — кейінірек қайталап көремін',
-    'update.busy': 'жаңарту қазір жүріп жатыр',
-    'update.stale': 'жаңарту нәтижесін хабарламады — update.log файлын қара',
 
     'history.done': '{duration} ішінде дайын',
     'history.doneNoTime': 'Дайын',

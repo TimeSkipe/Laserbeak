@@ -102,7 +102,7 @@ struct Sidebar: View {
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 8) {
-                if update.isAvailable || update.isInstalling {
+                if update.isAvailable {
                     UpdateNudge(update: update) { selection = .updates }
                 }
                 if AppLanguage.needsRelaunch(daemonLanguage: client.state?.language ?? "") {
@@ -164,22 +164,16 @@ private struct UpdateNudge: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 8) {
-                if update.isInstalling {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .foregroundStyle(.white, .green)
-                        .font(.title3)
-                }
+                Image(systemName: "arrow.down.circle.fill")
+                    .foregroundStyle(.white, .green)
+                    .font(.title3)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(update.isInstalling ? String(localized: "Оновлюю…") : String(localized: "Доступне оновлення"))
+                    Text("Доступне оновлення")
                         .font(.callout.weight(.semibold))
-                    if !update.isInstalling {
-                        Text(String(format: String(localized: "Нових змін: %@"), update.behindText))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(String(format: String(localized: "Нових змін: %@"), update.behindText))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }

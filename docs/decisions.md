@@ -838,14 +838,17 @@ Unauthenticated GitHub allows 60 requests an hour, so the check runs
 every six hours and its result is kept on disk: the daemon restarts after
 every edit in `src/`.
 
-### A detached child survives `launchctl bootout`
+### Updating is a set of instructions, not a button
 
-The Update button runs `install.sh`, and `install.sh` restarts the
-daemon — the process that started it. launchd, stopping a job, kills its
-process group; a child spawned with `detached: true` has its own
-(`setsid`), and was verified to survive a bootout of its parent. The
-outcome cannot be reported by the daemon that started the update, so the
-script leaves `update-result.json` and the next daemon reads it.
+For a while the Update button ran `git pull` and `install.sh` itself, in
+a script detached from the daemon (it has to be: `install.sh` restarts
+the daemon, and a child spawned with `detached: true` — its own process
+group — was verified to survive `launchctl bootout` of its parent). It
+worked, but a rebuild of the app behind your back, with its outcome
+reported afterwards from a log, was not what was wanted. The window now
+shows what is new and the three commands to run, with a Copy button;
+`CLAUDE.md` tells a Claude Code session how to do the same when asked.
+A failed `git pull` is then visible where it happens, in the terminal.
 
 ### An agent app does not come to the front by itself
 

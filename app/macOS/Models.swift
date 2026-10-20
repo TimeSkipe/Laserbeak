@@ -519,18 +519,15 @@ struct UpdateSummary: Codable, Hashable {
     /// Нових комітів більше, ніж демон бачив у списку.
     var more: Bool = false
     var checkedAt: Double = 0
-    /// idle | running | done | failed
-    var install: String = "idle"
 
     var isAvailable: Bool { state == "available" }
-    var isInstalling: Bool { install == "running" }
 
     /// «3» або «50+».
     var behindText: String { more ? "\(behind)+" : "\(behind)" }
 
     init() {}
 
-    enum CodingKeys: String, CodingKey { case state, behind, more, checkedAt, install }
+    enum CodingKeys: String, CodingKey { case state, behind, more, checkedAt }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -538,7 +535,6 @@ struct UpdateSummary: Codable, Hashable {
         behind    = c.value(.behind, 0)
         more      = c.value(.more, false)
         checkedAt = c.value(.checkedAt, 0)
-        install   = c.value(.install, "idle")
     }
 }
 
@@ -575,17 +571,15 @@ struct UpdateDetails: Codable, Hashable {
     var url: String = ""
     var error: String = ""
     var commits: [UpdateCommit] = []
-    /// На якому кроці впало оновлення: pull | install | stale.
-    var installStep: String = ""
-    var installFinishedAt: Double = 0
-    var installTo: String = ""
-    var log: String = ""
+    /// Звідки встановлено Laserbeak і що там виконати, щоб оновитись.
+    var root: String = ""
+    var commands: [String] = []
 
     init() {}
 
     enum CodingKeys: String, CodingKey {
         case enabled, checking, version, head, url, error, commits
-        case installStep, installFinishedAt, installTo, log
+        case root, commands
     }
 
     init(from decoder: Decoder) throws {
@@ -600,10 +594,8 @@ struct UpdateDetails: Codable, Hashable {
         url               = c.value(.url, "")
         error             = c.value(.error, "")
         commits           = c.value(.commits, [UpdateCommit]())
-        installStep       = c.value(.installStep, "")
-        installFinishedAt = c.value(.installFinishedAt, 0)
-        installTo         = c.value(.installTo, "")
-        log               = c.value(.log, "")
+        root              = c.value(.root, "")
+        commands          = c.value(.commands, [String]())
     }
 
     func encode(to encoder: Encoder) throws {}

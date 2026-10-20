@@ -172,14 +172,6 @@ final class DaemonClient: ObservableObject {
         return (try? JSONDecoder().decode(UpdateReply.self, from: data))?.update
     }
 
-    /// git pull і повна перезбірка. Програму по дорозі перезапустить сам
-    /// install.sh, тож результат скаже вже нова — банером.
-    func installUpdate() async -> UpdateDetails? {
-        guard let data = await call("update/install", [:]) else { return nil }
-        await refresh()
-        return (try? JSONDecoder().decode(UpdateReply.self, from: data))?.update
-    }
-
     // ------------------------------------------------------------ транспорт
 
     @discardableResult

@@ -130,7 +130,7 @@ struct NotificationKind: Identifiable {
         case "stop":       return String(localized: "Claude чи Codex завершили хід і чекають на тебе")
         case "permission": return String(localized: "Агент питає дозволу на дію або схвалення плану")
         case "idle":       return String(localized: "Приблизно за хвилину після відповіді, якщо ти мовчиш. Дублює попереднє")
-        case "update":     return String(localized: "На GitHub є нові зміни, або оновлення завершилось")
+        case "update":     return String(localized: "На GitHub зʼявилась нова версія")
         default:           return ""
         }
     }
@@ -308,16 +308,18 @@ private struct KindRow: View {
 
 // MARK: - Оновлення
 
+/// Чи вийшла нова версія і як її поставити. Ставить людина сама: вікно
+/// лише розписує, що виконати, — нічого не перебудовується за спиною.
 struct UpdatesPane: View {
     @ObservedObject var client: DaemonClient
 
     @State private var details: UpdateDetails?
     @State private var busy = false
-    @State private var confirmInstall = false
+    @State private var copied = false
 
     private var summary: UpdateSummary {
-        // Стан установки й «є оновлення» живуть і в /state — беремо
-        // свіжіше, ніж у разово завантажених деталях.
+        // «Є оновлення» живе і в /state — беремо свіжіше, ніж у разово
+        // завантажених деталях.
         client.state?.update ?? details?.summary ?? UpdateSummary()
     }
 
@@ -327,9 +329,11 @@ struct UpdatesPane: View {
                 hero
             }
 
-            if let details, summary.install == "done" || summary.install == "failed" {
-                Section("Останнє оновлення") {
-                    lastInstall(details)
+            if let details, summary.isAvailable, !details.commands.isEmpty {
+                Section {
+                    instructions(details)
+                } header: {
+                    Text("Як оновити")
                 }
             }
 
@@ -351,14 +355,12 @@ struct UpdatesPane: View {
                 Toggle(isOn: autoCheck) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Перевіряти автоматично")
-                        Text("Раз на шість годин Laserbeak питає GitHub, чи зʼявились нові коміти, і каже банером. Нічого не завантажує, доки не натиснеш «Оновити».")
+                        Text("Раз на шість годин Laserbeak питає GitHub, чи зʼявились нові коміти, і каже банером. Сам нічого не завантажує й не встановлює.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .toggleStyle(.switch)
-            } footer: {
-                Text("Оновлення — це git pull у теці, звідки Laserbeak встановлено, і повна установка: демон, хуки, програма. Розширення браузера після цього треба перезавантажити на сторінці розширень.")
             }
         }
         .formStyle(.grouped)
@@ -374,20 +376,9 @@ struct UpdatesPane: View {
             }
         }
         .task { details = await client.loadUpdate() }
-        // Установка закінчилась — підтягуємо подробиці: на чому впала чи
-        // до якого коміту оновилось.
-        .onChange(of: summary.install) { _, _ in
+        // Нова версія зʼявилась, поки вікно відкрите, — підтягуємо, що в ній.
+        .onChange(of: summary.behind) { _, _ in
             Task { details = await client.loadUpdate() }
-        }
-        .confirmationDialog(
-            String(localized: "Оновити Laserbeak?"),
-            isPresented: $confirmInstall,
-            titleVisibility: .visible
-        ) {
-            Button("Оновити") { install() }
-            Button("Скасувати", role: .cancel) { }
-        } message: {
-            Text("Laserbeak зробить git pull і перезбере себе. Це хвилина-дві; програма перезапуститься у меню-барі, а результат скаже банер.")
         }
     }
 
@@ -395,12 +386,7 @@ struct UpdatesPane: View {
 
     private var hero: some View {
         HStack(spacing: 14) {
-            if summary.isInstalling {
-                ProgressView()
-                    .frame(width: 46, height: 46)
-            } else {
-                SymbolTile(symbol: heroSymbol, color: heroColor, size: 46)
-            }
+            SymbolTile(symbol: heroSymbol, color: heroColor, size: 46)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(heroTitle)
@@ -413,12 +399,6 @@ struct UpdatesPane: View {
 
             Spacer(minLength: 12)
 
-            if summary.isAvailable && !summary.isInstalling {
-                Button("Оновити") { confirmInstall = true }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-            }
-
             Button {
                 check()
             } label: {
@@ -429,9 +409,56 @@ struct UpdatesPane: View {
                 }
             }
             .controlSize(.large)
-            .disabled(busy || summary.isInstalling)
+            .disabled(busy)
         }
         .padding(.vertical, 6)
+    }
+
+    /// Покроково: що виконати і що зробити після.
+    private func instructions(_ details: UpdateDetails) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            step(1, String(localized: "Онови код і перевстанови Laserbeak у терміналі:"))
+
+            HStack(alignment: .top, spacing: 10) {
+                Text(verbatim: details.commands.joined(separator: "\n"))
+                    .font(.callout.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    copy(details.commands)
+                } label: {
+                    Label(copied ? String(localized: "Скопійовано") : String(localized: "Скопіювати"),
+                          systemImage: copied ? "checkmark" : "doc.on.doc")
+                }
+                .controlSize(.small)
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .padding(.leading, 30)
+
+            step(2, String(localized: "Мова й налаштування збережуться: установка бере їх із config.json. Програма перезапуститься сама."))
+            step(3, String(localized: "Перезавантаж розширення браузера на сторінці розширень (chrome://extensions або brave://extensions)."))
+            step(4, String(localized: "Нові хуки й мод карток діють у нових сесіях Claude Code."))
+
+            Text("Можна й не самому: відкрий цю теку в Claude Code і попроси «Онови Laserbeak» — інструкція для нього є в CLAUDE.md.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func step(_ number: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(verbatim: "\(number)")
+                .font(.caption.weight(.bold).monospacedDigit())
+                .foregroundStyle(.white)
+                .frame(width: 20, height: 20)
+                .background(Color.accentColor, in: Circle())
+            Text(text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var heroSymbol: String {
@@ -455,7 +482,6 @@ struct UpdatesPane: View {
     }
 
     private var heroTitle: String {
-        if summary.isInstalling { return String(localized: "Оновлюю…") }
         switch summary.state {
         case "current":   return String(localized: "Встановлено найновішу версію")
         case "available": return String(format: String(localized: "Нових змін на GitHub: %@"), summary.behindText)
@@ -466,9 +492,6 @@ struct UpdatesPane: View {
     }
 
     private var heroSubtitle: String {
-        if summary.isInstalling {
-            return String(localized: "git pull і перезбірка — хвилина-дві. Програма перезапуститься сама.")
-        }
         if summary.state == "error", let error = details?.error, !error.isEmpty {
             return error
         }
@@ -486,51 +509,6 @@ struct UpdatesPane: View {
                                 when.formatted(.relative(presentation: .named))))
         }
         return parts.joined(separator: " · ")
-    }
-
-    @ViewBuilder
-    private func lastInstall(_ details: UpdateDetails) -> some View {
-        let when = details.installFinishedAt > 0
-            ? Date(timeIntervalSince1970: details.installFinishedAt / 1000).formatted(.relative(presentation: .named))
-            : ""
-
-        if summary.install == "done" {
-            Label {
-                Text(String(format: String(localized: "Оновлено до %1$@ %2$@"), details.installTo, when))
-            } icon: {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-            }
-        } else {
-            HStack {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Оновити не вдалося")
-                        Text(stepText(details.installStep))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } icon: {
-                    Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
-                }
-
-                Spacer()
-
-                if !details.log.isEmpty {
-                    Button("Показати лог") {
-                        NSWorkspace.shared.open(URL(fileURLWithPath: details.log))
-                    }
-                }
-            }
-        }
-    }
-
-    private func stepText(_ step: String) -> String {
-        switch step {
-        case "pull":    return String(localized: "git pull не пройшов — тут є свої зміни, що розходяться з GitHub")
-        case "install": return String(localized: "впала установка або збірка програми")
-        case "stale":   return String(localized: "скрипт оновлення так і не відповів")
-        default:        return step
-        }
     }
 
     private var autoCheck: Binding<Bool> {
@@ -556,9 +534,15 @@ struct UpdatesPane: View {
         }
     }
 
-    private func install() {
+    /// Команди одним блоком, кожна з нового рядка — вставив у термінал, і
+    /// вони пішли по черзі.
+    private func copy(_ commands: [String]) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(commands.joined(separator: "\n") + "\n", forType: .string)
+        copied = true
         Task {
-            if let fresh = await client.installUpdate() { details = fresh }
+            try? await Task.sleep(for: .seconds(2))
+            copied = false
         }
     }
 }

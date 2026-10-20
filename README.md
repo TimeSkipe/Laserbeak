@@ -777,7 +777,7 @@ The window has a sidebar:
 | **Activity** | what happened, by day: sessions opened, finished, asked for permission |
 | **General** | language, version, where the data lives, the daemon log |
 | **Notifications** | per event — finished, permission, input reminder, new version — on/off and a sound |
-| **Updates** | is there a newer version on GitHub, what is new, the Update button |
+| **Updates** | is there a newer version on GitHub, what is new, how to install it |
 
 When a new version is out, a green note appears at the bottom of the
 sidebar, and the menu bar gets an "Update available" item.
@@ -811,12 +811,20 @@ Every six hours Laserbeak asks GitHub whether the branch this copy was
 cloned from has new commits, and says so with a banner. It only reads:
 nothing is downloaded and the working copy is not touched.
 
-**Update** in Settings → Updates runs `git pull --ff-only` and the full
-install. It takes a minute or two; the app relaunches in the menu bar
-and a banner reports the result. If this copy has its own commits that
-diverge from GitHub, `git pull` stops rather than merging anything, and
-the section says so, with the log a click away
-(`~/.laserbeak/update.log`). Reload the browser extension afterwards.
+Installing it is yours: Settings → Updates spells it out, with what is
+new and the commands ready to copy —
+
+```bash
+cd /path/to/Laserbeak
+git pull --ff-only
+npm run install:all
+```
+
+— then reload the browser extension. Your language and settings stay;
+the installer takes them from `config.json`. Or open the folder in
+Claude Code and ask it to update Laserbeak: `CLAUDE.md` tells it how.
+Nothing is rebuilt behind your back, and if `git pull` stops (your own
+commits diverge from GitHub), you see it right there in the terminal.
 
 Automatic checks are switched off in the same section.
 
@@ -1035,7 +1043,7 @@ src/              the Node daemon
   projects.js       project registry (survives restarts)
   sessionSettings.js  custom session names and notification switches
   settings.js       what the window may change in config.json
-  updates.js        newer version on GitHub; the Update button
+  updates.js        newer version on GitHub, and how to install it
   archive.js        conversation archive (transcripts live only 30 days)
   shots.js          region screenshots from the browser → prompt into a session
   roots.js          resolving the project root from a working directory
@@ -1093,7 +1101,7 @@ Full description in [docs/api.md](docs/api.md). Everything is on
 | POST | `/refresh` | the same, after checking everything now |
 | GET, POST | `/settings` | language, banners, sounds, update checks |
 | GET | `/update` | the update status |
-| POST | `/update/check`, `/update/install` | check now; git pull and reinstall |
+| POST | `/update/check` | check now |
 | POST | `/sessions/mode`, `/command`, `/interrupt`, `/forget`, `/settings` | steering a session |
 | POST | `/sessions/shot` | a screenshot from the browser |
 | POST | `/sessions/input`, `/spawn`, `/stop` | the primitives; the app no longer uses them |

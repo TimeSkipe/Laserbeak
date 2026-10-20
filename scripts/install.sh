@@ -28,7 +28,7 @@ mkdir -p "$DATA" "$AGENTS" "$ROOT/build"
 #   (нічого, перша установка)               як у системі
 #   (нічого, перевстановлення чи оновлення) та, що вже вибрана
 #
-# Останнє важливе: оновлення з програми ганяє цей самий скрипт, і
+# Останнє важливе: оновлення — це git pull і цей самий скрипт, і
 # скидати вибрану мову на "auto" щоразу було б підступно.
 
 CURRENT_LANG="$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$DATA/config.json','utf8')).language||'')}catch(e){console.log('')}" 2>/dev/null || true)"

@@ -26,7 +26,7 @@
 | `modes.js` | reading the permission mode from the Claude Code status line, effort from `~/.claude/settings.json` |
 | `reaper.js` | collecting sessions that are no longer alive |
 | `appguard.js` | keeps the Mac app alive: it is the menu bar and the banners |
-| `updates.js` | is there a newer version on GitHub; runs `scripts/update.sh` and reads its outcome |
+| `updates.js` | is there a newer version on GitHub, and the commands that install it |
 
 ### Actions
 
@@ -59,7 +59,7 @@ the `.xcodeproj` itself is not kept in git. One target, macOS 14+.
 | `MainWindow.swift` | the window: sidebar (Sessions, Activity, Settings: General / Notifications / Updates) and the selected pane |
 | `SessionsPane.swift` | projects as cards, sessions as rows: status, mode, the actions menu (details, name, model, effort, compact, interrupt, remove) |
 | `ActivityPane.swift` | event history by day |
-| `SettingsPanes.swift` | General (language, about), Notifications (per event: on/off and sound), Updates (status, what is new, update) |
+| `SettingsPanes.swift` | General (language, about), Notifications (per event: on/off and sound), Updates (status, what is new, how to install) |
 | `Views.swift` | sheets: session details, session name and notifications, project colour and icon; the empty state |
 | `Theme.swift` | cards, status pills, icon tiles, the pulsing status badge |
 | `MenuBar.swift` | the menu bar icon and menu |
@@ -238,7 +238,6 @@ running session. `claude plugin test claude/reply-cards` runs its tests.
 | Script | What it does |
 |--------|--------------|
 | `install.sh` | full install: language, dependencies, build, LaunchAgents, hooks, `start`/`stop`, the reply-cards mod |
-| `update.sh` | what the "Update" button runs: `git pull --ff-only`, then `install.sh`; leaves `update-result.json` |
 | `uninstall.sh` | removes everything, keeps the data |
 | `build-app.sh` | builds the Mac app and puts it in `/Applications` |
 | `team-id.sh` | resolves the signing Team ID from this machine's keychain, so the project builds for anyone |
