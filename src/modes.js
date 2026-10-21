@@ -38,7 +38,7 @@ const path = require('path');
 const tmux = require('./tmux');
 const terminals = require('./terminals');
 const log = require('./log');
-const { t } = require('./i18n');
+const { t, said } = require('./i18n');
 
 const TAIL_BYTES = 96 * 1024;
 const MAX_PRESSES = 8;
@@ -203,7 +203,7 @@ function readBoth(session) {
 
   readNow(session)
     .then(({ mode, effort }) => cache.set(session.sid, { at: Date.now(), mode, effort }))
-    .catch(() => {});
+    .catch((err) => log.warnRepeated(`mode ${session.sid}`, `режим сесії ${session.sid.slice(0, 8)} не прочитано`, err));
 
   return stale;
 }
@@ -242,7 +242,7 @@ function title(mode) {
  */
 async function switchTo({ session, press, target }) {
   if (!KNOWN.includes(target)) {
-    throw new Error(t('err.unknownMode', { mode: target }));
+    throw said('err.unknownMode', { mode: target });
   }
 
   const before = (await readNow(session)).mode;

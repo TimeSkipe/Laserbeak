@@ -89,7 +89,7 @@ function revive(app) {
   // Ті самі аргументи, що й у LaunchAgent: -g щоб не лізти на передній
   // план, --background щоб не відкривати вікно.
   execFile('/usr/bin/open', ['-g', '-a', app, '--args', '--background'], (err) => {
-    if (err) log.warn(`програму підняти не вдалося: ${err.message}`);
+    if (err) log.warnRepeated('revive', `програму ${app} підняти не вдалося`, err);
   });
 }
 

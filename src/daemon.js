@@ -32,7 +32,7 @@ const server = createServer();
 server.on('error', (e) => {
   log.error(e.code === 'EADDRINUSE'
     ? `порт ${cfg.port} зайнятий — схоже, демон уже запущено`
-    : `сервер: ${e.message}`);
+    : 'сервер', e);
   process.exit(1);
 });
 
@@ -76,7 +76,7 @@ setInterval(() => {
         projectPath: session.projectPath,
       });
     } catch (e) {
-      log.warn(`архів ${session.sid}: ${e.message}`);
+      log.warnRepeated(`archive ${session.sid}`, `архів ${session.sid.slice(0, 8)}`, e);
     }
   }
 
@@ -86,7 +86,7 @@ setInterval(() => {
   try {
     archive.ingestRecent();
   } catch (e) {
-    log.warn(`архів: ${e.message}`);
+    log.warnRepeated('archive-recent', 'архів: дочитування свіжих транскриптів', e);
   }
 }, LIVE_ARCHIVE_MS).unref();
 
@@ -101,12 +101,12 @@ setInterval(() => {
   try {
     reaper.reap();
   } catch (e) {
-    log.warn(`перевірка сесій: ${e.message}`);
+    log.warnRepeated('reaper', 'перевірка сесій', e);
   }
 }, REAP_MS).unref();
 
-process.on('uncaughtException', (e) => log.error(`uncaught: ${e.stack || e}`));
-process.on('unhandledRejection', (e) => log.error(`unhandled: ${(e && e.stack) || e}`));
+process.on('uncaughtException', (e) => log.error('необроблений виняток', e));
+process.on('unhandledRejection', (e) => log.error('необроблений відмовлений проміс', e));
 
 for (const sig of ['SIGTERM', 'SIGINT']) {
   process.on(sig, () => {

@@ -23,6 +23,10 @@ final class DaemonClient: ObservableObject {
 
     private static let failuresBeforeOffline = 2
 
+    /// Остання помилка, яку вже записано в лог. Опитування йде кожні дві
+    /// секунди, і без цього лежачий демон давав би тридцять рядків на хвилину.
+    private var loggedError: String?
+
     /// Опитування живе, доки живе програма, а не доки відкрите вікно:
     /// інакше меню-бар показував би застиглий стан.
     init(baseURL: URL?, pollEverySeconds: Double = 2) {
@@ -59,10 +63,22 @@ final class DaemonClient: ObservableObject {
             isConnected = true
             failures = 0
             lastError = nil
+            if loggedError != nil {
+                loggedError = nil
+                AppLog.write("звʼязок із демоном відновлено")
+            }
         } catch {
             failures += 1
             lastError = error.localizedDescription
             if failures >= Self.failuresBeforeOffline { isConnected = false }
+
+            // Одна невдача — ще не обрив (див. failuresBeforeOffline), а
+            // зламаний розбір пишемо одразу: він сам не минеться.
+            let text = AppLog.describe(error)
+            if (error is DecodingError || failures >= Self.failuresBeforeOffline), text != loggedError {
+                loggedError = text
+                AppLog.error("GET /state: \(text)")
+            }
         }
     }
 
@@ -148,7 +164,7 @@ final class DaemonClient: ObservableObject {
 
     func loadSettings() async -> SettingsReply? {
         guard let http, let reply = try? await http.get("settings"), reply.isOK else { return nil }
-        return try? JSONDecoder().decode(SettingsReply.self, from: reply.data)
+        return decode(SettingsReply.self, reply.data, from: "settings")
     }
 
     /// Зберегти частину налаштувань. Демон перевіряє кожне значення й
@@ -156,20 +172,20 @@ final class DaemonClient: ObservableObject {
     func saveSettings(_ patch: [String: Any]) async -> SettingsReply? {
         guard let data = await call("settings", patch) else { return nil }
         await refresh()
-        return try? JSONDecoder().decode(SettingsReply.self, from: data)
+        return decode(SettingsReply.self, data, from: "settings")
     }
 
     // ------------------------------------------------------------ оновлення
 
     func loadUpdate() async -> UpdateDetails? {
         guard let http, let reply = try? await http.get("update"), reply.isOK else { return nil }
-        return (try? JSONDecoder().decode(UpdateReply.self, from: reply.data))?.update
+        return decode(UpdateReply.self, reply.data, from: "update")?.update
     }
 
     func checkUpdate() async -> UpdateDetails? {
         guard let data = await call("update/check", [:], timeout: 30) else { return nil }
         await refresh()
-        return (try? JSONDecoder().decode(UpdateReply.self, from: data))?.update
+        return decode(UpdateReply.self, data, from: "update/check")?.update
     }
 
     // ------------------------------------------------------------ транспорт
@@ -192,11 +208,24 @@ final class DaemonClient: ObservableObject {
             let reply = try await http.post(path, json: body, timeout: timeout)
             guard reply.isOK else {
                 lastError = reply.errorText ?? "HTTP \(reply.status)"
+                AppLog.error("дія POST /\(path) → \(reply.status): \(lastError ?? "")")
                 return nil
             }
             return reply.data
         } catch {
             lastError = error.localizedDescription
+            AppLog.error("дія POST /\(path): \(AppLog.describe(error))")
+            return nil
+        }
+    }
+
+    /// Розбір відповіді, що не валить екран мовчки: якщо поле не те, у
+    /// лозі буде, яке саме.
+    private func decode<T: Decodable>(_ type: T.Type, _ data: Data, from path: String) -> T? {
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch {
+            AppLog.error("розбір відповіді /\(path): \(AppLog.describe(error))")
             return nil
         }
     }

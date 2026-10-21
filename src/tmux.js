@@ -19,9 +19,21 @@
 const fs = require('fs');
 const { execFile, execFileSync } = require('child_process');
 const log = require('./log');
-const { t } = require('./i18n');
+const { t, said } = require('./i18n');
 
 let binary = null;
+
+// stderr tmux забираємо собі. Без цього «no server running» сипалось
+// просто в daemon.log — без часу і без слова, хто питав.
+const QUIET = { stdio: ['ignore', 'pipe', 'pipe'] };
+
+/** Чому tmux відмовив — без тексту, який ми в нього слали. */
+function reason(err) {
+  const stderr = err.stderr ? String(err.stderr).trim() : '';
+  if (stderr) return stderr;
+  if (err.code) return err.code;
+  return err.status != null ? `код виходу ${err.status}` : 'невідомо чому';
+}
 
 function tmuxPath() {
   if (binary && fs.existsSync(binary)) return binary;
@@ -47,11 +59,13 @@ function paneExists(pane) {
 
   try {
     const out = execFileSync(bin, ['list-panes', '-a', '-F', '#{pane_id}'], {
+      ...QUIET,
       encoding: 'utf8',
       timeout: 3000,
     });
     return out.split('\n').map((s) => s.trim()).includes(pane);
   } catch {
+    // Сервера tmux немає — то й панелі немає. Це відповідь, а не збій.
     return false;
   }
 }
@@ -65,12 +79,19 @@ function paneExists(pane) {
  */
 function send(pane, text) {
   const bin = tmuxPath();
-  if (!bin) throw new Error(t('err.noTmux'));
-  if (!pane) throw new Error(t('err.notInTmux'));
-  if (!paneExists(pane)) throw new Error(t('err.paneGone'));
+  if (!bin) throw said('err.noTmux');
+  if (!pane) throw said('err.notInTmux');
+  if (!paneExists(pane)) throw said('err.paneGone');
 
-  execFileSync(bin, ['send-keys', '-t', pane, '-l', String(text)], { timeout: 5000 });
-  execFileSync(bin, ['send-keys', '-t', pane, 'Enter'], { timeout: 5000 });
+  try {
+    execFileSync(bin, ['send-keys', '-t', pane, '-l', String(text)], { ...QUIET, timeout: 5000 });
+    execFileSync(bin, ['send-keys', '-t', pane, 'Enter'], { ...QUIET, timeout: 5000 });
+  } catch (err) {
+    // Помилка execFileSync несе весь рядок команди, тобто й сам запит
+    // людини. У лог і клієнту йде лише те, що сказав tmux.
+    log.error(`tmux send-keys у панель ${pane}: ${reason(err)}`);
+    throw said('err.tmuxFailed');
+  }
 
   return true;
 }
@@ -82,9 +103,10 @@ function shiftTab(pane) {
 
   try {
     // BTab — це back-tab, тобто Shift+Tab.
-    execFileSync(bin, ['send-keys', '-t', pane, 'BTab'], { timeout: 5000 });
+    execFileSync(bin, ['send-keys', '-t', pane, 'BTab'], { ...QUIET, timeout: 5000 });
     return true;
-  } catch {
+  } catch (err) {
+    log.warn(`tmux Shift+Tab у панель ${pane}: ${reason(err)}`);
     return false;
   }
 }
@@ -95,9 +117,10 @@ function interrupt(pane) {
   if (!bin || !pane) return false;
 
   try {
-    execFileSync(bin, ['send-keys', '-t', pane, 'C-c'], { timeout: 5000 });
+    execFileSync(bin, ['send-keys', '-t', pane, 'C-c'], { ...QUIET, timeout: 5000 });
     return true;
-  } catch {
+  } catch (err) {
+    log.warn(`tmux Ctrl-C у панель ${pane}: ${reason(err)}`);
     return false;
   }
 }
@@ -115,6 +138,7 @@ function panePid(pane) {
 
   try {
     const out = execFileSync(bin, ['display-message', '-p', '-t', pane, '#{pane_pid}'], {
+      ...QUIET,
       encoding: 'utf8',
       timeout: 3000,
     });
@@ -144,7 +168,7 @@ function listPanes() {
   try {
     const out = execFileSync(bin,
       ['list-panes', '-a', '-F', '#{pane_id}\t#{pane_current_command}\t#{pane_current_path}'],
-      { encoding: 'utf8', timeout: 3000 });
+      { ...QUIET, encoding: 'utf8', timeout: 3000 });
 
     return out.split('\n').filter(Boolean).map((line) => {
       const [pane, command, cwd] = line.split('\t');

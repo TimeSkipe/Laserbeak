@@ -217,7 +217,7 @@ function start() {
     const every = status.state === 'error' ? RETRY_MS : CHECK_EVERY_MS;
     if (!moved && Date.now() - (status.checkedAt || 0) < every) return;
 
-    check().catch((err) => log.warn(`перевірка оновлень: ${err.message}`));
+    check().catch((err) => log.warn('перевірка оновлень', err));
   };
 
   setTimeout(tick, FIRST_TICK_MS).unref();

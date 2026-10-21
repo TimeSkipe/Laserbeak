@@ -12,6 +12,7 @@
     "xcode": "cd app && xcodegen generate && open Laserbeak.xcodeproj",
     "restart": "launchctl kickstart -k gui/$(id -u)/com.laserbeak.daemon",
     "logs": "tail -f ~/.laserbeak/daemon.log",
+    "errors": "touch ~/.laserbeak/errors.log && tail -n 40 -f ~/.laserbeak/errors.log",
     "state": "curl -s http://127.0.0.1:8787/state | python3 -m json.tool",
     "archive:import": "node scripts/archive-import.js",
     "archive:dry": "node scripts/archive-import.js --dry",

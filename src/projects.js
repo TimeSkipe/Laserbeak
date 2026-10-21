@@ -36,7 +36,7 @@ function save() {
   saveTimer = setTimeout(() => {
     const body = JSON.stringify({ projects: [...known.values()] }, null, 2);
     fs.writeFile(STORE_PATH, body, (err) => {
-      if (err) log.error(`projects.json: ${err.message}`);
+      if (err) log.errorRepeated('projects-save', 'запис projects.json', err);
     });
   }, 500);
 }

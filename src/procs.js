@@ -35,6 +35,7 @@ const AGENTS = new Set(['claude', 'codex']);
 function processTable() {
   try {
     const out = execFileSync('/bin/ps', ['-eo', 'pid=,ppid=,comm='], {
+      stdio: ['ignore', 'pipe', 'pipe'],
       encoding: 'utf8',
       timeout: 4000,
       maxBuffer: 8 * 1024 * 1024,
@@ -51,7 +52,7 @@ function processTable() {
     }
     return table;
   } catch (err) {
-    log.warn(`таблиця процесів: ${err.message}`);
+    log.warnRepeated('ps', 'таблиця процесів', err);
     return new Map();
   }
 }

@@ -35,7 +35,7 @@ function save() {
   saveTimer = setTimeout(() => {
     const body = JSON.stringify({ sessions: Object.fromEntries(overrides) }, null, 2);
     fs.writeFile(STORE_PATH, body, (err) => {
-      if (err) log.error(`sessions.json: ${err.message}`);
+      if (err) log.errorRepeated('sessions-save', 'запис sessions.json', err);
     });
   }, 500);
 }

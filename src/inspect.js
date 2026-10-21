@@ -203,7 +203,7 @@ async function refresh() {
       openProjects: openProjects(runningEditors),
     };
   } catch (err) {
-    log.warn(`огляд процесів: ${err.message}`);
+    log.warnRepeated('inspect', 'огляд процесів', err);
   } finally {
     refreshing = false;
   }

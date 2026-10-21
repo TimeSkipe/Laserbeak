@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const paths = require('./paths');
 const log = require('./log');
-const { t } = require('./i18n');
+const { t, said } = require('./i18n');
 
 // Скільки скрінів тримати. Вони потрібні рівно доти, доки сесія їх
 // читає, тобто хвилини; але видаляти одразу не можна — сесія може
@@ -36,13 +36,13 @@ const TYPES = {
 // розширенні, і так її не доводиться перекодовувати дорогою.
 function decodeDataUrl(dataUrl) {
   const m = /^data:([^;,]+);base64,(.+)$/s.exec(String(dataUrl || ''));
-  if (!m) throw new Error(t('err.shotNotDataUrl'));
+  if (!m) throw said('err.shotNotDataUrl');
 
   const ext = TYPES[m[1]];
-  if (!ext) throw new Error(t('err.shotType', { type: m[1] }));
+  if (!ext) throw said('err.shotType', { type: m[1] });
 
   const buf = Buffer.from(m[2], 'base64');
-  if (!buf.length) throw new Error(t('err.shotEmpty'));
+  if (!buf.length) throw said('err.shotEmpty');
 
   return { buf, ext };
 }

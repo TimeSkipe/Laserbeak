@@ -84,7 +84,8 @@ function watch() {
         clearTimeout(debounce);
         debounce = setTimeout(() => { if (load()) log.info('config перечитано'); }, 80);
       });
-    } catch {
+    } catch (err) {
+      log.warnRepeated('config-watch', 'стежити за config.json не вийшло, пробую знову за 5 с', err);
       setTimeout(attach, 5000);
     }
   };

@@ -90,6 +90,8 @@ const STRINGS = {
     'err.noProjectDir': 'немає такої теки проєкту',
     'err.notHosted': 'сесію запустив не Laserbeak',
     'err.sessionEnded': 'сесія вже завершилась',
+    'err.tmuxFailed': 'tmux не прийняв ввід — подробиці в ~/.laserbeak/errors.log',
+    'err.internal': 'внутрішня помилка демона — подробиці в ~/.laserbeak/errors.log',
   },
 
   en: {
@@ -155,6 +157,8 @@ const STRINGS = {
     'err.noProjectDir': 'no such project folder',
     'err.notHosted': 'this session was not started by Laserbeak',
     'err.sessionEnded': 'the session has already ended',
+    'err.tmuxFailed': 'tmux did not accept the input — details in ~/.laserbeak/errors.log',
+    'err.internal': 'internal daemon error — details in ~/.laserbeak/errors.log',
   },
 
   cs: {
@@ -220,6 +224,8 @@ const STRINGS = {
     'err.noProjectDir': 'taková složka projektu neexistuje',
     'err.notHosted': 'relaci nespustil Laserbeak',
     'err.sessionEnded': 'relace už skončila',
+    'err.tmuxFailed': 'tmux vstup nepřijal — podrobnosti v ~/.laserbeak/errors.log',
+    'err.internal': 'vnitřní chyba démona — podrobnosti v ~/.laserbeak/errors.log',
   },
 
   ru: {
@@ -284,6 +290,8 @@ const STRINGS = {
     'err.noProjectDir': 'нет такой папки проекта',
     'err.notHosted': 'сессию запустил не Laserbeak',
     'err.sessionEnded': 'сессия уже завершилась',
+    'err.tmuxFailed': 'tmux не принял ввод — подробности в ~/.laserbeak/errors.log',
+    'err.internal': 'внутренняя ошибка демона — подробности в ~/.laserbeak/errors.log',
   },
 
   kk: {
@@ -348,6 +356,8 @@ const STRINGS = {
     'err.noProjectDir': 'мұндай жоба қалтасы жоқ',
     'err.notHosted': 'сессияны Laserbeak іске қоспаған',
     'err.sessionEnded': 'сессия әлдеқашан аяқталған',
+    'err.tmuxFailed': 'tmux енгізуді қабылдамады — толығы ~/.laserbeak/errors.log файлында',
+    'err.internal': 'демонның ішкі қатесі — толығы ~/.laserbeak/errors.log файлында',
   },
 };
 
@@ -363,7 +373,9 @@ let systemLanguage = null;
 
 function readDefaults(key) {
   try {
-    return execFileSync('/usr/bin/defaults', ['read', '-g', key], { encoding: 'utf8', timeout: 2000 });
+    return execFileSync('/usr/bin/defaults', ['read', '-g', key], {
+      stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', timeout: 2000,
+    });
   } catch {
     return '';
   }
@@ -409,13 +421,30 @@ function current() {
  * Невідомий ключ повертається як є — краще побачити 'notify.oops' у
  * банері, ніж порожній рядок, який нічого не пояснює.
  */
-function t(key, params = {}) {
-  const lang = current();
-  const template = STRINGS[lang]?.[key] ?? STRINGS[DEFAULT]?.[key] ?? key;
-
+function fill(template, params) {
   return template.replace(/\{(\w+)\}/g, (whole, name) => (
     Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : whole
   ));
 }
 
-module.exports = { t, current, LANGUAGES: Object.keys(STRINGS) };
+function t(key, params = {}) {
+  const lang = current();
+  return fill(STRINGS[lang]?.[key] ?? STRINGS[DEFAULT]?.[key] ?? key, params);
+}
+
+// Той самий текст, але для лога — завжди українською, хоч би яку мову
+// вибрала людина. Логи навмисно однією мовою (docs/decisions.md).
+function tLog(key, params = {}) {
+  return fill(STRINGS.uk?.[key] ?? key, params);
+}
+
+/**
+ * Своя помилка: текст для людини вибраною мовою, для лога — українською.
+ * Позначка `said` відрізняє її від чужих (ENOSPC, EPIPE): ті людині не
+ * показуємо як є, бо вони сирі й англійською.
+ */
+function said(key, params = {}) {
+  return Object.assign(new Error(t(key, params)), { said: true, logText: tLog(key, params) });
+}
+
+module.exports = { t, tLog, said, current, LANGUAGES: Object.keys(STRINGS) };

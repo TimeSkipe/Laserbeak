@@ -1073,6 +1073,7 @@ scripts/          install, update, build, icons, settings.json patching, l10n ch
 
 ```bash
 npm run logs        # tail the daemon log
+npm run errors      # only what went wrong, daemon and app, with the reason
 npm run state       # current state as JSON
 npm run restart     # restart the daemon
 npm run build:app   # rebuild the macOS app

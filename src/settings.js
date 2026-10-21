@@ -65,7 +65,7 @@ function get() {
 }
 
 function invalid(key) {
-  const err = new Error(i18n.t('err.badSetting', { key }));
+  const err = i18n.said('err.badSetting', { key });
   err.code = 'EINVAL';
   return err;
 }

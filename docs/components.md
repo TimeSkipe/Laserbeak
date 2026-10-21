@@ -13,7 +13,7 @@
 | `config.js` | config from `~/.laserbeak/config.json`, re-read on the fly; `update()` writes a change into the file without touching the rest |
 | `settings.js` | what the window may change in the config — language, banners, sounds, update checks — and with which values |
 | `paths.js` | every path in one place; the migration from the old name lives here too |
-| `log.js` | logs to stdout, which launchd writes to a file |
+| `log.js` | logs to stdout, which launchd writes to `daemon.log` — one record per line, local time; warnings and errors also go to `errors.log` with code, stderr and stack; `warnRepeated`/`errorRepeated` for errors that would repeat on a timer; rotates both files |
 | `i18n.js` | user-visible text in uk/en/cs/ru/kk; resolves `auto`; logs stay in one language on purpose |
 
 ### Watching

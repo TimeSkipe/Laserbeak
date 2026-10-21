@@ -17,27 +17,80 @@ import SwiftUI
 /// Коли програму запускає LaunchServices (через `open`), її stdout нікуди
 /// не веде — ні в термінал, ні в лог launchd. Тому пишемо самі, поруч із
 /// логом демона.
+///
+/// Помилки (`error`) лягають ще й у спільний з демоном errors.log — там
+/// одним списком видно, що зламалось і в програмі, і в демоні.
 enum AppLog {
-    private static let url = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".laserbeak/app.log")
+    private static let dir = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".laserbeak")
+    private static let url = dir.appendingPathComponent("app.log")
+    private static let errorsURL = dir.appendingPathComponent("errors.log")
+
+    /// Старше переїжджає в app.log.1 — один раз, без купи архівів.
+    private static let limit: UInt64 = 2 * 1024 * 1024
 
     private static let stamp: DateFormatter = {
         let f = DateFormatter()
+        // Інакше в системі з тайським чи японським календарем рік у лозі
+        // був би не той.
+        f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return f
     }()
 
     static func write(_ message: String) {
-        let line = "[\(stamp.string(from: Date()))] \(message)\n"
-        guard let data = line.data(using: .utf8) else { return }
+        append("[\(stamp.string(from: Date()))] \(oneLine(message))\n", to: url)
+        rotateIfNeeded()
+    }
 
-        if let handle = try? FileHandle(forWritingTo: url) {
-            defer { try? handle.close() }
-            try? handle.seekToEnd()
-            try? handle.write(contentsOf: data)
-        } else {
-            try? data.write(to: url)
+    /// Збій: у app.log і в errors.log, з позначкою, що це програма.
+    static func error(_ message: String) {
+        let line = "[\(stamp.string(from: Date()))] ✖ програма: \(oneLine(message))\n"
+        append(line, to: url)
+        append(line, to: errorsURL)
+        rotateIfNeeded()
+    }
+
+    /// Що саме не розібралось у відповіді демона. Розбір падає на одному
+    /// полі, а гасне весь екран — тож без назви поля шукати нема за що.
+    static func describe(_ error: Error) -> String {
+        guard let decoding = error as? DecodingError else { return error.localizedDescription }
+
+        func path(_ context: DecodingError.Context, _ last: CodingKey? = nil) -> String {
+            let keys = context.codingPath + (last.map { [$0] } ?? [])
+            let text = keys.map { key in key.intValue.map { "[\($0)]" } ?? ".\(key.stringValue)" }
+                .joined()
+            return text.isEmpty ? "корінь" : String(text.drop(while: { $0 == "." }))
         }
+
+        switch decoding {
+        case .keyNotFound(let key, let c):  return "немає ключа \(path(c, key))"
+        case .typeMismatch(let t, let c):   return "не той тип у \(path(c)): чекали \(t)"
+        case .valueNotFound(let t, let c):  return "порожнє значення у \(path(c)): чекали \(t)"
+        case .dataCorrupted(let c):         return "зіпсовані дані у \(path(c)): \(c.debugDescription)"
+        @unknown default:                   return error.localizedDescription
+        }
+    }
+
+    private static func oneLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline).joined(separator: " ⏎ ")
+    }
+
+    /// O_APPEND: у errors.log пишуть два процеси, і рядок має лягти в
+    /// кінець, а не поверх чужого.
+    private static func append(_ line: String, to file: URL) {
+        let fd = Darwin.open(file.path, O_WRONLY | O_APPEND | O_CREAT, 0o600)
+        guard fd >= 0 else { return }
+        defer { Darwin.close(fd) }
+        _ = line.withCString { Darwin.write(fd, $0, strlen($0)) }
+    }
+
+    private static func rotateIfNeeded() {
+        let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? UInt64) ?? 0
+        guard size > limit else { return }
+        let old = dir.appendingPathComponent("app.log.1")
+        try? FileManager.default.removeItem(at: old)
+        try? FileManager.default.moveItem(at: url, to: old)
     }
 }
 
@@ -59,6 +112,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     private var listenTask: Task<Void, Never>?
     private var baseURL: URL?
+    private var listenFailing = false
 
     override init() {
         super.init()
@@ -100,7 +154,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
             center.requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
                 if let error {
-                    AppLog.write("запит дозволу не вдався: \(error.localizedDescription)")
+                    AppLog.error("запит дозволу на сповіщення не вдався: \(error.localizedDescription)")
                 } else {
                     AppLog.write("дозвіл на сповіщення: \(granted ? "надано" : "відмовлено")")
                 }
@@ -176,8 +230,18 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
                 }
 
                 since = max(batch.seq, batch.notifications.map(\.seq).max() ?? 0)
+                if listenFailing {
+                    listenFailing = false
+                    AppLog.write("черга сповіщень знову працює")
+                }
             } catch {
                 // Демон лежить або запит обірвався — почекаємо і спробуємо знову.
+                // У лог — лише перший збій поспіль: демон може лежати годину,
+                // а запит повторюється кожні три секунди.
+                if !listenFailing {
+                    listenFailing = true
+                    AppLog.error("черга сповіщень (events/wait): \(AppLog.describe(error)) — банери не приходитимуть, доки демон не відповість")
+                }
                 try? await Task.sleep(for: .seconds(3))
             }
         }
@@ -211,10 +275,11 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
         UNUserNotificationCenter.current().add(request) { [weak self] error in
             if let error {
-                AppLog.write("банер не показано: \(error.localizedDescription)")
+                AppLog.error("банер [\(item.kind)] \(item.session) не показано: \(error.localizedDescription)")
                 Task { @MainActor in self?.lastError = error.localizedDescription }
             } else {
-                AppLog.write("банер показано: \(item.session) · \(item.project)")
+                let look = item.icon.isEmpty ? "типова іконка" : item.icon
+                AppLog.write("банер [\(item.kind)] \(item.session) · \(item.project) (\(look), \(item.color.isEmpty ? "типовий колір" : item.color))")
             }
         }
     }
@@ -266,7 +331,7 @@ extension NotificationService {
               let bitmap = NSBitmapImageRep(data: tiff),
               let png = bitmap.representation(using: .png, properties: [:])
         else {
-            AppLog.write("іконку намалювати не вдалося (\(icon)/\(item.color))")
+            AppLog.error("іконку для банера намалювати не вдалося (\(icon)/\(item.color))")
             return nil
         }
 
@@ -276,11 +341,10 @@ extension NotificationService {
         do {
             try png.write(to: url)
             // Система забирає файл собі, тому з тимчасової теки він зникає.
-            let attachment = try UNNotificationAttachment(identifier: "icon-\(item.seq)", url: url)
-            AppLog.write("іконка в банері: \(icon) + \(item.kind), колір \(item.color.isEmpty ? "типовий" : item.color)")
-            return attachment
+            // Успіх окремо не пишемо: рядок «банер …» нижче вже каже, з якою іконкою.
+            return try UNNotificationAttachment(identifier: "icon-\(item.seq)", url: url)
         } catch {
-            AppLog.write("іконку в банер не додано: \(error.localizedDescription)")
+            AppLog.error("іконку в банер не додано: \(error.localizedDescription)")
             return nil
         }
     }

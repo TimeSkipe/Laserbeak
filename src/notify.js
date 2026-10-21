@@ -60,7 +60,7 @@ function viaNotifier(n, sound) {
   if (bundle) args.push('-activate', bundle);
 
   const child = spawn(notifierPath, args, { stdio: 'ignore', detached: true });
-  child.on('error', (e) => log.error(`terminal-notifier: ${e.message}`));
+  child.on('error', (e) => log.error(`terminal-notifier (${notifierPath})`, e));
   child.unref();
 }
 
@@ -69,7 +69,7 @@ function viaOsascript(n, sound) {
   const snd = sound ? ` sound name "${esc(sound)}"` : '';
   execFile('/usr/bin/osascript', ['-e',
     `display notification "${esc(n.message)}" with title "${esc(n.title)}" subtitle "${esc(n.subtitle)}"${snd}`,
-  ], { timeout: 3000 }, (err) => { if (err) log.error(`osascript: ${err.message}`); });
+  ], { timeout: 3000 }, (err) => { if (err) log.error('банер через osascript', err); });
 }
 
 /**

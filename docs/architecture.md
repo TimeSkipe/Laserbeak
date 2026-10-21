@@ -253,7 +253,8 @@ Code lives in the repository, user data in `~/.laserbeak/`:
 | `update.json` | the last update check |
 | `extension-key.pem` | the extension's private key, mode `0600` |
 | `app-quit` | marker of a deliberate app quit |
-| `daemon.log`, `app.log` | logs |
+| `daemon.log`, `app.log` | logs: the daemon's, and the Mac app's (`AppLog`); over 5 MB / 2 MB the older half moves to `.1` |
+| `errors.log` | only what went wrong, from both the daemon and the app: route, code, reason, stack; mode `0600` |
 
 ## Network and access
 

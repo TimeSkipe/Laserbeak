@@ -22,7 +22,7 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const log = require('./log');
-const { t } = require('./i18n');
+const { t, said } = require('./i18n');
 
 // Скільки чекати між текстом і Enter. Одного такту event loop мало:
 // Claude Code має встигти прийняти рядок як ввід, а не як вставку.
@@ -59,6 +59,7 @@ function claudePath() {
 
   try {
     const found = execFileSync('/bin/zsh', ['-lic', 'command -v claude'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
       encoding: 'utf8',
       timeout: 8000,
     }).trim().split('\n').pop().trim();
@@ -69,7 +70,7 @@ function claudePath() {
       return found;
     }
   } catch (err) {
-    log.warn(`пошук claude: ${err.message}`);
+    log.warn('пошук claude', err);
   }
 
   for (const candidate of [
@@ -83,7 +84,7 @@ function claudePath() {
     }
   }
 
-  throw new Error(t('err.noClaude'));
+  throw said('err.noClaude');
 }
 
 /**
@@ -92,7 +93,7 @@ function claudePath() {
  */
 function start({ projectPath, label = '', prompt = '' }) {
   if (!projectPath || !fs.existsSync(projectPath)) {
-    throw new Error(t('err.noProjectDir'));
+    throw said('err.noProjectDir');
   }
 
   const sid = crypto.randomUUID();
@@ -130,7 +131,7 @@ function start({ projectPath, label = '', prompt = '' }) {
 
   child.on('error', (err) => {
     entry.alive = false;
-    log.error(`сесія ${sid.slice(0, 8)}: ${err.message}`);
+    log.error(`сесія ${sid.slice(0, 8)}`, err);
   });
 
   child.on('exit', (code) => {
@@ -154,8 +155,8 @@ function start({ projectPath, label = '', prompt = '' }) {
 /** Надіслати текст у сесію так, ніби його набрали з клавіатури. */
 function write(sid, text) {
   const entry = hosted.get(sid);
-  if (!entry) throw new Error(t('err.notHosted'));
-  if (!entry.alive) throw new Error(t('err.sessionEnded'));
+  if (!entry) throw said('err.notHosted');
+  if (!entry.alive) throw said('err.sessionEnded');
 
   // Текст і Enter — двома окремими записами, з паузою між ними.
   //

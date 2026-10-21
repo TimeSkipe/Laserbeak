@@ -15,12 +15,14 @@
 const terminals = require('./terminals');
 const tmux = require('./tmux');
 const state = require('./state');
-const { t } = require('./i18n');
+const { t, tLog } = require('./i18n');
 
 class NoWayIn extends Error {
   constructor() {
     super(t('err.noWayIn'));
     this.name = 'NoWayIn';
+    this.said = true;
+    this.logText = tLog('err.noWayIn');
   }
 }
 

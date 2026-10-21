@@ -51,7 +51,7 @@ function saveIndex() {
   saveTimer = setTimeout(() => {
     const body = JSON.stringify({ sessions: [...index.values()] }, null, 2);
     fs.writeFile(INDEX_PATH, body, (err) => {
-      if (err) log.error(`archive/index.json: ${err.message}`);
+      if (err) log.errorRepeated('archive-index', 'запис archive/index.json', err);
     });
   }, 800);
 }
@@ -184,7 +184,7 @@ function ingest(sid, transcriptPath, meta = {}) {
     fs.closeSync(fd);
     chunk = buffer.toString('utf8');
   } catch (err) {
-    log.warn(`архів ${sid}: ${err.message}`);
+    log.warnRepeated(`archive-read ${sid}`, `архів ${sid.slice(0, 8)}: читання транскрипту ${transcriptPath}`, err);
     return entry;
   }
 
@@ -231,7 +231,7 @@ function ingest(sid, transcriptPath, meta = {}) {
     try {
       fs.appendFileSync(fileFor(sid), body);
     } catch (err) {
-      log.error(`архів ${sid}: ${err.message}`);
+      log.errorRepeated(`archive-write ${sid}`, `архів ${sid.slice(0, 8)}: запис`, err);
       return entry;
     }
 
