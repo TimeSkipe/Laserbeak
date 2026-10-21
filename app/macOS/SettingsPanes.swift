@@ -102,7 +102,7 @@ struct GeneralPane: View {
         guard let update, !update.version.isEmpty else {
             return Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
         }
-        return update.head.isEmpty ? update.version : "\(update.version) · \(update.head)"
+        return update.head.isEmpty ? update.title : "\(update.title) · \(update.head)"
     }
 
     /// Значення бере з /state: острів стежить за ним самим, тож вимикач
@@ -530,7 +530,7 @@ struct UpdatesPane: View {
 
         var parts: [String] = []
         if let details, !details.version.isEmpty {
-            parts.append(details.head.isEmpty ? details.version : "\(details.version) · \(details.head)")
+            parts.append(details.head.isEmpty ? details.title : "\(details.title) · \(details.head)")
         }
         if summary.checkedAt > 0 {
             let when = Date(timeIntervalSince1970: summary.checkedAt / 1000)

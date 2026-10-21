@@ -33,7 +33,10 @@ const log = require('./log');
 
 const STATUS_PATH = path.join(DATA_DIR, 'update.json');
 
-const VERSION = require('../package.json').version;
+const { version: VERSION, codename: CODENAME } = require('../package.json');
+
+// Назва релізу для людини: «White Album 1.0». Нульовий патч не пишемо.
+const RELEASE = CODENAME ? `${CODENAME} ${VERSION.replace(/\.0$/, '')}` : VERSION;
 
 const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 
@@ -241,6 +244,7 @@ function details() {
     enabled: Boolean(config.get().updates?.check),
     checking: Boolean(inflight),
     version: VERSION,
+    release: RELEASE,
     head: (status.head || '').slice(0, 7),
     repo: status.repo || '',
     branch: status.branch || '',

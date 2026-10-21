@@ -621,6 +621,8 @@ struct UpdateDetails: Codable, Hashable {
     var enabled: Bool = true
     var checking: Bool = false
     var version: String = ""
+    /// Назва релізу для людини: «White Album 1.0». Порожнє — старий демон.
+    var release: String = ""
     var head: String = ""
     var url: String = ""
     var error: String = ""
@@ -631,8 +633,11 @@ struct UpdateDetails: Codable, Hashable {
 
     init() {}
 
+    /// Що показати як версію: назву релізу, а без неї — номер.
+    var title: String { release.isEmpty ? version : release }
+
     enum CodingKeys: String, CodingKey {
-        case enabled, checking, version, head, url, error, commits
+        case enabled, checking, version, release, head, url, error, commits
         case root, commands
     }
 
@@ -644,6 +649,7 @@ struct UpdateDetails: Codable, Hashable {
         enabled           = c.value(.enabled, true)
         checking          = c.value(.checking, false)
         version           = c.value(.version, "")
+        release           = c.value(.release, "")
         head              = c.value(.head, "")
         url               = c.value(.url, "")
         error             = c.value(.error, "")
