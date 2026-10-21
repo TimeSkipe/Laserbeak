@@ -16,7 +16,7 @@
     "state": "curl -s http://127.0.0.1:8787/state | python3 -m json.tool",
     "archive:import": "node scripts/archive-import.js",
     "archive:dry": "node scripts/archive-import.js --dry",
-    "extension": "node -e \"const d=require('path').resolve('extension');require('child_process').execSync('pbcopy',{input:d});console.log('\\n  Теку скопійовано в буфер:\\n  '+d+'\\n\\n  chrome://extensions → Режим розробника → Завантажити розпаковане → ⌘V\\n')\"",
+    "extension": "node scripts/extension.js",
     "check:l10n": "python3 scripts/check-l10n.py"
   },
   "engines": {

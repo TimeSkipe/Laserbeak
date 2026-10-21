@@ -131,6 +131,7 @@ follows it:
 | the window and menu bar | `AppleLanguages` of the app, set from the config at every launch — takes effect on relaunch |
 | the browser extension | asks the daemon (`/settings`), reads `_locales/<lang>` itself |
 | `start` / `stop` and the first prompt | ask the daemon, fall back to `config.json` |
+| install, uninstall, build scripts | `scripts/lang.sh`: `LASERBEAK_LANG`, then `config.json`, then the system's languages |
 
 Ukrainian, English, Czech, Russian and Kazakh. `auto` means the first of
 the macOS interface languages Laserbeak knows — the same rule macOS uses
@@ -138,7 +139,7 @@ for the window, so `auto` also lands on the same language everywhere.
 Logs stay in one language on purpose.
 
 `scripts/check-l10n.py` checks that every string exists in every
-language, in all four places.
+language, in all five places.
 
 ## Data flow
 

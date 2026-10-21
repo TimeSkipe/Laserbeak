@@ -115,8 +115,10 @@ npm run install:all                # без LASERBEAK_LANG: мова збере�
 **Кожен рядок інтерфейсу — усіма п'ятьма мовами.** Пиши в коді
 українською, додавай у `app/Resources/Localizable.xcstrings` з `en`, `cs`,
 `uk`, `ru`, `kk`. Збірка сама не витягує туди `String(localized:)`. Так
-само з `src/i18n.js`, `extension/_locales/*` і таблицею в
-`shell/laserbeak.zsh`. Перевірка одна на все:
+само з `src/i18n.js`, `extension/_locales/*`, таблицею в
+`shell/laserbeak.zsh` і таблицею скриптів установки `scripts/lang.sh`
+(її читають і bash через `say`, і Node через `scripts/lang.js`).
+Перевірка одна на все:
 
 ```bash
 npm run check:l10n

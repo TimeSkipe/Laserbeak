@@ -10,9 +10,12 @@ DATA="$HOME/.laserbeak"
 AGENTS="$HOME/Library/LaunchAgents"
 UID_NUM="$(id -u)"
 
+# Тексти — п'ятьма мовами, з однієї таблиці (scripts/lang.sh).
+. "$ROOT/scripts/lang.sh"
+
 echo "╭─ laserbeak"
-echo "│  код:  $ROOT"
-echo "│  дані: $DATA"
+echo "│  $(lb_t install.code): $ROOT"
+echo "│  $(lb_t install.data): $DATA"
 echo "╰─"
 echo
 
@@ -35,9 +38,14 @@ CURRENT_LANG="$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('
 LANG_CHOICE="${LASERBEAK_LANG:-${CURRENT_LANG:-auto}}"
 case "$LANG_CHOICE" in
   uk|en|cs|ru|kk|auto) ;;
-  *) echo "  ⚠ мова «$LANG_CHOICE» невідома — беру auto"; LANG_CHOICE="auto" ;;
+  *) say install.langUnknown "$LANG_CHOICE"; LANG_CHOICE="auto" ;;
 esac
-echo "▸ мова: $LANG_CHOICE"
+
+# Далі говоримо вже вибраною мовою — і дочірні скрипти теж: build-app,
+# team-id і patch-settings беруть її з LB_LANG.
+if [ "$LANG_CHOICE" = "auto" ]; then LB_LANG="$(lb_system_lang)"; else LB_LANG="$LANG_CHOICE"; fi
+export LB_LANG
+say install.lang "$LANG_CHOICE"
 
 # У конфіг — одразу, до збірки: програма підніметься наприкінці збірки і
 # має застати вже правильну мову.
@@ -50,7 +58,7 @@ fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\\n');
 "
 
 # Вікно програми бере мову з того самого конфіга при кожному запуску
-# (LanguageSync.swift). Але macOS вирішує, якою мовою малювати, ще до
+# (Language.swift). Але macOS вирішує, якою мовою малювати, ще до
 # першого рядка нашого коду, — тож перший запуск після установки мусить
 # застати вибір уже в налаштуваннях програми.
 if [ "$LANG_CHOICE" = "auto" ]; then
@@ -62,20 +70,20 @@ fi
 # ---------------------------------------------------------------- 1. залежності
 
 NODE="$(command -v node || true)"
-[ -n "$NODE" ] || { echo "✖ node не знайдено"; exit 1; }
+[ -n "$NODE" ] || { say install.noNode; exit 1; }
 echo "▸ node: $NODE ($(node -v))"
 
-command -v xcodegen >/dev/null || { echo "✖ xcodegen не знайдено: brew install xcodegen"; exit 1; }
+command -v xcodegen >/dev/null || { say install.noXcodegen; exit 1; }
 
 # Без tmux програма працює, але писати в сесії WebStorm неможливо —
 # половина сенсу зникає мовчки, і здогадатись про причину важко.
 if ! command -v tmux >/dev/null 2>&1; then
   if command -v brew >/dev/null 2>&1; then
-    echo "▸ ставлю tmux (без нього не можна писати в сесії)"
+    say install.tmuxInstall
     brew install tmux
   else
-    echo "  ⚠ tmux немає — запити з програми й телефона не працюватимуть."
-    echo "    Постав його: brew install tmux"
+    say install.tmuxMissing
+    say install.tmuxHow
   fi
 else
   echo "▸ tmux: $(command -v tmux)"
@@ -83,10 +91,10 @@ fi
 
 if ! command -v terminal-notifier >/dev/null 2>&1; then
   if command -v brew >/dev/null 2>&1; then
-    echo "▸ ставлю terminal-notifier"
+    say install.notifierInstall
     brew install terminal-notifier
   else
-    echo "  ⚠ terminal-notifier немає — банери підуть через osascript"
+    say install.notifierMissing
   fi
 else
   echo "▸ terminal-notifier: $(command -v terminal-notifier)"
@@ -99,7 +107,7 @@ APP_PATH="$(cat "$ROOT/build/app-path.txt")"
 
 # ---------------------------------------------------------------- 3. launchd
 
-echo "▸ реєструю фонові процеси"
+say install.agents
 
 # Агенти з часів, коли проєкт звався claude-notifyd
 for old in com.claudenotify.daemon com.claudenotify.app com.claudenotify.menubar; do
@@ -133,7 +141,7 @@ done
 
 # ---------------------------------------------------------------- 4. хуки
 
-echo "▸ підключаю хуки Claude Code"
+say install.hooksClaude
 chmod +x "$ROOT/hooks/hook.sh"
 node "$ROOT/scripts/patch-settings.js"
 
@@ -141,9 +149,9 @@ node "$ROOT/scripts/patch-settings.js"
 # хуків він не запустить, доки їх не підтвердять у ньому самому, — тож
 # на першому `start codex` Codex попросить їх переглянути.
 if command -v codex >/dev/null 2>&1 || [ -x /Applications/ChatGPT.app/Contents/Resources/codex ]; then
-  echo "▸ підключаю хуки Codex"
+  say install.hooksCodex
   node "$ROOT/scripts/patch-settings.js" --codex
-  echo "  Codex попросить підтвердити ці хуки при першому запуску — це нормально."
+  say install.codexTrust
 fi
 
 # ---------------------------------------------------------------- 5. швидкі команди
@@ -156,25 +164,27 @@ fi
 # Свою стару копію start() у ~/.zshrc не чіпаємо — це файл людини. Лише
 # кажемо, що її варто замінити цим рядком.
 
-echo "▸ швидкі команди start / stop"
+say install.commands
 ZSHRC="$HOME/.zshrc"
 SOURCE_LINE="source \"$ROOT/shell/laserbeak.zsh\""
 
 if grep -qF "$ROOT/shell/laserbeak.zsh" "$ZSHRC" 2>/dev/null; then
-  echo "  ✓ уже підключені в ~/.zshrc"
+  say install.commandsHave
 elif grep -qE '^[[:space:]]*(function[[:space:]]+)?start[[:space:]]*\(\)' "$ZSHRC" 2>/dev/null; then
-  echo "  ⚠ у ~/.zshrc уже є своя start() — не чіпаю."
-  echo "    Заміни її (разом зі stop і _lb_*) одним рядком:"
+  say install.commandsOwn
+  say install.commandsReplace
   echo "      $SOURCE_LINE"
 else
-  printf '\n# Laserbeak: start / stop — запуск сесій Claude Code і Codex через tmux\n%s\n' \
+  # Коментар англійською: він лягає в чужий ~/.zshrc, а uninstall.sh
+  # знаходить його за префіксом «# Laserbeak: start / stop».
+  printf '\n# Laserbeak: start / stop (Claude Code and Codex sessions in tmux)\n%s\n' \
     "$SOURCE_LINE" >> "$ZSHRC"
-  echo "  ✓ додано в ~/.zshrc — діє в нових вкладках термінала"
+  say install.commandsAdded
 fi
 
 case "${SHELL:-}" in
   */zsh) ;;
-  *) echo "  ⚠ оболонка не zsh (${SHELL:-?}) — start і stop написані для zsh" ;;
+  *) say install.notZsh "${SHELL:-?}" ;;
 esac
 
 # ---------------------------------------------------------------- 6. картки відповідей
@@ -187,51 +197,52 @@ esac
 CLAUDE_BIN="$(command -v claude || true)"
 [ -x "$CLAUDE_BIN" ] || CLAUDE_BIN="$HOME/.local/bin/claude"
 
-echo "▸ картки відповідей (мод reply-cards)"
+say install.cards
 if [ -x "$CLAUDE_BIN" ]; then
   "$CLAUDE_BIN" plugin marketplace add "$ROOT" >/dev/null 2>&1 || true
   if "$CLAUDE_BIN" plugin install reply-cards@laserbeak --scope user >/dev/null 2>&1; then
-    echo "  ✓ мод увімкнено — діє в нових сесіях Claude Code"
+    say install.cardsOn
   else
-    echo "  ⚠ не вдалося поставити мод. Руками: claude plugin install reply-cards@laserbeak"
+    say install.cardsFailed
   fi
 else
-  echo "  ⚠ claude не знайдено — мод не поставлено"
+  say install.cardsNoClaude
 fi
 
 # ---------------------------------------------------------------- 7. перевірка
 
-echo "▸ перевіряю"
+say install.check
 sleep 2
 
 PORT="$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$DATA/config.json','utf8')).port||8787)}catch(e){console.log(8787)}")"
 
 if curl -s -m 3 "http://127.0.0.1:$PORT/health" | grep -q '"ok":true'; then
-  echo "  ✓ демон живий на порті $PORT"
+  say install.daemonOk "$PORT"
 else
-  echo "  ✖ демон не відповідає. Дивись $DATA/daemon.log"
+  say install.daemonDown "$DATA/daemon.log"
   exit 1
 fi
 
 
 echo
-echo "▸ розширення для браузера (необов'язкове)"
+say install.ext
 echo
-echo "  Дає обвести зону на сторінці й надіслати її в сесію картинкою."
-echo "  Ставиться руками — це три кліки, бо в Web Store його немає."
-echo "  Клади в той браузер, яким керує сесія (там, де стоїть Claude in Chrome):"
+say install.extWhat
+say install.extManual
+say install.extWhere
 echo
-echo "    1. chrome://extensions (у Brave — brave://extensions)"
-echo "       →  увімкни «Режим розробника»"
-echo "    2. «Завантажити розпаковане»"
-echo "    3. вкажи теку:  $ROOT/extension"
+say install.extStep1
+say install.extStep1b
+say install.extStep2
+say install.extStep3 "$ROOT/extension"
 echo
-echo "  Далі — ⌘⇧E на будь-якій сторінці."
+say install.extThen
 
 echo
-echo "Готово."
-echo "  • Програма:  $APP_PATH"
-echo "  • Правила:   $DATA/config.json  (перечитується на льоту)"
-echo "  • Лог:       $DATA/daemon.log"
+say install.done
+say install.doneApp "$APP_PATH"
+say install.doneRules "$DATA/config.json"
+say install.doneLog "$DATA/daemon.log"
+say install.doneErrors "$DATA/errors.log"
 echo
-echo "Хуки почнуть діяти в НОВИХ сесіях Claude Code — перезапусти сесію."
+say install.doneHooks

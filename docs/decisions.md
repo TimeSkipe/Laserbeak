@@ -409,6 +409,17 @@ The last one arrives about a minute after an ordinary reply finishes. If
 you do not tell them apart, the session looks as if it were asking
 something.
 
+Telling them apart by text was fragile: the text is English and lives in
+Claude Code's own string table, so a rewording or a translation would
+have quietly turned every permission request into "waiting for input" —
+whose banner is off by default. The hook payload carries
+`notification_type`, a required field (checked in the 2.1.306 binary:
+`permission_prompt`, `worker_permission_prompt`, `idle_prompt`,
+`auth_success`, `agent_needs_input` and a few more). `events.js` trusts
+the type first; only an unknown or missing type falls back to the text,
+which still catches plan approval — that one goes through a dialog
+without a type of its own.
+
 ### A project name cannot be recovered from the transcript directory name
 
 Claude Code encodes the path by replacing `/` with `-`, and project names

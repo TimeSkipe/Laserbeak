@@ -8,8 +8,10 @@ const CARD_START = /^(\d+)[.)]\s+\*\*(.+?)\*\*\s*$/
 const LETTERED = /^[a-z][.)]\s/
 const INDENTED = /^\s{2,}\S/
 
-const QUESTION_TITLE = /питан|запитан|вирішуєте|вирішуєш|otázk|dotaz|rozhoduj|question|your decision/i
-const IMPORTANT_TITLE = /важлив|увага|důležit|pozor|upozorn|important/i
+// Заголовки впізнаємо всіма п'ятьма мовами Laserbeak: uk, cs, en і ще
+// ru (вопрос/решаєте, важно/внимание) та kk (сұрақ/шешес, маңызды/назар).
+const QUESTION_TITLE = /питан|запитан|вирішуєте|вирішуєш|otázk|dotaz|rozhoduj|question|your decision|вопрос|решаеш|решаете|сұрақ|шешес/i
+const IMPORTANT_TITLE = /важлив|увага|důležit|pozor|upozorn|important|важн|внимани|маңызды|назар/i
 
 const PURPLE = '#a78bfa'
 const YELLOW = '#facc15'
@@ -32,8 +34,8 @@ const FORMAT_RULE = {
     'Reply layout (the reply-cards mod draws it as colored cards):',
     '- When a reply has distinct parts, write each as a card: `1. **Title**` alone on its line, the body indented 3 spaces on the lines below. Number the cards 1, 2, 3 in reading order.',
     '- Sub-items inside a card are lettered and indented with the body: `   a. ...`, `   b. ...`.',
-    '- What the user should know or watch out for goes in a card titled "Important" in the user\'s language (Ukrainian `Важливо знати`, Czech `Důležité`); it is drawn yellow.',
-    '- Questions to the user go in the last card, titled "Questions" in the user\'s language (Ukrainian `Питання`, Czech `Otázky`), one question per line; a decision only the user can make goes there too. It is drawn purple. Never write questions as checkboxes.',
+    '- What the user should know or watch out for goes in a card titled "Important" in the user\'s language (Ukrainian `Важливо знати`, Czech `Důležité`, Russian `Важно знать`, Kazakh `Маңызды`); it is drawn yellow.',
+    '- Questions to the user go in the last card, titled "Questions" in the user\'s language (Ukrainian `Питання`, Czech `Otázky`, Russian `Вопросы`, Kazakh `Сұрақтар`), one question per line; a decision only the user can make goes there too. It is drawn purple. Never write questions as checkboxes.',
     '- Every other card (what changed, what you took as decided, facts) is drawn light blue.',
     '- Everything else (a one-line lead, a closing sentence) is plain text outside the cards. A short reply needs no cards.',
   ].join('\n'),

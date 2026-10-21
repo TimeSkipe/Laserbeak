@@ -9,15 +9,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="$ROOT/build"
 
+. "$ROOT/scripts/lang.sh"
+
 # Сертифікат беремо той, що є на цій машині: проєкт має збиратись у
 # будь-кого, а не лише в автора.
 TEAM="$(bash "$ROOT/scripts/team-id.sh")" || exit 1
-echo "▸ підписую як команда $TEAM"
+say build.team "$TEAM"
 
-echo "▸ генерую Xcode-проєкт"
+say build.project
 (cd "$ROOT/app" && xcodegen generate >/dev/null)
 
-echo "▸ збираю Laserbeak.app"
+say build.app
 xcodebuild \
   -project "$ROOT/app/Laserbeak.xcodeproj" \
   -scheme Laserbeak \
@@ -25,14 +27,14 @@ xcodebuild \
   -derivedDataPath "$BUILD/dd" \
   LASERBEAK_TEAM="$TEAM" \
   build >/dev/null 2>&1 || {
-    echo "  ✖ збірка впала. Деталі:"
+    say build.failed
     xcodebuild -project "$ROOT/app/Laserbeak.xcodeproj" -scheme Laserbeak \
       -configuration Release -derivedDataPath "$BUILD/dd" build 2>&1 | grep -E "error:" | head -20
     exit 1
   }
 
 BUILT="$BUILD/dd/Build/Products/Release/Laserbeak.app"
-[ -d "$BUILT" ] || { echo "  ✖ не знайшов $BUILT"; exit 1; }
+[ -d "$BUILT" ] || { say build.notFound "$BUILT"; exit 1; }
 
 # /Applications зазвичай доступна адміну без sudo; якщо ні — беремо домашню.
 DEST="/Applications"
@@ -50,9 +52,10 @@ cp -R "$BUILT" "$DEST/"
 
 echo "$DEST/Laserbeak.app" > "$BUILD/app-path.txt"
 
-# І одразу піднімаємо назад. Програма тримає єдиний канал до телефона,
-# тож поки її немає, телефон сліпий. Демон помітив би тишу й підняв її
-# сам, але аж за хвилину — після власної збірки чекати цього безглуздо.
+# І одразу піднімаємо назад. Програма — це меню-бар і банери з іконкою
+# проєкту; поки її немає, банери йдуть безликим terminal-notifier. Демон
+# помітив би тишу й підняв її сам, але аж за хвилину — після власної
+# збірки чекати цього безглуздо.
 #
 # Аргументи ті самі, що й у LaunchAgent: -g щоб не лізти на передній
 # план, --background щоб не відкривати вікно.

@@ -22,6 +22,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { t } = require('./lang');
 
 const ROOT = path.resolve(__dirname, '..');
 const HOOK = path.join(ROOT, 'hooks', 'hook.sh');
@@ -73,15 +74,15 @@ function main() {
     try {
       settings = JSON.parse(raw);
     } catch (e) {
-      console.error(`✖ ${target.file} не є валідним JSON: ${e.message}`);
-      console.error('  Виправ файл вручну і запусти ще раз — я нічого не чіпав.');
+      console.error(t('patch.badJson', target.file, e.message));
+      console.error(t('patch.fixManually'));
       process.exit(1);
     }
     const backup = `${target.file}.backup.${Date.now()}`;
     fs.writeFileSync(backup, raw);
-    console.log(`  бекап: ${backup}`);
+    console.log(t('patch.backup', backup));
   } else if (remove) {
-    console.log(`  ${target.file} немає — знімати нічого`);
+    console.log(t('patch.nothing', target.file));
     return;
   }
 
@@ -111,7 +112,7 @@ function main() {
 
   fs.mkdirSync(path.dirname(target.file), { recursive: true });
   fs.writeFileSync(target.file, JSON.stringify(settings, null, 2) + '\n');
-  console.log(remove ? '  ✓ хуки laserbeak прибрано' : `  ✓ хуки прописано (${Object.keys(target.map).join(', ')})`);
+  console.log(remove ? t('patch.removed') : t('patch.added', Object.keys(target.map).join(', ')));
 }
 
 main();

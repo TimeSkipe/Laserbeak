@@ -4,8 +4,9 @@
 //
 // Хуки в них майже однакові (SessionStart, UserPromptSubmit, Stop,
 // SessionEnd), тож і шлях один. Відмінності три, і всі тут:
-//   • запит дозволу — у Claude це Notification, який треба розпізнати
-//     за текстом, у Codex окрема подія PermissionRequest (у нас approval);
+//   • запит дозволу — у Claude це Notification, який розпізнаємо за
+//     полем notification_type (запасний шлях — текст), у Codex окрема
+//     подія PermissionRequest (у нас approval);
 //   • переривання (Esc посеред ходу) Codex повідомляє окремо — без цього
 //     сесія лишалась би «працює» до наступного запиту;
 //   • транскрипт Codex — зовсім інший формат, тож архів, який уміє
@@ -21,6 +22,11 @@ const archive = require('./archive');
 const procs = require('./procs');
 const notify = require('./notify');
 const log = require('./log');
+
+// Значення notification_type у Claude Code 2.1.306 (перевірено в бінарнику).
+// worker_permission_prompt — дозвіл для субагента або воркера.
+const PERMISSION_TYPES = new Set(['permission_prompt', 'worker_permission_prompt']);
+const IDLE_TYPES = new Set(['idle_prompt']);
 
 function fmtDuration(sec) {
   if (sec == null || !isFinite(sec)) return '';
@@ -147,12 +153,21 @@ function handle(event, payload, meta) {
     // Codex тексту не шле зовсім: його PermissionRequest (у нас approval)
     // уже сам по собі означає «потрібен дозвіл», а в даних — лише назва
     // інструмента, якому він потрібен.
+    //
+    // Розрізняємо передусім за полем notification_type, а не за текстом:
+    // текст англійський і може змінитись (у Claude Code 2.1 він уже лежить
+    // у таблиці рядків інтерфейсу). Поле обов'язкове в схемі хука, значення
+    // перевірено в бінарнику 2.1.306. Невідомий тип або його відсутність
+    // (старіші версії, схвалення плану, яке йде через діалог) — як раніше,
+    // за текстом.
     case 'notification':
     case 'permission':
     case 'approval': {
       const raw = payload.message || '';
+      const type = String(payload.notification_type || '');
       const needsApproval = event === 'approval'
-        || /permission|approval|approve|дозвол|схвал/i.test(raw);
+        || PERMISSION_TYPES.has(type)
+        || (!IDLE_TYPES.has(type) && /permission|approval|approve|дозвол|схвал/i.test(raw));
 
       if (needsApproval) {
         // В історію — перекладений текст: від Claude Code приходить

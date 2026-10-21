@@ -13,7 +13,9 @@ Text("…"), а з String(localized: "…") — ні: новий рядок ти
                а плейсхолдери (%@, %d, %1$@…) у перекладах ті самі;
   розширення   кожна мова має ті самі ключі, що й uk, і ті самі $NAME$;
   демон        src/i18n.js — ті самі ключі й {плейсхолдери} у кожній мові;
-  start/stop   shell/laserbeak.zsh — кожен ключ кожною мовою.
+  start/stop   shell/laserbeak.zsh — кожен ключ кожною мовою;
+  скрипти      scripts/lang.sh — кожен ключ кожною мовою, ті самі %s, і
+               кожен ключ, який просять install/uninstall/build/Node, є.
 
 Мова оригіналу — українська: ключі каталогу — це українські рядки.
 """
@@ -177,10 +179,43 @@ def check_shell():
                 complain("start/stop", f"{lang}: бракує {key}")
 
 
+# ------------------------------------------------------------ скрипти установки
+
+SCRIPT_ENTRY = re.compile(r"^\s+([a-z]{2}):([\w.]+)\) text=(['\"])(.*)\3 ;;$", re.M)
+
+
+def check_scripts():
+    """scripts/lang.sh — одна таблиця для install, uninstall, build і Node-скриптів."""
+    table = {}
+    for m in SCRIPT_ENTRY.finditer(open(ROOT / "scripts/lang.sh", encoding="utf-8").read()):
+        table.setdefault(m.group(2), {})[m.group(1)] = m.group(4)
+
+    for key, texts in sorted(table.items()):
+        for lang in LANGUAGES:
+            if lang not in texts:
+                complain("скрипти", f"{lang}: бракує {key}")
+        counts = {lang: text.count("%s") for lang, text in texts.items()}
+        if len(set(counts.values())) > 1:
+            complain("скрипти", f"різна кількість %s у {key}: {counts}")
+        for lang, text in texts.items():
+            # Текст іде в printf як формат і стоїть у лапках bash.
+            if re.search(r"[$`\\]|%(?!s)", text):
+                complain("скрипти", f"{lang}: у {key} є $, `, \\ або % не як %s")
+
+    used = set()
+    for path in glob.glob(str(ROOT / "scripts/*.sh")):
+        used |= set(re.findall(r"\b(?:say|lb_t)\s+([a-z]+\.\w+)", open(path, encoding="utf-8").read()))
+    for path in glob.glob(str(ROOT / "scripts/*.js")):
+        used |= set(re.findall(r"\bt\(\s*'([a-z]+\.\w+)'", open(path, encoding="utf-8").read()))
+    for key in sorted(used - set(table)):
+        complain("скрипти", f"код просить ключ, якого немає: {key}")
+
+
 check_app()
 check_extension()
 check_daemon()
 check_shell()
+check_scripts()
 
 if problems:
     print("\n".join(problems))

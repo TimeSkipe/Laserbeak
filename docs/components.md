@@ -238,10 +238,13 @@ running session. `claude plugin test claude/reply-cards` runs its tests.
 | Script | What it does |
 |--------|--------------|
 | `install.sh` | full install: language, dependencies, build, LaunchAgents, hooks, `start`/`stop`, the reply-cards mod |
+| `lang.sh` | every line the install scripts print, in five languages — `say key args`; the language is `LB_LANG` → `LASERBEAK_LANG` → `config.json` → the system's |
+| `lang.js` | the same table for Node scripts (`patch-settings.js`, `extension.js`) — parsed from `lang.sh`, so the text lives in one place |
+| `extension.js` | `npm run extension`: the extension folder path to the clipboard, and what to click |
 | `uninstall.sh` | removes everything, keeps the data |
 | `build-app.sh` | builds the Mac app and puts it in `/Applications` |
 | `team-id.sh` | resolves the signing Team ID from this machine's keychain, so the project builds for anyone |
-| `check-l10n.py` | every string in every language, everywhere — `npm run check:l10n` |
+| `check-l10n.py` | every string in every language, everywhere (including `scripts/lang.sh`) — `npm run check:l10n` |
 | `patch-settings.js` | writes hooks into `~/.claude/settings.json`, or with `--codex` into `~/.codex/hooks.json`, leaving everything else alone |
 | `archive-import.js` | one-off import of conversations still on disk |
 | `make-lucide.py` | generates `LucideIcons.swift` from SVG |

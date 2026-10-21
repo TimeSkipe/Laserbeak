@@ -37,7 +37,9 @@ enum AppLanguage {
 
     /// Якою мовою програма малює себе просто зараз. Вирішено при запуску
     /// й до перезапуску не зміниться.
-    static let running: String = Bundle.main.preferredLocalizations.first ?? "uk"
+    // Запас — en, як і в демоні на невідому мову: інакше вікно лишилось
+    // би українським там, де все інше вже англійське.
+    static let running: String = Bundle.main.preferredLocalizations.first ?? "en"
 
     /// Перенести мову з конфіга в налаштування програми.
     static func applyFromConfig() {

@@ -9,6 +9,8 @@
 
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/lang.sh"
+
 if [ -n "${LASERBEAK_TEAM:-}" ]; then
   echo "$LASERBEAK_TEAM"
   exit 0
@@ -21,18 +23,18 @@ TEAM="$(security find-certificate -c "Apple Development" -p 2>/dev/null \
   | tr ',' '\n' | awk -F' = ' '/OU/ {print $2; exit}' | tr -d ' ')"
 
 if [ -z "$TEAM" ]; then
-  cat >&2 <<'HELP'
-✖ не знайшов сертифіката Apple Development у зв'язці ключів.
-
-  Він безкоштовний і потрібен саме для збірки — з ad-hoc підписом macOS
-  мовчки відмовляє програмі в сповіщеннях.
-
-  Як отримати:
-    1. Xcode → Settings → Accounts → «+» → Apple ID (звичайний, безкоштовний)
-    2. вибери акаунт → Manage Certificates → «+» → Apple Development
-
-  Далі просто повтори збірку.
-HELP
+  # Це перше, що бачить людина на чужому маку, — тож її мовою.
+  {
+    say team.none
+    echo
+    say team.why
+    echo
+    say team.how
+    say team.step1
+    say team.step2
+    echo
+    say team.again
+  } >&2
   exit 1
 fi
 
