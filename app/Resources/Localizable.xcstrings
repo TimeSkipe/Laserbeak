@@ -631,6 +631,41 @@
         }
       }
     },
+    "Агенти на екрані": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agents on screen"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agenti na obrazovce"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Агенти на екрані"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Агенты на экране"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Экрандағы агенттер"
+          }
+        }
+      }
+    },
     "Активних сесій немає": {
       "extractionState": "manual",
       "localizations": {
@@ -1611,41 +1646,6 @@
         }
       }
     },
-    "Значки агентів обабіч вирізу екрана; помаранчевий — хтось чекає дозволу. Клік розгортає список. Лише на маках із вирізом.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Agent icons on both sides of the screen notch; orange means someone is waiting for permission. Click to expand the list. Only on Macs with a notch."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ikony agentů po obou stranách výřezu obrazovky; oranžová znamená, že někdo čeká na povolení. Kliknutím se rozbalí seznam. Jen na Macích s výřezem."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Значки агентів обабіч вирізу екрана; помаранчевий — хтось чекає дозволу. Клік розгортає список. Лише на маках із вирізом."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Значки агентов по обе стороны выреза экрана; оранжевый — кто-то ждёт разрешения. Клик раскрывает список. Только на маках с вырезом."
-          }
-        },
-        "kk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Экран ойығының екі жағында агенттердің белгішелері; қызғылт сары — біреу рұқсат күтіп тұр. Басқанда тізім ашылады. Тек ойығы бар Mac-тарда."
-          }
-        }
-      }
-    },
     "Зусилля": {
       "extractionState": "manual",
       "localizations": {
@@ -1782,6 +1782,41 @@
           "stringUnit": {
             "state": "translated",
             "value": "Жобаның түсі мен белгішесі"
+          }
+        }
+      }
+    },
+    "Лише кружок із числом у меню-барі": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Just the circle with a number in the menu bar"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jen kroužek s číslem v řádku nabídek"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лише кружок із числом у меню-барі"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только кружок с числом в строке меню"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мәзір жолағындағы сан жазылған дөңгелек қана"
           }
         }
       }
@@ -2731,6 +2766,76 @@
         }
       }
     },
+    "Острів — знаки агентів обабіч вирізу; помаранчевий — хтось чекає дозволу. На моніторі без вирізу — вузька смужка посеред меню-бару: що робить сесія і скільки триває її хід. Кружок із числом у меню-барі є завжди.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The island shows agent icons on both sides of the notch; orange means someone is waiting for permission. On a display without a notch it is a slim strip in the middle of the menu bar: what a session is doing and how long its turn has run. The circle with a number in the menu bar is always there."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostrov ukazuje ikony agentů po obou stranách výřezu; oranžová znamená, že někdo čeká na povolení. Na monitoru bez výřezu je to úzký pruh uprostřed řádku nabídek: co relace dělá a jak dlouho trvá její tah. Kroužek s číslem v řádku nabídek je tam vždy."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Острів — знаки агентів обабіч вирізу; помаранчевий — хтось чекає дозволу. На моніторі без вирізу — вузька смужка посеред меню-бару: що робить сесія і скільки триває її хід. Кружок із числом у меню-барі є завжди."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остров — значки агентов по обе стороны выреза; оранжевый — кто-то ждёт разрешения. На мониторе без выреза — узкая полоска посреди строки меню: что делает сессия и сколько длится её ход. Кружок с числом в строке меню есть всегда."
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Арал — ойықтың екі жағындағы агент белгілері; қызғылт сары — біреу рұқсат күтіп тұр. Ойығы жоқ мониторда — мәзір жолағының ортасындағы жіңішке жолақ: сессия не істеп жатыр және оның жүрісі қанша уақыт созылып жатыр. Мәзір жолағындағы сан жазылған дөңгелек әрқашан бар."
+          }
+        }
+      }
+    },
+    "Памʼять": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memory"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paměť"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Памʼять"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Память"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жад"
+          }
+        }
+      }
+    },
     "Перевір, чи демон запущено: npm run restart, а що з ним — npm run logs": {
       "extractionState": "manual",
       "localizations": {
@@ -3357,6 +3462,41 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тыңдау"
+          }
+        }
+      }
+    },
+    "Процесів": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Processes"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesů"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Процесів"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Процессов"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Процестер"
           }
         }
       }

@@ -20,7 +20,7 @@
 
 | File | Responsibility |
 |------|----------------|
-| `inspect.js` | process inspection: terminal tabs, live `claude` processes, projects open in an IDE |
+| `inspect.js` | process inspection: terminal tabs, live `claude` processes, projects open in an IDE; the same `ps` call carries RSS, so `treeMemory(pid)` gives a session's memory with everything it started |
 | `procs.js` | linking a session to its process: searching up and down the tree for `claude` |
 | `roots.js` | which directory counts as the project (IDE → `.git` → the directory itself) |
 | `modes.js` | reading the permission mode from the Claude Code status line, effort from `~/.claude/settings.json` |
@@ -63,7 +63,7 @@ the `.xcodeproj` itself is not kept in git. One target, macOS 14+.
 | `Views.swift` | sheets: session details, session name and notifications, project colour and icon; the empty state |
 | `Theme.swift` | cards, status pills, icon tiles, the pulsing status badge |
 | `MenuBar.swift` | the menu bar icon and menu |
-| `Island.swift` | the notch island: agent icons on both sides of the MacBook notch, orange when someone waits for permission; a click expands the list, a row opens the session's editor. A borderless panel at the menu bar's level, sized exactly to the island so it never swallows clicks; no endless animation |
+| `Island.swift` | the notch island and its strip: on a notched screen, the agent's mark with the project icon in the corner on both sides of the notch, orange when someone waits for permission; on a screen without a notch, a slim strip in the menu bar with what a session is doing and its turn time. A click expands the list; a row opens the session's editor. One borderless panel per screen at the menu bar's level, sized exactly to the island; sizes follow each screen's menu bar, and the wings shrink so as never to cover menu bar items. No endless animation — the turn time ticks once a second, only while a session works |
 | `Notifications.swift` | banners from the app itself: project icon with the event badge, its own log file |
 | `Language.swift` | the window's language: from `config.json` into `AppleLanguages`, relaunch |
 | `Models.swift` | mirror of the JSON from `/state`, `/settings`, `/update`; **hand-written decoding**, see below |
@@ -71,6 +71,7 @@ the `.xcodeproj` itself is not kept in git. One target, macOS 14+.
 | `Transport.swift` | plain HTTP to `127.0.0.1` |
 | `Palette.swift` | project colours |
 | `LucideIcons.swift` | **generated** file — do not edit by hand |
+| `AgentIcons.swift` | **generated** by `scripts/make-agents.py`: the Claude, Codex and Gemini marks from Simple Icons (CC0) |
 | `Resources/Localizable.xcstrings` | String Catalog: every string × uk/en/cs/ru/kk |
 
 ### How to add a field to a model
@@ -249,6 +250,7 @@ running session. `claude plugin test claude/reply-cards` runs its tests.
 | `patch-settings.js` | writes hooks into `~/.claude/settings.json`, or with `--codex` into `~/.codex/hooks.json`, leaving everything else alone |
 | `archive-import.js` | one-off import of conversations still on disk |
 | `make-lucide.py` | generates `LucideIcons.swift` from SVG |
+| `make-agents.py` | generates `AgentIcons.swift` from Simple Icons SVGs, with the same path parser |
 | `make-icon.py` | generates the app icon from an image |
 
 ## The hook — `hooks/hook.sh`

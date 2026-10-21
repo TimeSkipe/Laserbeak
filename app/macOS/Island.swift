@@ -4,89 +4,316 @@ import Combine
 
 // Острів біля вирізу екрана — як Dynamic Island на айфоні.
 //
-// Обабіч вирізу MacBook, у мертвій зоні меню-бару, — значки активних
-// агентів, а праворуч — скільки з них чекає на тебе. Помаранчеве означає,
-// що хтось чекає дозволу. Клік розгортає острів униз: хто саме чекає і хто
-// працює. Клік по рядку відкриває редактор, звідки сесію запущено.
+// На екрані з вирізом (MacBook) — чорний острів довкола вирізу: ліворуч
+// знаки агентів (Claude, Codex…), праворуч — скільки з них чекає дозволу
+// або працює. Помаранчеве — хтось чекає дозволу. На екрані без вирізу
+// (зовнішній монітор) — вузька смужка посеред меню-бару: що робить сесія
+// й скільки триває її хід.
 //
-// Вікно — панель без рамки над меню-баром (рівень statusBar). Вона не
-// забирає фокус і є на всіх робочих столах. Тільки на екрані з вирізом:
-// без нього острову нема до чого прилягти.
+// Клік розгортає список: хто чекає, хто працює, що саме робить і скільки
+// памʼяті тримає. Клік по рядку відкриває редактор сесії, клік деінде
+// згортає.
+//
+// Кожен екран отримує свою панель без рамки над меню-баром (рівень
+// statusBar): вона не забирає фокус і є на всіх робочих столах. Розміри —
+// від висоти меню-бару цього екрана, тож острів однаково сидить на
+// MacBook Air і Pro, у масштабованих режимах і на будь-якому моніторі.
 //
 // Жодної безкінечної анімації: у SwiftUI будь-яка така щокадру
-// перемальовує все вікно (docs/decisions.md). Помаранчеве — статичний колір,
-// анімується лише разове розгортання.
+// перемальовує все вікно (docs/decisions.md). Час ходу оновлюється раз на
+// секунду, і лише поки сесія працює.
 
-enum IslandMetrics {
-    /// Ширина «крила» обабіч вирізу. Вузьке навмисно: ліворуч від вирізу
-    /// бувають меню програм, праворуч — значки меню-бару.
-    static let wing: CGFloat = 38
-    static let rowHeight: CGFloat = 40
-    static let rowSpacing: CGFloat = 2
+// MARK: - Розміри
+
+/// Усі розміри — від висоти меню-бару на цьому екрані, а не зашиті пікселі.
+struct IslandMetrics: Equatable {
+    var bar: CGFloat
+
+    /// Знак агента в крилі.
+    var icon: CGFloat { (bar * 0.56).rounded() }
+    /// Між знаками.
+    var gap: CGFloat { max(3, (bar * 0.12).rounded()) }
+    /// Від вирізу до вмісту крила.
+    var inner: CGFloat { max(5, (bar * 0.22).rounded()) }
+    /// Від вмісту крила до краю острова.
+    var outer: CGFloat { max(7, (bar * 0.3).rounded()) }
+    /// Найширше ліве крило: далі вже меню програм.
+    var leftMax: CGFloat { (bar * 3).rounded() }
+
+    var font: CGFloat { max(10, (bar * 0.36).rounded()) }
+    var rowHeight: CGFloat { max(40, (bar * 1.35).rounded()) }
+    var rowIcon: CGFloat { (rowHeight * 0.55).rounded() }
+    var rowSpacing: CGFloat { 2 }
+    var listTop: CGFloat { 6 }
+    var listBottom: CGFloat { 10 }
+    var footerHeight: CGFloat { max(22, (bar * 0.8).rounded()) }
+    var expandedWidth: CGFloat { max(340, (bar * 12.5).rounded()) }
+    var stripHeight: CGFloat { max(16, bar - 6) }
+    var stripMaxWidth: CGFloat { max(260, (bar * 13).rounded()) }
+
     static let maxRows = 6
-    static let footerHeight: CGFloat = 26
-    static let expandedWidth: CGFloat = 380
-    static let listTop: CGFloat = 6
-    static let listBottom: CGFloat = 10
+    static let maxAgents = 3
+
+    /// Ширина числа на острові — тим самим шрифтом, яким його малюємо.
+    func countWidth(_ value: Int) -> CGFloat {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: self.font, weight: .semibold)
+        return ("\(value)" as NSString).size(withAttributes: [.font: font]).width.rounded(.up)
+    }
+
+    var handWidth: CGFloat { (font * 1.15).rounded(.up) }
 }
 
-/// Де виріз на цьому маку. macOS 12+ віддає вільні шматки меню-бару
-/// ліворуч і праворуч від нього; виріз — те, що між ними, по центру.
-struct NotchGeometry: Equatable {
-    var screenFrame: CGRect
-    var notchWidth: CGFloat
-    var height: CGFloat
+// MARK: - Екрани
 
-    static func current() -> NotchGeometry? {
-        for screen in NSScreen.screens where screen.safeAreaInsets.top > 0 {
-            let left = screen.auxiliaryTopLeftArea?.width ?? 0
-            let right = screen.auxiliaryTopRightArea?.width ?? 0
-            let width = screen.frame.width - left - right
-            guard width > 0, width < screen.frame.width / 2 else { continue }
-            return NotchGeometry(screenFrame: screen.frame, notchWidth: width, height: screen.safeAreaInsets.top)
+/// Де на конкретному екрані жити острову.
+struct ScreenSpot: Equatable {
+    enum Style: Equatable {
+        /// Острів довкола вирізу заданої ширини.
+        case notch(width: CGFloat)
+        /// Вузька смужка посеред меню-бару — на екрані без вирізу.
+        case strip
+    }
+
+    let id: CGDirectDisplayID
+    /// Екран у координатах AppKit.
+    let frame: CGRect
+    /// Висота меню-бару на цьому екрані.
+    let bar: CGFloat
+    let style: Style
+    /// Лівий край найближчого праворуч значка меню-бару (глобальний x),
+    /// або nil, якщо там вільно.
+    let firstItemX: CGFloat?
+
+    var metrics: IslandMetrics { IslandMetrics(bar: bar) }
+
+    /// Усі екрани, на яких є меню-бар.
+    static func all() -> [ScreenSpot] {
+        let items = statusItems()
+        let primaryTop = NSScreen.screens.first?.frame.maxY ?? 0
+
+        return NSScreen.screens.compactMap { screen in
+            guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+            else { return nil }
+
+            let frame = screen.frame
+            let notched = screen.safeAreaInsets.top > 0
+            let bar = notched ? screen.safeAreaInsets.top : frame.maxY - screen.visibleFrame.maxY
+            // Меню-бару тут немає (ховається або один на всі екрани) — і
+            // острову нема де стати.
+            guard bar > 0 else { return nil }
+
+            var style = Style.strip
+            var threshold = frame.midX
+            if notched {
+                // macOS 12+ віддає вільні шматки меню-бару ліворуч і праворуч
+                // від вирізу; сам виріз — те, що між ними, по центру.
+                let width = frame.width
+                    - (screen.auxiliaryTopLeftArea?.width ?? 0)
+                    - (screen.auxiliaryTopRightArea?.width ?? 0)
+                if width > 0, width < frame.width / 2 {
+                    style = .notch(width: width)
+                    threshold = frame.midX + width / 2 - 2
+                }
+            }
+
+            // Значки меню-бару в координатах CoreGraphics: y рахується
+            // згори від основного екрана.
+            let top = primaryTop - frame.maxY
+            let first = items
+                .filter { abs($0.minY - top) < 2 && $0.minX >= threshold && $0.maxX <= frame.maxX + 1 }
+                .map(\.minX)
+                .min()
+
+            return ScreenSpot(id: number.uint32Value, frame: frame, bar: bar, style: style, firstItemX: first)
         }
-        return nil
+    }
+
+    /// Вікна значків меню-бару (рівень statusWindow), крім наших власних.
+    /// Їхні рамки видно без дозволу на запис екрана — лише назви приховані.
+    private static func statusItems() -> [CGRect] {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]]
+        else { return [] }
+
+        let me = ProcessInfo.processInfo.processIdentifier
+        let level = Int(CGWindowLevelForKey(.statusWindow))
+        return list.compactMap { window in
+            guard (window[kCGWindowLayer as String] as? Int) == level,
+                  (window[kCGWindowOwnerPID as String] as? Int32) != me,
+                  let bounds = window[kCGWindowBounds as String] as? NSDictionary,
+                  let rect = CGRect(dictionaryRepresentation: bounds)
+            else { return nil }
+            return rect
+        }
+    }
+}
+
+// MARK: - Дані
+
+struct IslandItem: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let project: String
+    let agent: String
+    let projectIcon: String
+    /// Назва кольору з палітри; порожнє — типовий.
+    let projectColor: String
+    let status: SessionStatus
+    /// Що робить просто зараз: «редагує server.js». Порожнє — невідомо.
+    let activity: String
+    /// Памʼять агента разом із його процесами: «1,6 ГБ». Порожнє — невідомо.
+    let memory: String
+    /// Коли почався поточний хід, epoch ms.
+    let turnStartedAt: Double?
+    let lastTurnSeconds: Double?
+    /// Bundle id редактора, з якого запущено сесію; порожньо — невідомо.
+    let editor: String
+
+    /// Скільки триває поточний хід, станом на `date`.
+    func elapsed(at date: Date) -> Int? {
+        guard status == .working, let start = turnStartedAt else { return nil }
+        return max(0, Int(date.timeIntervalSince1970 - start / 1000))
+    }
+
+    /// Коротко, що з сесією: що робить, або її стан.
+    var statusLine: String {
+        status == .working && !activity.isEmpty ? activity : status.title
+    }
+
+    var subtitle: String {
+        activity.isEmpty || status != .working ? project : "\(project) · \(activity)"
+    }
+}
+
+/// Час ходу цифрами — однаково всіма мовами: 3:42 або 1:02:10.
+enum Clock {
+    static func text(_ seconds: Int) -> String {
+        let h = seconds / 3600, m = seconds % 3600 / 60, s = seconds % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 }
 
 @MainActor
 final class IslandModel: ObservableObject {
-    struct Item: Identifiable, Equatable {
-        let id: String
-        let title: String
-        let project: String
-        let icon: String
-        let status: SessionStatus
-        /// Bundle id редактора, з якого запущено сесію; порожньо — невідомо.
-        let editor: String
+    @Published var spot: ScreenSpot
+    /// Уже відсортовані: спершу ті, що чекають дозволу, потім ті, що працюють.
+    @Published var items: [IslandItem] = []
+    @Published var expanded = false
+    /// Панель зараз розміру розгорнутого острова (острів у ній ще може бути
+    /// згорнутим — перед анімацією й одразу після неї).
+    @Published var panelExpanded = false
+    /// Ширина смужки — під її вміст, але не ширше, ніж дозволяє меню-бар.
+    @Published var stripWidth: CGFloat = 0
+
+    init(spot: ScreenSpot) {
+        self.spot = spot
     }
 
-    /// Уже відсортовані: спершу ті, що чекають на тебе.
-    @Published var items: [Item] = []
-    @Published var expanded = false
-    @Published var notchWidth: CGFloat = 185
-    @Published var height: CGFloat = 32
+    var metrics: IslandMetrics { spot.metrics }
+    var isNotch: Bool { if case .notch = spot.style { true } else { false } }
+    var notchWidth: CGFloat { if case .notch(let width) = spot.style { width } else { 0 } }
 
     var waitingForPermission: Int { items.filter { $0.status == .needsInput }.count }
     var working: Int { items.filter { $0.status == .working }.count }
 
-    var visibleItems: ArraySlice<Item> { items.prefix(IslandMetrics.maxRows) }
+    /// Число на острові: скільки чекає дозволу; якщо ніхто — скільки
+    /// працює; інакше — скільки всього.
+    var count: Int {
+        waitingForPermission > 0 ? waitingForPermission : working > 0 ? working : items.count
+    }
+
+    /// Агенти, що зараз є, — кожен один раз, у порядку терміновості.
+    var agents: [String] {
+        var seen = Set<String>()
+        return items.compactMap { seen.insert($0.agent).inserted ? $0.agent : nil }
+    }
+
+    var visibleItems: ArraySlice<IslandItem> { items.prefix(IslandMetrics.maxRows) }
     var hiddenCount: Int { max(0, items.count - IslandMetrics.maxRows) }
 
+    // ------------------------------------------------------------ крила
+
+    /// Скільки вільно праворуч від вирізу до першого значка меню-бару.
+    var rightRoom: CGFloat {
+        let notchRight = spot.frame.midX + notchWidth / 2
+        return spot.firstItemX.map { $0 - notchRight - 3 } ?? .greatestFiniteMagnitude
+    }
+
+    /// Праве крило: число з відступами від вирізу й від краю острова, а
+    /// помаранчева рука — лише якщо вміщається. Праворуч від вирізу
+    /// бувають значки меню-бару, налазити на них не можна; тісно навіть
+    /// для числа — крила немає, число переїжджає ліворуч.
+    var right: (width: CGFloat, hand: Bool) {
+        let m = metrics
+        let digits = m.countWidth(count)
+        let withHand = m.inner + m.handWidth + 3 + digits + m.outer
+        let plain = m.inner + digits + m.outer
+        if waitingForPermission > 0, withHand <= rightRoom { return (withHand, true) }
+        if plain <= rightRoom { return (plain, false) }
+        return (0, false)
+    }
+
+    var countOnLeft: Bool { right.width == 0 }
+
+    /// Ліве крило: знаки агентів у повний розмір. Ліворуч від вирізу
+    /// місця більше, тож крила різні — острів не мусить бути симетричним.
+    var left: (width: CGFloat, agents: [String]) {
+        let m = metrics
+        let countPart = countOnLeft ? m.gap + m.countWidth(count) : 0
+        func width(_ n: Int) -> CGFloat {
+            m.outer + CGFloat(n) * m.icon + CGFloat(max(0, n - 1)) * m.gap + countPart + m.inner
+        }
+        var shown = Array(agents.prefix(IslandMetrics.maxAgents))
+        while shown.count > 1, width(shown.count) > m.leftMax { shown.removeLast() }
+        return (width(shown.count), shown)
+    }
+
+    // ------------------------------------------------------------ розміри
+
+    var headerHeight: CGFloat { isNotch ? spot.bar : metrics.stripHeight }
+
     var collapsedSize: CGSize {
-        CGSize(width: notchWidth + 2 * IslandMetrics.wing, height: height)
+        isNotch
+            ? CGSize(width: left.width + notchWidth + right.width, height: spot.bar)
+            : CGSize(width: stripWidth, height: metrics.stripHeight)
     }
 
     var expandedSize: CGSize {
+        let m = metrics
         let rows = CGFloat(visibleItems.count)
-        let list = IslandMetrics.listTop
-            + rows * IslandMetrics.rowHeight
-            + max(0, rows - 1) * IslandMetrics.rowSpacing
-            + (hiddenCount > 0 ? IslandMetrics.footerHeight : 0)
-            + IslandMetrics.listBottom
-        return CGSize(width: max(collapsedSize.width, IslandMetrics.expandedWidth), height: height + list)
+        let list = m.listTop
+            + rows * m.rowHeight
+            + max(0, rows - 1) * m.rowSpacing
+            + (hiddenCount > 0 ? m.footerHeight : 0)
+            + m.listBottom
+        // Розгорнутий острів — по центру вирізу, тож кожна половина має
+        // вмістити ширше з крил.
+        let width = isNotch
+            ? max(m.expandedWidth, notchWidth + 2 * max(left.width, right.width))
+            : max(stripWidth, m.expandedWidth)
+        return CGSize(width: width, height: headerHeight + list)
+    }
+
+    /// Де згорнутий острів стоїть у розсунутій панелі: виріз не рухається,
+    /// тож крило ліворуч від нього — там само, де й завжди.
+    var collapsedOffset: CGFloat {
+        isNotch
+            ? (expandedSize.width - notchWidth) / 2 - left.width
+            : (expandedSize.width - stripWidth) / 2
+    }
+
+    /// Острів прилягає до краю екрана — верх пласкі кути. Смужка висить у
+    /// меню-барі — заокруглена вся.
+    var shape: IslandShape {
+        let scale = spot.bar / 32
+        if isNotch {
+            return IslandShape(top: 0, bottom: expanded ? 22 : (10 * scale).rounded())
+        }
+        return IslandShape(top: expanded ? 14 : metrics.stripHeight / 2,
+                           bottom: expanded ? 14 : metrics.stripHeight / 2)
     }
 }
+
+// MARK: - Вікно
 
 /// Панель над меню-баром: без рамки, без фокусу, на всіх робочих столах.
 final class IslandPanel: NSPanel {
@@ -118,9 +345,17 @@ final class IslandHostingView<Content: View>: NSHostingView<Content> {
 final class IslandController {
     static let shared = IslandController()
 
-    private let model = IslandModel()
-    private var panel: IslandPanel?
-    private var geometry: NotchGeometry?
+    /// Острів на одному екрані.
+    private final class Surface {
+        let panel = IslandPanel()
+        let model: IslandModel
+
+        init(model: IslandModel) {
+            self.model = model
+        }
+    }
+
+    private var surfaces: [CGDirectDisplayID: Surface] = [:]
     private var subscriptions = Set<AnyCancellable>()
     private var outsideClicks: Any?
     private weak var client: DaemonClient?
@@ -130,149 +365,222 @@ final class IslandController {
         guard self.client == nil else { return }
         self.client = client
 
+        // Стан приходить кожні дві секунди — заразом перемірюємо й вільне
+        // місце в меню-барі: значки там зʼявляються й зникають.
         client.$state
             .receive(on: RunLoop.main)
             .sink { [weak self] state in self?.apply(state) }
             .store(in: &subscriptions)
 
-        // Підключили чи відключили монітор, закрили кришку — виріз міг
-        // зникнути або переїхати.
+        // Підключили чи відключили монітор, закрили кришку — екрани інші.
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.apply(self?.client?.state) }
             .store(in: &subscriptions)
     }
 
-    func toggle() {
-        model.expanded ? collapse() : expand()
-    }
-
     // ------------------------------------------------------------ стан
 
     private func apply(_ state: DaemonState?) {
-        guard let state, state.islandEnabled, let geometry = NotchGeometry.current() else {
-            hide()
+        guard let state, state.islandEnabled else {
+            hideAll()
             return
         }
 
         let items = Self.items(from: state)
-        guard !items.isEmpty else {
-            hide()
-            return
+        let spots = ScreenSpot.all()
+        let present = Set(spots.map(\.id))
+
+        for (id, surface) in surfaces where !present.contains(id) {
+            surface.panel.orderOut(nil)
+            surfaces[id] = nil
         }
 
-        self.geometry = geometry
-        if model.notchWidth != geometry.notchWidth { model.notchWidth = geometry.notchWidth }
-        if model.height != geometry.height { model.height = geometry.height }
-        if model.items != items { model.items = items }
+        for spot in spots {
+            let surface = surfaces[spot.id] ?? makeSurface(spot)
+            let model = surface.model
+            if model.spot != spot { model.spot = spot }
+            if model.items != items { model.items = items }
 
-        show()
-        place()
+            if !model.isNotch {
+                let width = stripWidth(for: model)
+                if model.stripWidth != width { model.stripWidth = width }
+            }
+
+            let visible = !items.isEmpty && (model.isNotch || model.stripWidth > 0)
+            if visible {
+                surface.panel.orderFrontRegardless()
+                place(surface)
+            } else {
+                model.expanded = false
+                surface.panel.orderOut(nil)
+            }
+        }
     }
 
-    private static func items(from state: DaemonState) -> [IslandModel.Item] {
+    /// Спершу ті, що чекають на тебе, потім ті, що працюють; серед рівних —
+    /// найсвіжіші.
+    private static func items(from state: DaemonState) -> [IslandItem] {
         var projectOf: [String: Project] = [:]
         for project in state.projects {
             for session in project.sessions { projectOf[session.sid] = project }
         }
 
-        return state.sortedSessions.map { session in
-            let project = projectOf[session.sid]
-            return IslandModel.Item(
-                id: session.sid,
-                title: session.title,
-                project: session.project,
-                icon: project?.iconName ?? Lucide.fallback,
-                status: session.state,
-                editor: project?.editorBundleId ?? ""
-            )
+        func rank(_ status: SessionStatus) -> Int {
+            switch status {
+            case .needsInput: 0
+            case .working:    1
+            case .waiting:    2
+            case .idle:       3
+            }
         }
+        func freshness(_ s: Session) -> Double {
+            max(s.activity?.at ?? 0, s.turnStartedAt ?? 0, s.since)
+        }
+
+        return state.sessions
+            .sorted {
+                rank($0.state) != rank($1.state)
+                    ? rank($0.state) < rank($1.state)
+                    : freshness($0) > freshness($1)
+            }
+            .map { session in
+                let project = projectOf[session.sid]
+                return IslandItem(
+                    id: session.sid,
+                    title: session.title,
+                    project: session.project,
+                    agent: session.agent,
+                    projectIcon: project?.iconName ?? Lucide.fallback,
+                    projectColor: project?.settings.color ?? "",
+                    status: session.state,
+                    activity: session.activity?.text ?? "",
+                    memory: session.memoryText ?? "",
+                    turnStartedAt: session.turnStartedAt,
+                    lastTurnSeconds: session.lastTurnSeconds,
+                    editor: project?.editorBundleId ?? ""
+                )
+            }
     }
 
-    // ------------------------------------------------------------ вікно
+    /// Смужка — під свій вміст, але не ширше, ніж дозволяє меню-бар:
+    /// праворуч від неї значки, і налазити на них не можна. Зовсім тісно — 0,
+    /// смужки не буде.
+    private func stripWidth(for model: IslandModel) -> CGFloat {
+        let m = model.metrics
+        guard let item = model.items.first else { return 0 }
 
-    private func show() {
-        if panel == nil {
-            let panel = IslandPanel()
-            panel.contentView = IslandHostingView(rootView: IslandView(
-                model: model,
-                onToggle: { [weak self] in self?.toggle() },
-                onOpen: { [weak self] item in self?.open(item) },
-                onOpenAll: { [weak self] in self?.openAll() }
-            ))
-            self.panel = panel
-        }
-        panel?.orderFrontRegardless()
+        var cap = m.stripMaxWidth
+        if let x = model.spot.firstItemX { cap = min(cap, 2 * (x - 8 - model.spot.frame.midX)) }
+        guard cap >= m.stripHeight * 4 else { return 0 }
+
+        let line = StripLine(item: item, more: model.items.count - 1, metrics: m)
+            .environment(\.colorScheme, .dark)
+            .fixedSize()
+        // Запас на час ходу: цифри ростуть, а смужка не має смикатись щосекунди.
+        let ideal = NSHostingView(rootView: line).fittingSize.width + m.font * 1.5
+        return min(cap, max(m.stripHeight * 4, ideal.rounded(.up)))
     }
 
-    private func hide() {
-        collapse()
-        panel?.orderOut(nil)
+    // ------------------------------------------------------------ вікна
+
+    private func makeSurface(_ spot: ScreenSpot) -> Surface {
+        let surface = Surface(model: IslandModel(spot: spot))
+        let id = spot.id
+        surface.panel.contentView = IslandHostingView(rootView: IslandView(
+            model: surface.model,
+            onToggle: { [weak self] in self?.toggle(id) },
+            onOpen: { [weak self] item in self?.open(item) },
+            onOpenAll: { [weak self] in self?.openAll() }
+        ))
+        surfaces[id] = surface
+        return surface
+    }
+
+    private func hideAll() {
+        collapseAll()
+        for surface in surfaces.values { surface.panel.orderOut(nil) }
     }
 
     /// Панель завжди рівно такого розміру, як острів: інакше прозорі краї
     /// забирали б кліки в меню-бару під собою.
-    private func place(expanded: Bool? = nil) {
-        guard let panel, let geometry else { return }
-        let size = (expanded ?? model.expanded) ? model.expandedSize : model.collapsedSize
-        let frame = CGRect(
-            x: geometry.screenFrame.midX - size.width / 2,
-            y: geometry.screenFrame.maxY - size.height,
-            width: size.width,
-            height: size.height
-        )
-        if panel.frame != frame { panel.setFrame(frame, display: true) }
+    private func place(_ surface: Surface, expanded: Bool? = nil) {
+        let model = surface.model
+        let spot = model.spot
+        let wide = expanded ?? model.expanded
+        let size = wide ? model.expandedSize : model.collapsedSize
+
+        // Згорнутий острів біля вирізу стоїть від лівого краю крила — крила
+        // різні; розгорнутий і смужка — по центру.
+        let x = model.isNotch && !wide
+            ? spot.frame.midX - model.notchWidth / 2 - model.left.width
+            : spot.frame.midX - size.width / 2
+        // Острів прилягає до краю екрана; смужка — посередині меню-бару.
+        let inset = model.isNotch ? 0 : ((spot.bar - model.metrics.stripHeight) / 2).rounded()
+        let frame = CGRect(x: x.rounded(), y: spot.frame.maxY - inset - size.height,
+                           width: size.width, height: size.height)
+
+        guard surface.panel.frame != frame || model.panelExpanded != wide else { return }
+        model.panelExpanded = wide
+        surface.panel.setFrame(frame, display: true)
+        // Острів у панелі мусить стати на нове місце в тому ж такті, що й
+        // сама панель, — інакше на мить видно стрибок.
+        surface.panel.contentView?.layoutSubtreeIfNeeded()
     }
 
-    private func expand() {
-        guard panel != nil else { return }
-        // Спершу розсуваємо панель, потім острів у ній: так анімація не
-        // впирається в краї вікна.
-        place(expanded: true)
+    func toggle(_ id: CGDirectDisplayID) {
+        guard let surface = surfaces[id] else { return }
+        surface.model.expanded ? collapseAll() : expand(surface)
+    }
 
-        // Новий розмір панелі SwiftUI мусить прийняти ще до анімації.
-        // Інакше перенесення острова в центр ширшої панелі потрапляє в ту
-        // саму анімацію: острів стартує від лівого краю й росте вправо, і
-        // значки на мить їдуть убік (docs/decisions.md).
-        panel?.contentView?.layoutSubtreeIfNeeded()
+    private func expand(_ surface: Surface) {
+        collapseAll()
+
+        // Спершу розсуваємо панель, а острів у ній лишається згорнутим на
+        // своєму місці. Анімація — наступним тактом: якщо зміна розміру
+        // панелі потрапить у ту саму анімацію, значки на мить поїдуть убік
+        // (docs/decisions.md).
+        place(surface, expanded: true)
 
         // Клік будь-де поза островом — згорнути. Глобальний монітор бачить
         // кліки в інших програмах; доступу до клавіатури він не просить.
         outsideClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { _ in
-            Task { @MainActor in IslandController.shared.collapse() }
+            Task { @MainActor in IslandController.shared.collapseAll() }
         }
 
         DispatchQueue.main.async { [weak self] in
             // Встигли згорнути ще до цього такту — не розгортаємо.
             guard let self, self.outsideClicks != nil else { return }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { self.model.expanded = true }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { surface.model.expanded = true }
         }
     }
 
-    func collapse() {
+    func collapseAll() {
         if let outsideClicks {
             NSEvent.removeMonitor(outsideClicks)
             self.outsideClicks = nil
         }
-        guard model.expanded else {
-            // Розгортання ще не почалось, а панель уже розсунута — повертаємо
-            // її одразу, щоб прозорі краї не забирали кліки.
-            place()
-            return
-        }
 
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { model.expanded = false }
-        // Панель стискаємо, коли острів уже згорнувся.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) { [weak self] in
-            guard let self, !self.model.expanded else { return }
-            self.place()
+        for surface in surfaces.values {
+            guard surface.model.expanded else {
+                // Розгортання ще не почалось, а панель уже могла розсунутись —
+                // повертаємо одразу, щоб прозорі краї не забирали кліки.
+                place(surface)
+                continue
+            }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { surface.model.expanded = false }
+            // Панель стискаємо, коли острів уже згорнувся.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) { [weak self] in
+                guard let self, !surface.model.expanded else { return }
+                self.place(surface)
+            }
         }
     }
 
     // ------------------------------------------------------------ дії
 
-    private func open(_ item: IslandModel.Item) {
-        collapse()
+    private func open(_ item: IslandItem) {
+        collapseAll()
         if !item.editor.isEmpty,
            let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: item.editor) {
             NSWorkspace.shared.openApplication(at: url, configuration: .init())
@@ -282,26 +590,27 @@ final class IslandController {
     }
 
     private func openAll() {
-        collapse()
+        collapseAll()
         AppRouter.shared.show(.sessions)
     }
 }
 
 // MARK: - Вигляд
 
-/// Прямокутник із пласким верхом — він прилягає до краю екрана — і
-/// заокругленим низом, як сам виріз.
+/// Прямокутник із окремими радіусами згори й знизу: острів біля вирізу
+/// має пласкі верхні кути, смужка заокруглена вся.
 struct IslandShape: Shape {
-    var radius: CGFloat
+    var top: CGFloat
+    var bottom: CGFloat
 
-    var animatableData: CGFloat {
-        get { radius }
-        set { radius = newValue }
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(top, bottom) }
+        set { top = newValue.first; bottom = newValue.second }
     }
 
     func path(in rect: CGRect) -> Path {
         UnevenRoundedRectangle(
-            cornerRadii: .init(topLeading: 0, bottomLeading: radius, bottomTrailing: radius, topTrailing: 0),
+            cornerRadii: .init(topLeading: top, bottomLeading: bottom, bottomTrailing: bottom, topTrailing: top),
             style: .continuous
         ).path(in: rect)
     }
@@ -310,15 +619,18 @@ struct IslandShape: Shape {
 struct IslandView: View {
     @ObservedObject var model: IslandModel
     let onToggle: () -> Void
-    let onOpen: (IslandModel.Item) -> Void
+    let onOpen: (IslandItem) -> Void
     let onOpenAll: () -> Void
 
     var body: some View {
         let size = model.expanded ? model.expandedSize : model.collapsedSize
-        let shape = IslandShape(radius: model.expanded ? 22 : 10)
+        let shape = model.shape
 
         VStack(spacing: 0) {
             header
+                .frame(height: model.headerHeight)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onToggle)
             if model.expanded {
                 list
                     .transition(.opacity)
@@ -333,107 +645,240 @@ struct IslandView: View {
             }
         }
         .clipShape(shape)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Згорнутий острів у розсунутій панелі — на своєму звичному місці.
+        .offset(x: model.panelExpanded && !model.expanded ? model.collapsedOffset : 0)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // Чорне тло — тож і кольори системи як для темної теми.
         .environment(\.colorScheme, .dark)
     }
 
-    // ------------------------------------------------------------ шапка
-
-    /// Рядок на висоті меню-бару: крило — виріз — крило. По центру нічого
-    /// не малюємо: там камера.
+    @ViewBuilder
     private var header: some View {
-        HStack(spacing: 0) {
+        if model.isNotch {
+            notchHeader
+        } else {
+            StripLine(item: model.items.first, more: model.items.count - 1, metrics: model.metrics)
+                .frame(width: model.collapsedSize.width)
+        }
+    }
+
+    /// Крило — виріз — крило. По центру нічого не малюємо: там камера.
+    /// Вміст крил притиснуто до вирізу, тож коли острів розгортається, а
+    /// крила ширшають, знаки й число лишаються на місці.
+    private var notchHeader: some View {
+        let m = model.metrics
+        let width = model.expanded ? model.expandedSize.width : model.collapsedSize.width
+        let half = (width - model.notchWidth) / 2
+        let left = model.expanded ? half : model.left.width
+        let right = model.expanded ? half : model.right.width
+
+        return HStack(spacing: 0) {
             leftWing
-                .frame(width: IslandMetrics.wing)
+                .padding(.trailing, m.inner)
+                .frame(width: max(0, left), alignment: .trailing)
             Color.clear
                 .frame(width: model.notchWidth)
             rightWing
-                .frame(width: IslandMetrics.wing)
+                .padding(.leading, m.inner)
+                .frame(width: max(0, right), alignment: .leading)
         }
-        .frame(height: model.height)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onToggle)
     }
 
-    /// Значки найтерміновіших агентів — іконка проєкту в кольорі стану.
+    /// Просто знаки агентів — Claude, Codex, — кожен один раз. Число —
+    /// тут же, якщо праворуч від вирізу йому тісно.
     private var leftWing: some View {
-        HStack(spacing: 3) {
-            ForEach(model.items.prefix(2)) { item in
-                LucideIcon(name: item.icon, size: 13)
-                    .foregroundStyle(item.status.color)
+        let m = model.metrics
+        return HStack(spacing: m.gap) {
+            ForEach(model.left.agents, id: \.self) { agent in
+                AgentMark(agent: agent, size: m.icon)
+            }
+            if model.countOnLeft {
+                countText
             }
         }
     }
 
-    /// Скільки чекає дозволу; якщо ніхто — скільки працює; інакше — скільки всього.
+    @ViewBuilder
     private var rightWing: some View {
-        HStack(spacing: 3) {
-            if model.waitingForPermission > 0 {
-                Image(systemName: "hand.raised.fill")
-                Text(verbatim: "\(model.waitingForPermission)")
-            } else if model.working > 0 {
-                Image(systemName: "circle.dotted")
-                Text(verbatim: "\(model.working)")
-            } else {
-                Text(verbatim: "\(model.items.count)")
+        if !model.countOnLeft {
+            HStack(spacing: 3) {
+                if model.right.hand {
+                    Image(systemName: "hand.raised.fill")
+                        .font(.system(size: model.metrics.font, weight: .semibold))
+                        .foregroundStyle(countColor)
+                }
+                countText
             }
         }
-        .font(.system(size: 11, weight: .semibold).monospacedDigit())
-        .foregroundStyle(model.waitingForPermission > 0 ? Color.orange
-                         : model.working > 0 ? Color.blue : Color.secondary)
     }
 
-    // ------------------------------------------------------------ список
+    private var countText: some View {
+        Text(verbatim: "\(model.count)")
+            .font(.system(size: model.metrics.font, weight: .semibold).monospacedDigit())
+            .foregroundStyle(countColor)
+    }
+
+    /// Помаранчеве — чекає дозволу, синє — працює, сіре — решта.
+    private var countColor: Color {
+        model.waitingForPermission > 0 ? .orange : model.working > 0 ? .blue : .secondary
+    }
 
     private var list: some View {
-        VStack(spacing: IslandMetrics.rowSpacing) {
+        let m = model.metrics
+        return VStack(spacing: m.rowSpacing) {
             ForEach(model.visibleItems) { item in
-                Button { onOpen(item) } label: { IslandRow(item: item) }
+                Button { onOpen(item) } label: { IslandRow(item: item, metrics: m) }
                     .buttonStyle(.plain)
             }
             if model.hiddenCount > 0 {
                 Button(action: onOpenAll) {
                     Text("Усі сесії — у вікні Laserbeak")
-                        .font(.caption)
+                        .font(.system(size: m.font - 1))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
-                .frame(height: IslandMetrics.footerHeight)
+                .frame(height: m.footerHeight)
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, IslandMetrics.listTop)
-        .padding(.bottom, IslandMetrics.listBottom)
+        .padding(.top, m.listTop)
+        .padding(.bottom, m.listBottom)
     }
 }
 
+/// Рядок смужки: знак агента, назва, що робить, скільки триває хід.
+struct StripLine: View {
+    let item: IslandItem?
+    let more: Int
+    let metrics: IslandMetrics
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let item {
+                AgentBadge(item: item, size: max(10, metrics.stripHeight - 6))
+                Text(verbatim: item.title)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .layoutPriority(1)
+                Text(verbatim: item.statusLine)
+                    .foregroundStyle(item.status == .needsInput ? Color.orange : Color.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if item.status == .working, item.turnStartedAt != nil {
+                    // Раз на секунду, лише поки сесія працює.
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(verbatim: Clock.text(item.elapsed(at: context.date) ?? 0))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    .layoutPriority(1)
+                } else if item.status == .waiting, let seconds = item.lastTurnSeconds {
+                    Text(verbatim: Format.duration(seconds))
+                        .foregroundStyle(.secondary)
+                        .layoutPriority(1)
+                }
+                if more > 0 {
+                    Text(verbatim: "+\(more)")
+                        .foregroundStyle(.tertiary)
+                        .layoutPriority(1)
+                }
+            }
+        }
+        .font(.system(size: metrics.font))
+        .foregroundStyle(.primary)
+        .padding(.horizontal, (metrics.stripHeight * 0.5).rounded())
+    }
+}
+
+/// Рядок розгорнутого острова: знак агента з іконкою проєкту, назва, що
+/// робить; праворуч — стан, а під ним памʼять і час ходу.
 struct IslandRow: View {
-    let item: IslandModel.Item
+    let item: IslandItem
+    let metrics: IslandMetrics
 
     var body: some View {
         HStack(spacing: 10) {
-            IconTile(icon: item.icon, color: item.status.color, size: 26)
+            AgentBadge(item: item, size: metrics.rowIcon)
+                .padding(.trailing, 2)
             VStack(alignment: .leading, spacing: 1) {
                 Text(verbatim: item.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: metrics.font + 1, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                Text(verbatim: item.project)
-                    .font(.system(size: 11))
+                Text(verbatim: item.subtitle)
+                    .font(.system(size: metrics.font - 1))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            StatusPill(text: item.status.title, color: item.status.color)
+            VStack(alignment: .trailing, spacing: 3) {
+                StatusPill(text: item.status.title, color: item.status.color)
+                HStack(spacing: 6) {
+                    if !item.memory.isEmpty {
+                        Text(verbatim: item.memory)
+                    }
+                    if item.status == .working, item.turnStartedAt != nil {
+                        TimelineView(.periodic(from: .now, by: 1)) { context in
+                            Text(verbatim: Clock.text(item.elapsed(at: context.date) ?? 0))
+                        }
+                    }
+                }
+                .font(.system(size: metrics.font - 2).monospacedDigit())
+                .foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 8)
-        .frame(height: IslandMetrics.rowHeight)
+        .frame(height: metrics.rowHeight)
         .background(
             item.status == .needsInput ? Color.orange.opacity(0.16) : Color.white.opacity(0.04),
             in: RoundedRectangle(cornerRadius: 10, style: .continuous)
         )
         .contentShape(Rectangle())
+    }
+}
+
+/// Знак агента (Claude, Codex, Gemini), а в куточку — іконка проєкту на
+/// чорному кружечку з обідком кольору стану.
+struct AgentBadge: View {
+    let item: IslandItem
+    let size: CGFloat
+
+    var body: some View {
+        let corner = max(8, (size * 0.62).rounded())
+        AgentMark(agent: item.agent, size: size)
+            .overlay(alignment: .bottomTrailing) {
+                Circle()
+                    .fill(Color.black)
+                    .overlay {
+                        LucideIcon(name: item.projectIcon, size: (corner * 0.62).rounded())
+                            .foregroundStyle(Palette.color(item.projectColor) ?? Color.white.opacity(0.85))
+                    }
+                    .overlay {
+                        Circle().stroke(item.status.color, lineWidth: max(1, corner * 0.12))
+                    }
+                    .frame(width: corner, height: corner)
+                    .offset(x: corner * 0.32, y: corner * 0.28)
+            }
+            .frame(width: size, height: size)
+    }
+}
+
+/// Знак агента; для агента без знака — запасний значок.
+struct AgentMark: View {
+    let agent: String
+    let size: CGFloat
+
+    var body: some View {
+        if AgentLogo.names.contains(agent) {
+            AgentLogoShape(agent: agent)
+                .fill(AgentLogo.color(agent) ?? Color.primary)
+                .frame(width: size, height: size)
+        } else {
+            Image(systemName: "sparkles")
+                .font(.system(size: size * 0.8))
+                .foregroundStyle(.secondary)
+                .frame(width: size, height: size)
+        }
     }
 }

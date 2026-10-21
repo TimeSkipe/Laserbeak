@@ -838,6 +838,34 @@ Measuring this needed no screenshot: a harness built from the app's own
 sources expanded the island programmatically and printed the frames of
 the hosting view's layers on every tick.
 
+### The island's wings covered a menu bar item
+
+The first island had fixed wings, 38 pt on each side of the notch. On
+this MacBook the menu bar items begin 32 pt to the right of the notch, so
+the right wing sat 6 pt over the first of them. Wing widths cannot be
+guessed per model: notches differ, scaled modes change the points, and
+how full the menu bar is changes by the hour.
+
+The room can be measured. Menu bar items are windows at the
+`statusWindow` level, and `CGWindowListCopyWindowInfo` returns their
+frames without the screen-recording permission — only their names are
+hidden. On macOS 26 they all belong to Control Center, so our own item
+cannot be told apart, and does not need to be. The island takes the
+distance from the notch to the nearest item and makes the right wing no
+wider than that; when even the number does not fit, it moves to the left.
+
+The wings are not symmetric any more, and that cost a second attempt.
+Equal wings looked tidier, but the narrow right side then squeezed the
+left one too: the agent marks shrank to 11 pt and the number touched the
+island's edge. The left of the notch has room — it gets marks at full
+size with proper padding. The island is then off-centre, so the expanded
+one is centred on the notch, and the wing contents are pinned to the
+notch's edges: they stay put while the wings widen.
+
+The notch itself comes from `auxiliaryTopLeftArea` and
+`auxiliaryTopRightArea`, every other size from the height of that
+screen's menu bar.
+
 ## Settings, language and updates
 
 ### `LASERBEAK_LANG` in the LaunchAgent beat the settings switch

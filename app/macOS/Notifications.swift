@@ -113,6 +113,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private var listenTask: Task<Void, Never>?
     private var baseURL: URL?
     private var listenFailing = false
+    private var listenFailures = 0
 
     override init() {
         super.init()
@@ -230,15 +231,17 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
                 }
 
                 since = max(batch.seq, batch.notifications.map(\.seq).max() ?? 0)
+                listenFailures = 0
                 if listenFailing {
                     listenFailing = false
                     AppLog.write("черга сповіщень знову працює")
                 }
             } catch {
                 // Демон лежить або запит обірвався — почекаємо і спробуємо знову.
-                // У лог — лише перший збій поспіль: демон може лежати годину,
-                // а запит повторюється кожні три секунди.
-                if !listenFailing {
+                // У лог — лише раз за обрив, і не з першої ж невдачі: перезапуск
+                // демона (npm run restart) — це секунда-дві тиші, а не збій.
+                listenFailures += 1
+                if !listenFailing, listenFailures >= 3 {
                     listenFailing = true
                     AppLog.error("черга сповіщень (events/wait): \(AppLog.describe(error)) — банери не приходитимуть, доки демон не відповість")
                 }

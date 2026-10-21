@@ -49,13 +49,16 @@ struct GeneralPane: View {
             }
 
             Section {
-                Toggle(isOn: islandBinding) {
-                    Label("Острів біля вирізу", systemImage: "menubar.rectangle")
+                Picker(selection: islandBinding) {
+                    Text("Острів біля вирізу").tag(true)
+                    Text("Лише кружок із числом у меню-барі").tag(false)
+                } label: {
+                    Label("Агенти на екрані", systemImage: "menubar.rectangle")
                 }
-                .toggleStyle(.switch)
+                .pickerStyle(.radioGroup)
                 .disabled(client.state == nil)
             } footer: {
-                Text("Значки агентів обабіч вирізу екрана; помаранчевий — хтось чекає дозволу. Клік розгортає список. Лише на маках із вирізом.")
+                Text("Острів — знаки агентів обабіч вирізу; помаранчевий — хтось чекає дозволу. На моніторі без вирізу — вузька смужка посеред меню-бару: що робить сесія і скільки триває її хід. Кружок із числом у меню-барі є завжди.")
             }
 
             Section("Про програму") {

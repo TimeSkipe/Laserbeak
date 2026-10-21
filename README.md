@@ -831,20 +831,40 @@ Automatic checks are switched off in the same section.
 ### The notch island
 
 On a MacBook with a notch, Laserbeak puts its own small island around it —
-like the Dynamic Island on an iPhone. On the left of the notch, the icons
-of the most urgent agents in the colour of their state; on the right, how
-many are waiting for permission (orange, with a hand), or else how many
-are working.
+like the Dynamic Island on an iPhone. On the left of the notch, the marks
+of the agents at work — Claude, Codex, Gemini — each once; on the right,
+how many are waiting for permission (orange), or else how many are
+working (blue). While someone waits, the whole island is outlined in
+orange.
 
 ```
-   ▢ ▢ ┌──────── notch ────────┐ ✋ 2        ← two agents need you
+   ✳ ֍ ┌──────── notch ────────┐ 2        ← two agents need you
 ```
 
-A click expands it downwards: who exactly is waiting, who is working,
-which project each belongs to. A click on a row opens the editor the
-session was started from; a click anywhere else folds it back. It is
-switched off in Settings → General, and it only appears when there are
-sessions and the screen has a notch.
+A click expands it downwards: who is waiting, who is working and what
+exactly they are doing (*editing server.js*, *searching “notch”*), how
+long the turn has been running and how much memory the session holds —
+the agent together with everything it started. A Codex session driving
+its own browser easily weighs 1.5 GB, while the agent itself is 200 MB;
+the session details show the same, with the number of processes. A click on a row opens the editor the
+session was started from; a click anywhere else folds it back.
+
+On a display without a notch — an external monitor — the same thing is a
+slim strip in the middle of the menu bar: the agent, the session, what it
+is doing and the turn's time.
+
+```
+              ✳ Kalyna 2  editing Island.swift  3:42  +2
+```
+
+Sizes come from the menu bar of each screen, so the island sits the same
+on a MacBook Air, a Pro and in scaled modes. The right wing never covers
+menu bar items: it is only as wide as the room left of the first of them,
+and when there is none, the number moves to the left of the notch. What a session is doing comes from its transcript;
+shell commands are never shown, only the description Claude gives them,
+since a command can carry a token. Settings → General chooses between the
+island and just the circle with a number in the menu bar, which is always
+there.
 
 ### If the app crashes
 

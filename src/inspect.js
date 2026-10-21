@@ -56,6 +56,8 @@ let latest = {
   terminals: [],            // [{ pid, cwd, editor, hasClaude }]
   claude: [],               // [{ pid, cwd, ppid }]
   openProjects: new Set(),  // шляхи проєктів, відкритих в IDE прямо зараз
+  table: new Map(),         // pid -> { ppid, rss, comm } — уся таблиця процесів
+  children: new Map(),      // pid -> [pid дітей]
 };
 
 let refreshing = false;
@@ -79,7 +81,7 @@ function run(file, args) {
   });
 }
 
-/** Таблиця процесів: pid -> { ppid, comm } */
+/** Таблиця процесів: pid -> { ppid, rss (КБ), comm } */
 function parseProcesses(text) {
   const table = new Map();
 
@@ -87,11 +89,11 @@ function parseProcesses(text) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // pid ppid команда — команда остання і може містити пробіли
-    const match = /^(\d+)\s+(\d+)\s+(.*)$/.exec(trimmed);
+    // pid ppid rss команда — команда остання і може містити пробіли
+    const match = /^(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/.exec(trimmed);
     if (!match) continue;
 
-    table.set(Number(match[1]), { ppid: Number(match[2]), comm: match[3] });
+    table.set(Number(match[1]), { ppid: Number(match[2]), rss: Number(match[3]), comm: match[4] });
   }
 
   return table;
@@ -163,7 +165,8 @@ async function refresh() {
   refreshing = true;
 
   try {
-    const table = parseProcesses(await run('/bin/ps', ['-eo', 'pid=,ppid=,comm=']));
+    // rss — заодно, тим самим викликом: з нього пам'ять кожної сесії.
+    const table = parseProcesses(await run('/bin/ps', ['-eo', 'pid=,ppid=,rss=,comm=']));
 
     const terminals = [];
     const claude = [];
@@ -196,11 +199,19 @@ async function refresh() {
     const shellsWithClaude = new Set(claude.map((c) => c.ppid));
     for (const item of terminals) item.hasClaude = shellsWithClaude.has(item.pid);
 
+    const children = new Map();
+    for (const [pid, info] of table) {
+      if (!children.has(info.ppid)) children.set(info.ppid, []);
+      children.get(info.ppid).push(pid);
+    }
+
     latest = {
       at: Date.now(),
       terminals: terminals.filter((t) => t.cwd),
       claude: claude.filter((c) => c.cwd),
       openProjects: openProjects(runningEditors),
+      table,
+      children,
     };
   } catch (err) {
     log.warnRepeated('inspect', 'огляд процесів', err);
@@ -220,6 +231,38 @@ function snapshot() {
   return latest;
 }
 
+/**
+ * Скільки пам'яті тримає процес разом з усім, що він запустив: MCP-сервери,
+ * мовні сервери, браузер, який сесія відкрила для себе. Сам агент буває
+ * легким, а його браузер — у гігабайти.
+ *
+ * Це RSS із ps — те, що зараз у фізичній пам'яті. Спільні бібліотеки
+ * кожен процес рахує як свої, тож сума трохи завищена; для «хто скільки
+ * їсть» цього досить. Береться з останнього огляду (раз на 4 с), без
+ * нового виклику ps — /state лишається миттєвим.
+ *
+ * @returns {{bytes: number, processes: number} | null}
+ */
+function treeMemory(pid) {
+  const root = Number(pid);
+  if (!root || !latest.table.has(root)) return null;
+
+  let kb = 0;
+  let processes = 0;
+  const stack = [root];
+  const seen = new Set();
+  while (stack.length) {
+    const current = stack.pop();
+    if (seen.has(current)) continue;
+    seen.add(current);
+    kb += latest.table.get(current)?.rss || 0;
+    processes += 1;
+    stack.push(...(latest.children.get(current) || []));
+  }
+
+  return { bytes: kb * 1024, processes };
+}
+
 /** Ті з процесів, що належать каталогу проєкту або його підкаталогу. */
 function filterIn(items, projectPath) {
   if (!projectPath) return [];
@@ -231,4 +274,4 @@ function countIn(items, projectPath) {
   return filterIn(items, projectPath).length;
 }
 
-module.exports = { snapshot, refresh, filterIn, countIn };
+module.exports = { snapshot, refresh, filterIn, countIn, treeMemory };

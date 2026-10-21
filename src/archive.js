@@ -93,6 +93,61 @@ function knownUuids(sid) {
 // залежить.
 const BROWSER_TOOL = /claude-in-chrome|playwright|puppeteer|browser/i;
 
+// ---------------------------------------------------------------- що робить
+
+// Остання дія кожної сесії — для острова біля вирізу й смужки на моніторі
+// без нього: «редагує server.js». Лише в памʼяті: після перезапуску демона
+// приходить із першою ж новою дією, а давні дії нікому не цікаві.
+//
+// Команду Bash не показуємо: у ній бувають токени й паролі, а острів
+// бачить кожен, хто дивиться на екран. Лише опис, який Claude дає їй сам.
+const activity = new Map();
+
+const lastPart = (p) => String(p || '').split('/').filter(Boolean).pop() || '';
+const shorten = (s, n = 60) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
+
+function hostOf(url) {
+  try { return new URL(url).hostname; } catch { return ''; }
+}
+
+/** Блок tool_use → що за дія ({kind}) і над чим ({target}). */
+function describeTool(block) {
+  const name = String(block.name);
+  const input = block.input && typeof block.input === 'object' ? block.input : {};
+
+  if (name.startsWith('mcp__')) {
+    if (BROWSER_TOOL.test(name)) return { kind: 'browser', target: '' };
+    return { kind: 'tool', target: shorten(name.split('__').pop(), 40) };
+  }
+
+  switch (name) {
+    case 'Edit':
+    case 'MultiEdit': return { kind: 'edit', target: lastPart(input.file_path) };
+    case 'NotebookEdit': return { kind: 'edit', target: lastPart(input.notebook_path) };
+    case 'Write': return { kind: 'write', target: lastPart(input.file_path) };
+    case 'Read': return { kind: 'read', target: lastPart(input.file_path) };
+    case 'Bash': return { kind: 'bash', target: shorten(input.description) };
+    case 'Grep':
+    case 'Glob': return { kind: 'search', target: shorten(input.pattern, 40) };
+    case 'WebFetch': return { kind: 'web', target: hostOf(input.url) };
+    case 'WebSearch': return { kind: 'websearch', target: shorten(input.query, 40) };
+    case 'Task':
+    case 'Agent': return { kind: 'agent', target: shorten(input.description || input.subagent_type, 40) };
+    case 'TodoWrite': return { kind: 'plan', target: '' };
+    default: return { kind: 'tool', target: shorten(name, 40) };
+  }
+}
+
+function noteActivity(sid, record) {
+  if (record.type !== 'assistant' || !Array.isArray(record.message?.content)) return;
+  const at = Date.parse(record.timestamp || '') || Date.now();
+  for (const block of record.message.content) {
+    if (block?.type !== 'tool_use' || !block.name) continue;
+    const prev = activity.get(sid);
+    if (!prev || at >= prev.at) activity.set(sid, { ...describeTool(block), at });
+  }
+}
+
 /** Один запис транскрипту -> одне повідомлення архіву, або null. */
 function distill(record) {
   const type = record.type;
@@ -207,6 +262,8 @@ function ingest(sid, transcriptPath, meta = {}) {
     } catch {
       continue;
     }
+
+    noteActivity(sid, record);
 
     const message = distill(record);
     if (!message) continue;
@@ -387,5 +444,10 @@ function lastBrowserUse(sid) {
   return index.get(sid)?.lastBrowserTs || 0;
 }
 
+/** Остання дія сесії: { kind, target, at } або null. */
+function lastActivity(sid) {
+  return activity.get(sid) || null;
+}
+
 module.exports = {
-  lastBrowserUse, ingest, ingestRecent, list, meta, read, distill, ARCHIVE_DIR, fileFor };
+  lastBrowserUse, lastActivity, describeTool, ingest, ingestRecent, list, meta, read, distill, ARCHIVE_DIR, fileFor };

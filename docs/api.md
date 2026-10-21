@@ -104,6 +104,12 @@ Everything an app needs. Polled every 2 seconds.
 
     "turns": 12,
     "turnSeconds": null,        // set while a turn is running
+    "activity": {               // the last tool call of this turn; null between turns and for Codex
+      "kind": "edit", "text": "editing server.js", "at": 0
+    },
+    "memory": {                 // RSS of the agent and everything it started (MCP servers, a browser); null if its process is unknown
+      "bytes": 1550000000, "processes": 19
+    },
     "lastTurnSeconds": 64.2,
     "totalWorkSeconds": 2832
   }],

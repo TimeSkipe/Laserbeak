@@ -133,6 +133,20 @@ struct Session: Identifiable, Codable, Hashable {
     /// Демон бере його з ~/.claude/settings.json.
     var effort: String = ""
 
+    /// Що сесія робить у цьому ході: «редагує server.js». Демон бере
+    /// останній виклик інструмента з транскрипту; між ходами — nil.
+    var activity: SessionActivity?
+
+    /// Скільки памʼяті тримає агент разом із тим, що він запустив
+    /// (MCP-сервери, браузер). Демон рахує з таблиці процесів; nil — процес
+    /// сесії невідомий.
+    var memory: SessionMemory?
+
+    /// Памʼять словами системи: «1,6 ГБ».
+    var memoryText: String? {
+        memory.map { ByteCountFormatter.string(fromByteCount: Int64($0.bytes), countStyle: .memory) }
+    }
+
     var id: String { sid }
 
     var state: SessionStatus { SessionStatus(rawValue: status) ?? .idle }
@@ -157,7 +171,7 @@ struct Session: Identifiable, Codable, Hashable {
         case turnStartedAt, lastTurnSeconds, turns, ageSeconds, turnSeconds
         case alias, displayName, notifyEnabled
         case totalWorkSeconds, hosted, canInput, permissionMode
-        case effort
+        case effort, activity, memory
     }
 
     init(from decoder: Decoder) throws {
@@ -183,6 +197,37 @@ struct Session: Identifiable, Codable, Hashable {
         canInput         = c.value(.canInput, false)
         permissionMode   = c.value(.permissionMode, "")
         effort           = c.value(.effort, "")
+        activity         = try? c.decodeIfPresent(SessionActivity.self, forKey: .activity)
+        memory           = try? c.decodeIfPresent(SessionMemory.self, forKey: .memory)
+    }
+}
+
+struct SessionMemory: Codable, Hashable {
+    var bytes: Double = 0
+    var processes: Int = 0
+
+    enum CodingKeys: String, CodingKey { case bytes, processes }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        bytes     = c.value(.bytes, 0)
+        processes = c.value(.processes, 0)
+    }
+}
+
+/// Остання дія сесії — вже словами вибраної мови.
+struct SessionActivity: Codable, Hashable {
+    var kind: String = ""
+    var text: String = ""
+    var at: Double = 0
+
+    enum CodingKeys: String, CodingKey { case kind, text, at }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind = c.value(.kind, "")
+        text = c.value(.text, "")
+        at   = c.value(.at, 0)
     }
 }
 

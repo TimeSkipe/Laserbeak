@@ -26,6 +26,10 @@ struct SessionDetails: View {
                          value: session.lastTurnSeconds.map(Format.duration) ?? "—")
                 StatTile(title: String(localized: "Сесія відкрита"),
                          value: Format.duration(Double(session.ageSeconds)))
+                // Разом із тим, що агент запустив: MCP-сервери, браузер.
+                StatTile(title: String(localized: "Памʼять"), value: session.memoryText ?? "—")
+                StatTile(title: String(localized: "Процесів"),
+                         value: session.memory.map { "\($0.processes)" } ?? "—")
             }
 
             VStack(spacing: 8) {

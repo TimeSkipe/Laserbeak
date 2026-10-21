@@ -98,6 +98,20 @@ function record(entry) {
   return row;
 }
 
+// Що сесія робить у цьому турні — останній виклик інструмента, словами
+// вибраної мови. Між турнами (і для Codex, чий транскрипт ми не читаємо)
+// — нічого: «закінчив» і так видно зі статусу.
+function activityOf(session) {
+  const act = archive.lastActivity(session.sid);
+  if (!act || !session.turnStartedAt || act.at < session.turnStartedAt - 1000) return null;
+
+  const bare = { bash: 'act.bashBare', agent: 'act.agentBare' };
+  const text = act.target
+    ? i18n.t(`act.${act.kind}`, { target: act.target })
+    : i18n.t(bare[act.kind] || `act.${act.kind}`, { target: '' }).trim();
+  return { kind: act.kind, text, at: act.at };
+}
+
 function decorate(session, now) {
   const custom = sessionSettings.get(session.sid);
   const inTurn = Boolean(session.turnStartedAt);
@@ -133,6 +147,9 @@ function decorate(session, now) {
     effort: claude ? modes.readEffort(session) : '',
     ageSeconds: Math.round((now - session.since) / 1000),
     turnSeconds: inTurn ? Math.round(currentTurn) : null,
+    activity: activityOf(session),
+    // Скільки пам'яті тримає агент разом зі своїми процесами.
+    memory: inspect.treeMemory(session.pid),
     // Сумарний час роботи включає турн, який іде просто зараз.
     totalWorkSeconds: Math.round((session.totalWorkSeconds || 0) + currentTurn),
   };
