@@ -993,6 +993,16 @@ without them, and nothing said so. They live in `shell/laserbeak.zsh`
 now, and `install.sh` adds one `source` line. An existing `start()` in
 `~/.zshrc` is left alone and reported: it is the person's file.
 
+### A `!` command in Claude Code drops functions named `_x`
+
+`! stop lazer` inside a session failed with `command not found: _lb_lang`.
+Claude Code runs `!` commands from a snapshot of the shell taken when the
+session starts, and the snapshot leaves out every function whose name
+starts with a single `_`, so as to skip zsh's completion functions. `start`
+and `stop` made it in, their helpers did not. The helpers are named
+`__lb_*` now: two underscores survive the snapshot. Sessions started
+before the rename keep the old snapshot until they restart.
+
 ### A mod written in a session loads only in that session
 
 The reply-cards mod was written into `~/.claude/dev-mods/<session id>/`,

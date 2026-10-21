@@ -25,8 +25,13 @@
 # Де лежить репозиторій: звідси беремо tmux.conf.
 typeset -g _LB_ROOT="${${(%):-%x}:A:h:h}"
 
+# Помічники — з двома підкресленнями, не з одним: Claude Code, знімаючи
+# оболонку для команд `!`, викидає функції з одним `_` (так він минає
+# completion-функції zsh). З одним `_` там лишались би start і stop без
+# своїх помічників: «command not found: _lb_lang».
+
 # Мова Laserbeak — уже розвʼязана демоном ("auto" → мова системи).
-_lb_lang() {
+__lb_lang() {
   local config="$HOME/.laserbeak/config.json" port=8787 json
   json="$(cat "$config" 2>/dev/null)"
   [[ "$json" =~ '"port": *([0-9]+)' ]] && port="$match[1]"
@@ -45,7 +50,7 @@ _lb_lang() {
 
 # Текст за ключем. Мову рахують один раз на виклик start чи stop
 # (_LB_LANG), а не на кожен рядок — це запит до демона.
-_lb_t() {
+__lb_t() {
   local key="$1"; shift
   local text
   case "${_LB_LANG:-en}:$key" in
@@ -181,12 +186,12 @@ _lb_t() {
 # його сам, просити вдруге означало б читати те, що вже в контексті.
 #
 # Codex — інша справа: він підвантажує AGENTS.md, а CLAUDE.md не бачить.
-# Тож для нього (`_lb_docs_prompt codex`) CLAUDE.md іде першим, якщо
+# Тож для нього (`__lb_docs_prompt codex`) CLAUDE.md іде першим, якщо
 # AGENTS.md у проєкті немає, — інакше Codex не знатиме правил проєкту.
 #
 # Корінь шукаємо вгору від поточної теки (.git або CLAUDE.md): сесію
 # часто відкривають із підтеки, а документація лежить у корені.
-_lb_docs_prompt() {
+__lb_docs_prompt() {
   local agent="${1:-claude}"
   local root="$PWD"
   while [ "$root" != "/" ] && [ ! -e "$root/.git" ] && [ ! -e "$root/CLAUDE.md" ]; do
@@ -212,7 +217,7 @@ _lb_docs_prompt() {
   fi
   (( ${#files} )) || [ -n "$rules" ] || return 1
 
-  local ending="$(_lb_t docs.ending)"
+  local ending="$(__lb_t docs.ending)"
 
   # Скільки все це важить. 120 КБ — це приблизно 40k токенів, пʼята
   # частина вікна на 200k: стільки віддати не шкода. Але docs/ буває й
@@ -226,9 +231,9 @@ _lb_docs_prompt() {
       (( weight += size ))
     done
     if (( weight > 122880 )); then
-      local lead="$(_lb_t docs.lead)"
-      [ -n "$rules" ] && lead="$(_lb_t docs.leadRules "$rules")"
-      print -r -- "${lead}: $(_lb_t docs.heavy ${#files} $(( (weight + 512) / 1024 ))) ${ending}"
+      local lead="$(__lb_t docs.lead)"
+      [ -n "$rules" ] && lead="$(__lb_t docs.leadRules "$rules")"
+      print -r -- "${lead}: $(__lb_t docs.heavy ${#files} $(( (weight + 512) / 1024 ))) ${ending}"
       return 0
     fi
   fi
@@ -239,15 +244,15 @@ _lb_docs_prompt() {
 
   # Довгий перелік сам стає стіною тексту — тоді чесніше назвати теку.
   local list="${(j:, :)names}"
-  (( ${#names} > 10 )) && list="${(j:, :)names[1,8]} $(_lb_t docs.rest)"
+  (( ${#names} > 10 )) && list="${(j:, :)names[1,8]} $(__lb_t docs.rest)"
 
   # Один рядок: у сесію це летить як один аргумент, і кожен перенос
   # там був би окремою відправкою.
-  print -r -- "$(_lb_t docs.read "$list") ${ending}"
+  print -r -- "$(__lb_t docs.read "$list") ${ending}"
 }
 
 start() {
-  local _LB_LANG="$(_lb_lang)"
+  local _LB_LANG="$(__lb_lang)"
   local docs=1 agent=claude
   while (( $# )); do
     case "$1" in
@@ -267,7 +272,7 @@ start() {
     local bin="$(command -v codex 2>/dev/null)"
     [ -x "$bin" ] || bin="/Applications/ChatGPT.app/Contents/Resources/codex"
     if [ ! -x "$bin" ]; then
-      print -u2 -- "$(_lb_t codex.missing)"
+      print -u2 -- "$(__lb_t codex.missing)"
       return 1
     fi
     cmd=( "$bin" )
@@ -287,7 +292,7 @@ start() {
   args=( "${@:2}" )
   if (( docs )) && (( ${#args} == 0 )); then
     local intro
-    intro="$(_lb_docs_prompt "$agent")" && args=( "$intro" )
+    intro="$(__lb_docs_prompt "$agent")" && args=( "$intro" )
   fi
 
   # Уже всередині tmux або його немає — запускаємо як раніше.
@@ -312,7 +317,7 @@ start() {
 
 # Скільки памʼяті тримає процес разом з усіма нащадками, у МБ.
 # Сам tmux важить копійки, вага — у claude всередині панелі.
-_lb_tree_rss() {
+__lb_tree_rss() {
   ps -eo pid=,ppid=,rss= | awk -v root="$1" '
     { pid[NR]=$1; ppid[NR]=$2; rss[NR]=$3; n=NR }
     END {
@@ -333,16 +338,16 @@ _lb_tree_rss() {
 # Лише kill-session і лише сесії lb-*: kill-server закрив би разом усі
 # сесії на машині (див. docs/decisions.md).
 stop() {
-  local _LB_LANG="$(_lb_lang)"
+  local _LB_LANG="$(__lb_lang)"
 
   if ! command -v tmux >/dev/null 2>&1; then
-    print -u2 -- "$(_lb_t tmux.missing)"
+    print -u2 -- "$(__lb_t tmux.missing)"
     return 1
   fi
 
   local out
   if ! out="$(tmux ls -F '#{session_name}|#{session_attached}|#{pane_pid}' 2>/dev/null)" || [ -z "$out" ]; then
-    print -- "$(_lb_t stop.none)"
+    print -- "$(__lb_t stop.none)"
     return 0
   fi
 
@@ -361,14 +366,14 @@ stop() {
         (( attached )) || targets+=( "$name" )
       done
       if (( ! ${#targets} )); then
-        print -- "$(_lb_t stop.noDetached)"
+        print -- "$(__lb_t stop.noDetached)"
         return 0
       fi
       ;;
 
     # Нічого не передали — просто показати.
     "")
-      printf "%-18s %-12s %8s\n" "$(_lb_t stop.label)" "$(_lb_t stop.state)" "$(_lb_t stop.memory)"
+      printf "%-18s %-12s %8s\n" "$(__lb_t stop.label)" "$(__lb_t stop.state)" "$(__lb_t stop.memory)"
       for row in "${rows[@]}"; do
         name="${row%%|*}"
         attached="${${row#*|}%%|*}"
@@ -377,10 +382,10 @@ stop() {
         # lb-<мітка>-<pid> -> <мітка>
         [[ "$name" == lb-*-* ]] && { label="${name#lb-}"; label="${label%-*}"; }
         printf "%-18s %-12s %6s %s\n" "$label" \
-          "$( (( attached )) && _lb_t stop.tab || _lb_t stop.background )" \
-          "$(_lb_tree_rss "$pane")" "$(_lb_t stop.mb)"
+          "$( (( attached )) && __lb_t stop.tab || __lb_t stop.background )" \
+          "$(__lb_tree_rss "$pane")" "$(__lb_t stop.mb)"
       done
-      print -- "\n$(_lb_t stop.hint)"
+      print -- "\n$(__lb_t stop.hint)"
       return 0
       ;;
 
@@ -391,7 +396,7 @@ stop() {
         [[ "$name" == "lb-$1-"* ]] && targets+=( "$name" )
       done
       if (( ! ${#targets} )); then
-        print -u2 -- "$(_lb_t stop.notFound "$1")"
+        print -u2 -- "$(__lb_t stop.notFound "$1")"
         return 1
       fi
       ;;
@@ -399,9 +404,9 @@ stop() {
 
   for name in "${targets[@]}"; do
     if tmux kill-session -t "$name" 2>/dev/null; then
-      print -- "$(_lb_t stop.killed "$name")"
+      print -- "$(__lb_t stop.killed "$name")"
     else
-      print -u2 -- "$(_lb_t stop.failed "$name")"
+      print -u2 -- "$(__lb_t stop.failed "$name")"
     fi
   done
 }
