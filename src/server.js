@@ -265,6 +265,8 @@ async function handle(req, res) {
       removed,
       ...state.snapshot(),
       notifierInstalled: notify.isNotifierInstalled(),
+      // Острів біля вирізу стежить за /state — так вимикач діє одразу.
+      island: { show: config.get().island?.show !== false },
     });
   }
 
@@ -273,6 +275,8 @@ async function handle(req, res) {
       ok: true,
       ...state.snapshot(),
       notifierInstalled: notify.isNotifierInstalled(),
+      // Острів біля вирізу стежить за /state — так вимикач діє одразу.
+      island: { show: config.get().island?.show !== false },
     });
   }
 

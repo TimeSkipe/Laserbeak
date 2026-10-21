@@ -828,6 +828,24 @@ commits diverge from GitHub), you see it right there in the terminal.
 
 Automatic checks are switched off in the same section.
 
+### The notch island
+
+On a MacBook with a notch, Laserbeak puts its own small island around it —
+like the Dynamic Island on an iPhone. On the left of the notch, the icons
+of the most urgent agents in the colour of their state; on the right, how
+many are waiting for permission (orange, with a hand), or else how many
+are working.
+
+```
+   ▢ ▢ ┌──────── notch ────────┐ ✋ 2        ← two agents need you
+```
+
+A click expands it downwards: who exactly is waiting, who is working,
+which project each belongs to. A click on a row opens the editor the
+session was started from; a click anywhere else folds it back. It is
+switched off in Settings → General, and it only appears when there are
+sessions and the screen has a notch.
+
 ### If the app crashes
 
 The daemon checks every ten seconds whether the app is reachable and

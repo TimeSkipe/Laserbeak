@@ -446,6 +446,9 @@ struct DaemonState: Codable {
     var history: [ActivityEvent] = []
     var notifierInstalled: Bool = false
 
+    /// Чи показувати острів біля вирізу (config.json → island.show).
+    var islandEnabled: Bool = true
+
     /// Показуємо лише те, що відкрито просто зараз. Демон памʼятає всі
     /// проєкти разом із їхніми кольорами й іконками.
     ///
@@ -493,6 +496,9 @@ struct DaemonState: Codable {
         case ok, uptimeSeconds, host, port, language, update
         case projects, sessions, history, notifierInstalled
     }
+    // Окремо від CodingKeys: там лише поля, які кодуються як є.
+    enum ExtraKeys: String, CodingKey { case island }
+    enum IslandKeys: String, CodingKey { case show }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -506,6 +512,9 @@ struct DaemonState: Codable {
         sessions          = c.value(.sessions, [Session]())
         history           = c.value(.history, [ActivityEvent]())
         notifierInstalled = c.value(.notifierInstalled, false)
+        let extra = try? decoder.container(keyedBy: ExtraKeys.self)
+        let island = try? extra?.nestedContainer(keyedBy: IslandKeys.self, forKey: .island)
+        islandEnabled     = island?.value(.show, true) ?? true
     }
 }
 

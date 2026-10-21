@@ -63,6 +63,7 @@ the `.xcodeproj` itself is not kept in git. One target, macOS 14+.
 | `Views.swift` | sheets: session details, session name and notifications, project colour and icon; the empty state |
 | `Theme.swift` | cards, status pills, icon tiles, the pulsing status badge |
 | `MenuBar.swift` | the menu bar icon and menu |
+| `Island.swift` | the notch island: agent icons on both sides of the MacBook notch, orange when someone waits for permission; a click expands the list, a row opens the session's editor. A borderless panel at the menu bar's level, sized exactly to the island so it never swallows clicks; no endless animation |
 | `Notifications.swift` | banners from the app itself: project icon with the event badge, its own log file |
 | `Language.swift` | the window's language: from `config.json` into `AppleLanguages`, relaunch |
 | `Models.swift` | mirror of the JSON from `/state`, `/settings`, `/update`; **hand-written decoding**, see below |

@@ -48,6 +48,16 @@ struct GeneralPane: View {
                 Text("Одна мова на все: це вікно, меню-бар, банери, історія подій і розширення браузера.")
             }
 
+            Section {
+                Toggle(isOn: islandBinding) {
+                    Label("Острів біля вирізу", systemImage: "menubar.rectangle")
+                }
+                .toggleStyle(.switch)
+                .disabled(client.state == nil)
+            } footer: {
+                Text("Значки агентів обабіч вирізу екрана; помаранчевий — хтось чекає дозволу. Клік розгортає список. Лише на маках із вирізом.")
+            }
+
             Section("Про програму") {
                 LabeledContent("Версія") {
                     Text(verbatim: versionText)
@@ -90,6 +100,17 @@ struct GeneralPane: View {
             return Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
         }
         return update.head.isEmpty ? update.version : "\(update.version) · \(update.head)"
+    }
+
+    /// Значення бере з /state: острів стежить за ним самим, тож вимикач
+    /// діє одразу після збереження.
+    private var islandBinding: Binding<Bool> {
+        Binding(
+            get: { client.state?.islandEnabled ?? true },
+            set: { value in
+                Task { _ = await client.saveSettings(["island": ["show": value]]) }
+            }
+        )
     }
 
     private var languageBinding: Binding<String> {

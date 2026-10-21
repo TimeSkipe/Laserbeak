@@ -1611,6 +1611,41 @@
         }
       }
     },
+    "Значки агентів обабіч вирізу екрана; помаранчевий — хтось чекає дозволу. Клік розгортає список. Лише на маках із вирізом.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent icons on both sides of the screen notch; orange means someone is waiting for permission. Click to expand the list. Only on Macs with a notch."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ikony agentů po obou stranách výřezu obrazovky; oranžová znamená, že někdo čeká na povolení. Kliknutím se rozbalí seznam. Jen na Macích s výřezem."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Значки агентів обабіч вирізу екрана; помаранчевий — хтось чекає дозволу. Клік розгортає список. Лише на маках із вирізом."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Значки агентов по обе стороны выреза экрана; оранжевый — кто-то ждёт разрешения. Клик раскрывает список. Только на маках с вырезом."
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Экран ойығының екі жағында агенттердің белгішелері; қызғылт сары — біреу рұқсат күтіп тұр. Басқанда тізім ашылады. Тек ойығы бар Mac-тарда."
+          }
+        }
+      }
+    },
     "Зусилля": {
       "extractionState": "manual",
       "localizations": {
@@ -2657,6 +2692,41 @@
           "stringUnit": {
             "state": "translated",
             "value": "Соңғы жүріс"
+          }
+        }
+      }
+    },
+    "Острів біля вирізу": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch island"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostrov u výřezu"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Острів біля вирізу"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остров у выреза"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ойық жанындағы арал"
           }
         }
       }
@@ -4232,6 +4302,41 @@
           "stringUnit": {
             "state": "translated",
             "value": "Осы жоба хабарландыруларының дыбысын қосу"
+          }
+        }
+      }
+    },
+    "Усі сесії — у вікні Laserbeak": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All sessions — in the Laserbeak window"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Všechny relace — v okně Laserbeak"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усі сесії — у вікні Laserbeak"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все сессии — в окне Laserbeak"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Барлық сессиялар — Laserbeak терезесінде"
           }
         }
       }

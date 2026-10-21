@@ -11,6 +11,8 @@ struct MenuBarLabel: View {
         Text(verbatim: client.badge)
             .onAppear {
                 AppRouter.shared.openMainWindow = { openWindow(id: AppRouter.mainWindow) }
+                // Острів біля вирізу живе стільки ж, скільки програма.
+                IslandController.shared.start(client: client)
             }
     }
 }

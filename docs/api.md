@@ -108,7 +108,9 @@ Everything an app needs. Polled every 2 seconds.
     "totalWorkSeconds": 2832
   }],
 
-  "history": [{ "ts": 0, "sid": "…", "kind": "stop", "message": "…" }]
+  "history": [{ "ts": 0, "sid": "…", "kind": "stop", "message": "…" }],
+
+  "island": { "show": true }  // the notch island in the Mac app — config.json, Settings → General
 }
 ```
 
@@ -360,7 +362,8 @@ comes from the same reading of transcripts.
     "language": "auto",                      // auto | uk | en | cs | ru | kk
     "notify": { "stop": true, "permission": true, "idle": false, "update": true },
     "sounds": { "stop": "Glass", "permission": "Funk", "idle": "Tink", "update": "Ping" },
-    "updates": { "check": true }
+    "updates": { "check": true },
+    "island": { "show": true }
   },
   "language": "cs",                          // what "auto" resolved to
   "languages": ["auto", "uk", "en", "cs", "ru", "kk"],
@@ -376,7 +379,7 @@ Any part of the same shape: `{ "notify": { "idle": true } }`,
 Written into `~/.laserbeak/config.json` next to everything else, applied
 at once. The answer is the same as `GET /settings`.
 
-Only these four groups get through, and only valid values — a port or an
+Only these five groups get through, and only valid values — a port or an
 `extensionId` cannot be changed this way. Anything else is `400`; a
 `config.json` that does not parse is `409` and is not overwritten (it may
 hold hand edits).

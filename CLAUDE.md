@@ -24,7 +24,7 @@ Claude Code / Codex (сесії)   hooks/hook.sh  →  POST 127.0.0.1:8787
        ↓                      shell/laserbeak.zsh — start / stop (tmux)
    src/*.js                   демон: Node, живе як LaunchAgent
        ↓
-   app/macOS/*.swift          програма на маку: вікно, меню-бар, банери
+   app/macOS/*.swift          програма на маку: вікно, меню-бар, банери, острів біля вирізу
    extension/*.js             розширення браузера: зона на сторінці → сесія
    claude/reply-cards/        мод Claude Code: відповіді картками
 ```

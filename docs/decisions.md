@@ -819,6 +819,25 @@ way.
 The moral: measure after the fix, not only before. A profile that loses
 one suspicious frame can still show the same cost.
 
+### Resizing a panel and animating in the same tick moves its content
+
+The notch island grows on a click: the panel is widened first, then the
+island inside it springs open. The icons slid sideways and came back. The
+panel's own frame was fine — recorded every frame, it jumped once to the
+new size and stayed. The content was not: the island's layer sat at x = 0
+of the wider panel and grew to the right, so it started 59.5 pt left of
+where it belonged and drifted back.
+
+The resize had not been laid out yet when `withAnimation` ran, so SwiftUI
+took the island's move to the centre of the new panel into the same
+animation. The fix is to let the hosting view accept the new size first
+(`layoutSubtreeIfNeeded`) and start the animation on the next tick; the
+island's centre then stays put for the whole spring.
+
+Measuring this needed no screenshot: a harness built from the app's own
+sources expanded the island programmatically and printed the frames of
+the hosting view's layers on every tick.
+
 ## Settings, language and updates
 
 ### `LASERBEAK_LANG` in the LaunchAgent beat the settings switch

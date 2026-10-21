@@ -1,7 +1,8 @@
 'use strict';
 
 // Загальні налаштування, які міняють із вікна програми: мова, які події
-// показують банер, якими звуками і чи стежити за оновленнями.
+// показують банер, якими звуками, чи стежити за оновленнями і чи
+// показувати острів біля вирізу екрана.
 //
 // Живуть у config.json, поруч із рештою правил, тож їх можна правити й
 // руками. Але з вікна пускаємо лише перелічене тут і лише допустимі
@@ -17,7 +18,7 @@ const KINDS = ['stop', 'permission', 'idle', 'update'];
 
 const LANGUAGES = ['auto', ...i18n.LANGUAGES];
 
-const GROUPS = ['language', 'notify', 'sounds', 'updates'];
+const GROUPS = ['language', 'notify', 'sounds', 'updates', 'island'];
 
 const SOUNDS_DIR = '/System/Library/Sounds';
 
@@ -55,6 +56,7 @@ function get() {
       notify: Object.fromEntries(KINDS.map((k) => [k, cfg.notify?.[k] !== false])),
       sounds: Object.fromEntries(KINDS.map((k) => [k, cfg.sounds?.[k] || ''])),
       updates: { check: Boolean(cfg.updates?.check) },
+      island: { show: cfg.island?.show !== false },
     },
     // Якою мовою все говорить просто зараз — з урахуванням "auto".
     language: i18n.current(),
@@ -103,6 +105,11 @@ function patchFrom(body) {
   if ('updates' in body) {
     if (typeof body.updates?.check !== 'boolean') throw invalid('updates.check');
     patch.updates = { check: body.updates.check };
+  }
+
+  if ('island' in body) {
+    if (typeof body.island?.show !== 'boolean') throw invalid('island.show');
+    patch.island = { show: body.island.show };
   }
 
   return patch;
