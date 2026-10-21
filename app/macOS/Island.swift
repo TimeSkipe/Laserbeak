@@ -11,8 +11,8 @@ import Combine
 // й скільки триває її хід.
 //
 // Клік розгортає список: хто чекає, хто працює, що саме робить і скільки
-// памʼяті тримає. Клік по рядку відкриває редактор сесії, клік деінде
-// згортає.
+// памʼяті тримає. Клік по рядку відкриває редактор сесії, рядок унизу —
+// вікно Laserbeak, клік деінде згортає.
 //
 // Кожен екран отримує свою панель без рамки над меню-баром (рівень
 // statusBar): вона не забирає фокус і є на всіх робочих столах. Розміри —
@@ -37,6 +37,9 @@ struct IslandMetrics: Equatable {
     var inner: CGFloat { max(5, (bar * 0.22).rounded()) }
     /// Від вмісту крила до краю острова.
     var outer: CGFloat { max(7, (bar * 0.3).rounded()) }
+    /// Те саме, коли праворуч тісно: далі однаково прозорі поля значка
+    /// меню-бару, тож візуально відступ лишається.
+    var outerTight: CGFloat { max(4, (bar * 0.14).rounded()) }
     /// Найширше ліве крило: далі вже меню програм.
     var leftMax: CGFloat { (bar * 3).rounded() }
 
@@ -244,7 +247,6 @@ final class IslandModel: ObservableObject {
     var listedItems: ArraySlice<IslandItem> {
         alert ? waitingItems.prefix(IslandMetrics.maxRows) : items.prefix(IslandMetrics.maxRows)
     }
-    var hiddenCount: Int { alert ? 0 : max(0, items.count - IslandMetrics.maxRows) }
 
     // ------------------------------------------------------------ крила
 
@@ -256,15 +258,18 @@ final class IslandModel: ObservableObject {
 
     /// Праве крило: число з відступами від вирізу й від краю острова, а
     /// помаранчева рука — лише якщо вміщається. Праворуч від вирізу
-    /// бувають значки меню-бару, налазити на них не можна; тісно навіть
-    /// для числа — крила немає, число переїжджає ліворуч.
+    /// бувають значки меню-бару, налазити на них не можна. Тісно — спершу
+    /// вужчий відступ до краю острова; тісно навіть так — крила немає,
+    /// число переїжджає ліворуч.
     var right: (width: CGFloat, hand: Bool) {
         let m = metrics
         let digits = m.countWidth(count)
         let withHand = m.inner + m.handWidth + 3 + digits + m.outer
         let plain = m.inner + digits + m.outer
+        let tight = m.inner + digits + m.outerTight
         if waitingForPermission > 0, withHand <= rightRoom { return (withHand, true) }
         if plain <= rightRoom { return (plain, false) }
+        if tight <= rightRoom { return (tight, false) }
         return (0, false)
     }
 
@@ -299,7 +304,7 @@ final class IslandModel: ObservableObject {
         let list = m.listTop
             + rows * m.rowHeight
             + max(0, rows - 1) * m.rowSpacing
-            + (hiddenCount > 0 ? m.footerHeight : 0)
+            + m.footerHeight
             + m.listBottom
         // Розгорнутий острів — по центру вирізу, тож кожна половина має
         // вмістити ширше з крил.
@@ -812,16 +817,16 @@ struct IslandView: View {
                 Button { onOpen(item) } label: { IslandRow(item: item, metrics: m) }
                     .buttonStyle(.plain)
             }
-            if model.hiddenCount > 0 {
-                Button(action: onOpenAll) {
-                    Text("Усі сесії — у вікні Laserbeak")
-                        .font(.system(size: m.font - 1))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.plain)
-                .frame(height: m.footerHeight)
+            // Завжди, а не лише коли рядків більше, ніж вміщається: це й
+            // найкоротший шлях у вікно програми.
+            Button(action: onOpenAll) {
+                Text("Усі сесії — у вікні Laserbeak")
+                    .font(.system(size: m.font - 1))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
             }
+            .buttonStyle(.plain)
+            .frame(height: m.footerHeight)
         }
         .padding(.horizontal, 12)
         .padding(.top, m.listTop)

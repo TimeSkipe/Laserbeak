@@ -884,6 +884,14 @@ The notch itself comes from `auxiliaryTopLeftArea` and
 `auxiliaryTopRightArea`, every other size from the height of that
 screen's menu bar.
 
+A third attempt came from one new menu bar item. It began 24.5 pt from
+the notch instead of 32, the number with its usual margins needs 25, and
+the count jumped to the left — though on screen there was clearly room.
+The frame of a menu bar item is wider than its icon: the icon sat about
+ten points inside it. So before giving up on the right, the wing trims
+its own margin to the island's edge (`outerTight`, 4 pt instead of 10);
+the item's empty edge still keeps them apart.
+
 ## Settings, language and updates
 
 ### `LASERBEAK_LANG` in the LaunchAgent beat the settings switch

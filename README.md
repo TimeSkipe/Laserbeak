@@ -856,7 +856,8 @@ long the turn has been running and how much memory the session holds —
 the agent together with everything it started. A Codex session driving
 its own browser easily weighs 1.5 GB, while the agent itself is 200 MB;
 the session details show the same, with the number of processes. A click on a row opens the editor the
-session was started from; a click anywhere else folds it back.
+session was started from, the line at the bottom opens the Laserbeak
+window; a click anywhere else folds it back.
 
 On a display without a notch — an external monitor — the same thing is a
 slim strip in the middle of the menu bar: the agent, the session, what it
@@ -868,8 +869,9 @@ is doing and the turn's time.
 
 Sizes come from the menu bar of each screen, so the island sits the same
 on a MacBook Air, a Pro and in scaled modes. The right wing never covers
-menu bar items: it is only as wide as the room left of the first of them,
-and when there is none, the number moves to the left of the notch. What a session is doing comes from its transcript;
+menu bar items: it is only as wide as the room left of the first of them.
+When that is tight, the island first trims its own margin, and only when
+even then the number does not fit does it move to the left of the notch. What a session is doing comes from its transcript;
 shell commands are never shown, only the description Claude gives them,
 since a command can carry a token. Settings → General chooses between the
 island and just the circle with a number in the menu bar, which is always
