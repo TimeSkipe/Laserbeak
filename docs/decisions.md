@@ -798,6 +798,27 @@ at all. To look at the real window, `screencapture -l <window id>`.
 A Cyrillic label (`start "проба"`) arrived as mojibake. You need
 `Buffer.from(value, 'latin1').toString('utf8')`.
 
+### An endless SwiftUI animation redraws the whole window every frame
+
+The "working" badge pulsed with `.symbolEffect(.pulse, options:
+.repeating)`, and the app sat at ~30% CPU whenever its window was open
+and a session was working. `sample` showed the main thread re-laying out
+the whole window every frame, with `RBSymbolAnimator` in the stack, so
+the symbol effect looked guilty. Replacing it with an opacity
+`repeatForever` changed nothing — 36% again. The animator left the
+profile; `NSHostingView.layout → ViewGraphRootValueUpdater.render`
+stayed.
+
+On macOS SwiftUI drives its animations itself: every frame of any
+endless animation re-renders the hosting view, here the window with
+every card in it. The cure was to take the animation out of SwiftUI: the
+symbol is an `NSImageView` and the pulse a `CABasicAnimation` on its
+layer, handed to the render server once. 36% → 1%, measured the same
+way.
+
+The moral: measure after the fix, not only before. A profile that loses
+one suspicious frame can still show the same cost.
+
 ## Settings, language and updates
 
 ### `LASERBEAK_LANG` in the LaunchAgent beat the settings switch
