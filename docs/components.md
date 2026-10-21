@@ -57,7 +57,7 @@ the `.xcodeproj` itself is not kept in git. One target, macOS 14+.
 |------|------------|
 | `LaserbeakApp.swift` | entry point; agent app (no Dock icon), one window + menu bar; `AppRouter` opens the window on a given section from anywhere |
 | `MainWindow.swift` | the window: sidebar (Sessions, Activity, Settings: General / Notifications / Updates) and the selected pane |
-| `SessionsPane.swift` | projects as cards, sessions as rows: status, mode, the actions menu (details, name, model, effort, compact, interrupt, remove) |
+| `SessionsPane.swift` | projects as cards, sessions as rows: status, turn time, memory, mode, the actions menu (details, name, model, effort, compact, interrupt, remove) |
 | `ActivityPane.swift` | event history by day |
 | `SettingsPanes.swift` | General (language, about), Notifications (per event: on/off and sound), Updates (status, what is new, how to install) |
 | `Views.swift` | sheets: session details, session name and notifications, project colour and icon; the empty state |

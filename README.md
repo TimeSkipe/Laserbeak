@@ -773,7 +773,7 @@ The window has a sidebar:
 
 | Section | What is there |
 |---------|---------------|
-| **Sessions** | open projects as cards, sessions in them marked Claude or Codex: status, mode, the ⋯ menu; a speaker per project to silence its banners; how many need you, are working, have finished |
+| **Sessions** | open projects as cards, sessions in them marked Claude or Codex: status, turn time, memory, mode, the ⋯ menu; a speaker per project to silence its banners; how many need you, are working, have finished |
 | **Activity** | what happened, by day: sessions opened, finished, asked for permission |
 | **General** | language, version, where the data lives, the daemon log |
 | **Notifications** | per event — finished, permission, input reminder, new version — on/off and a sound |

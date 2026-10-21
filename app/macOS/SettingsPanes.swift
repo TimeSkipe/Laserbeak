@@ -391,12 +391,17 @@ struct UpdatesPane: View {
         .navigationTitle(SidebarItem.updates.title)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                if let url = details.flatMap({ URL(string: $0.url) }) {
-                    Link(destination: url) {
-                        Label("Відкрити на GitHub", systemImage: "arrow.up.right.square")
-                    }
-                    .help("Відкрити на GitHub")
+                // Кнопка, а не Link: Link на панелі macOS малює як посилання —
+                // синім, у витягнутій капсулі. І є завжди, поки адреси ще
+                // немає — лише вимкнена, а не порожнє місце на панелі.
+                let url = details.flatMap { URL(string: $0.url) }
+                Button {
+                    if let url { NSWorkspace.shared.open(url) }
+                } label: {
+                    Label("Відкрити на GitHub", systemImage: "arrow.up.right")
                 }
+                .disabled(url == nil)
+                .help("Відкрити на GitHub")
             }
         }
         .task { details = await client.loadUpdate() }

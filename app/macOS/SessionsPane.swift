@@ -332,6 +332,15 @@ private struct SessionRow: View {
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
                     }
+
+                    // Памʼять агента разом із усім, що він запустив, — як на
+                    // острові; кількість процесів — у деталях.
+                    if let memory = session.memoryText {
+                        Text(verbatim: "·").foregroundStyle(.tertiary)
+                        Text(verbatim: memory)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .font(.callout)
             }
