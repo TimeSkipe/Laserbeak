@@ -113,40 +113,98 @@ struct SymbolTile: View {
 /// Значок стану сесії. Поки сесія працює, він пульсує — видно з першого
 /// погляду, навіть не читаючи.
 ///
-/// Пульс — це анімація прозорості, а не `.symbolEffect(.pulse)`. Той
-/// щокадру перемальовував сам символ (RBSymbolAnimator) і через це
-/// змушував вікно перераховувати всю розкладку по 60–120 разів на
-/// секунду — звідси ~30% процесора, поки вікно відкрите. Прозорість же
-/// змінюється лише на шарі (композитор на GPU), розкладки не чіпає, тож
-/// анімація майже нічого не коштує головному потоку.
+/// Пульс робить Core Animation, а не SwiftUI. Будь-яка безкінечна
+/// анімація SwiftUI — і `.symbolEffect(.pulse)`, і `repeatForever` —
+/// змушує NSHostingView щокадру перерендерювати й переставляти все
+/// вікно: ~35% процесора, поки воно відкрите й хоч одна сесія працює.
+/// CABasicAnimation віддається серверу рендерингу один раз і далі
+/// крутиться без головного потоку програми.
 struct StatusBadge: View {
     let status: SessionStatus
     var size: CGFloat = 30
-
-    @State private var faded = false
 
     var body: some View {
         Circle()
             .fill(status.color.opacity(0.14))
             .frame(width: size, height: size)
             .overlay {
-                Image(systemName: status.symbol)
-                    .font(.system(size: size * 0.5, weight: .semibold))
-                    .foregroundStyle(status.color)
-                    .opacity(faded ? 0.3 : 1)
+                PulsingSymbol(
+                    symbol: status.symbol,
+                    pointSize: size * 0.5,
+                    color: NSColor(status.color),
+                    pulsing: status == .working
+                )
+                .frame(width: size * 0.7, height: size * 0.7)
             }
-            .onAppear(perform: pulse)
-            .onChange(of: status) { pulse() }
+    }
+}
+
+/// SF Symbol у шарі AppKit, якому пульс задається анімацією Core Animation.
+struct PulsingSymbol: NSViewRepresentable {
+    let symbol: String
+    let pointSize: CGFloat
+    let color: NSColor
+    let pulsing: Bool
+
+    func makeNSView(context: Context) -> PulseImageView {
+        let view = PulseImageView()
+        view.imageScaling = .scaleNone
+        update(view)
+        return view
     }
 
-    private func pulse() {
-        // Спершу гасимо попередній пульс і повертаємо повну видимість:
-        // присвоєння без анімації обриває repeatForever.
-        withAnimation(.linear(duration: 0)) { faded = false }
-        guard status == .working else { return }
-        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
-            faded = true
-        }
+    func updateNSView(_ view: PulseImageView, context: Context) {
+        update(view)
+    }
+
+    private func update(_ view: PulseImageView) {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
+        view.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
+            .withSymbolConfiguration(config)
+        view.contentTintColor = color
+        view.pulsing = pulsing
+    }
+}
+
+final class PulseImageView: NSImageView {
+    private static let key = "laserbeak.pulse"
+
+    var pulsing = false {
+        didSet { if pulsing != oldValue { refresh() } }
+    }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+    }
+
+    // Шар, винесений із дерева, може загубити анімацію (прокрутка списку,
+    // перемикання розділів) — тож ставимо її заново щоразу, як вид
+    // повертається у вікно.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        refresh()
+    }
+
+    private func refresh() {
+        guard let layer else { return }
+        layer.removeAnimation(forKey: Self.key)
+        guard pulsing, window != nil else { return }
+
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1.0
+        pulse.toValue = 0.3
+        pulse.duration = 0.7
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        pulse.isRemovedOnCompletion = false
+        layer.add(pulse, forKey: Self.key)
     }
 }
 
