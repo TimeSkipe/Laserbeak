@@ -289,7 +289,13 @@
   // коді не знайти, тому такі відкидаємо: краще голий tag, ніж хибний слід.
   function segment(node) {
     const attr = ['data-testid', 'data-test', 'data-cy', 'data-qa']
-      .map((a) => (node.getAttribute?.(a) ? `[${a}="${node.getAttribute(a)}"]` : ''))
+      .map((a) => {
+        const v = node.getAttribute?.(a);
+        // Значення атрибута — вміст чужої сторінки. Лапки й бекслеш у
+        // ньому мусять екрануватись, інакше рядок селектора «розірвало б»
+        // (а далі він ще й їде в сесію як текст).
+        return v ? `[${a}="${v.replace(/[\\"]/g, '\\$&')}"]` : '';
+      })
       .find(Boolean);
     if (attr) return attr;
 
@@ -541,14 +547,17 @@
       .catch(() => ({ sessions: [], bound: '' }));
 
     if (!sessions?.length) {
-      select.innerHTML = `<option>${msg('noSessions')}</option>`;
+      select.replaceChildren(new Option(msg('noSessions')));
       select.disabled = true;
     } else {
-      select.innerHTML = sessions
-        // Codex позначаємо: дві сесії з однаковою назвою в одному проєкті
-        // інакше не розрізнити, а скрін полетів би не тому агентові.
-        .map((s) => `<option value="${s.sid}">${s.name}${s.project ? ` · ${s.project}` : ''}${s.agent === 'codex' ? ' · Codex' : ''}</option>`)
-        .join('');
+      // new Option(), а не innerHTML: назва й проєкт сесії приходять від
+      // демона (мітка, яку хтось задав), і вставляти їх як HTML не можна.
+      // Codex позначаємо — дві однойменні сесії в одному проєкті інакше
+      // не розрізнити, а скрін полетів би не тому агентові.
+      select.replaceChildren(...sessions.map((s) => {
+        const label = `${s.name}${s.project ? ` · ${s.project}` : ''}${s.agent === 'codex' ? ' · Codex' : ''}`;
+        return new Option(label, s.sid);
+      }));
       if (bound && sessions.some((s) => s.sid === bound)) select.value = bound;
     }
 

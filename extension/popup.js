@@ -86,21 +86,31 @@ async function showBinds(state) {
     return;
   }
 
-  box.innerHTML = '';
+  box.replaceChildren();
   for (const row of rows) {
+    // Назва групи, сесії й проєкту — чужі дані (назву групи ставить
+    // браузер, мітку сесії — хтось у демоні). Тому textContent, не HTML.
     const el = document.createElement('div');
     el.className = 'row';
-    el.innerHTML = `
-      <span class="grow">
-        <span class="name">${row.title}</span><br>
-        <span class="muted">→ ${row.session}${row.project ? ` · ${row.project}` : ''}</span>
-      </span>
-      <button>${msg('forget')}</button>
-    `;
-    el.querySelector('button').addEventListener('click', async () => {
+
+    const grow = document.createElement('span');
+    grow.className = 'grow';
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = row.title;
+    const muted = document.createElement('span');
+    muted.className = 'muted';
+    muted.textContent = `→ ${row.session}${row.project ? ` · ${row.project}` : ''}`;
+    grow.append(name, document.createElement('br'), muted);
+
+    const button = document.createElement('button');
+    button.textContent = msg('forget');
+    button.addEventListener('click', async () => {
       await chrome.storage.local.remove(row.key);
       show();
     });
+
+    el.append(grow, button);
     box.appendChild(el);
   }
 }

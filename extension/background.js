@@ -77,10 +77,18 @@ const PNG_LIMIT = 1_400_000;
 const MAX_SIDE = 1600;
 
 async function daemon(path, options = {}) {
-  const res = await fetch(DAEMON + path, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-  });
+  let res;
+  try {
+    res = await fetch(DAEMON + path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    });
+  } catch (err) {
+    // Демон лежить — fetch кидає сире «Failed to fetch». У картку на
+    // сторінці має потрапити зрозуміле, перекладене; сире — лише в консоль.
+    console.warn('[Laserbeak]', path, err.message);
+    throw new Error(msg('daemonDown'));
+  }
   if (!res.ok) {
     let message = `${msg('daemonDown')} (HTTP ${res.status})`;
     try { message = (await res.json()).error || message; } catch { /* лишаємо код */ }
@@ -311,7 +319,15 @@ async function listSessions(tab) {
 async function shoot(tab, payload) {
   await new Promise((r) => setTimeout(r, REPAINT_MS));
 
-  const full = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+  // captureVisibleTab кидає сире англійське (chrome:// та сторінки Web
+  // Store знімати не можна). Клієнту — перекладене, сире — у консоль.
+  let full;
+  try {
+    full = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+  } catch (err) {
+    console.warn('[Laserbeak] captureVisibleTab:', err.message);
+    throw new Error(msg('errCapture'));
+  }
   const shot = await crop(full, payload.rect, payload.dpr);
 
   await chrome.storage.session.set({
