@@ -75,6 +75,16 @@ setInterval(() => {
         project: session.project,
         projectPath: session.projectPath,
       });
+
+      // Після запиту дозволу Claude Code мовчить до кінця ходу. Тож що
+      // людина відповіла, видно лише з транскрипту: новий запис розмови
+      // після запиту — сесія працює далі, а острів і меню-бар не мають
+      // лишатись помаранчевими.
+      if (session.status === 'needs-input' && session.needsInputAt
+          && archive.lastRecordAt(session.sid) > session.needsInputAt + 1000) {
+        state.touch(session.sid, { status: 'working', needsInputAt: 0 });
+        log.info(`сесія ${session.label}: відповідь отримано — працює далі`);
+      }
     } catch (e) {
       log.warnRepeated(`archive ${session.sid}`, `архів ${session.sid.slice(0, 8)}`, e);
     }

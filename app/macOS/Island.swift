@@ -179,8 +179,13 @@ struct IslandItem: Identifiable, Equatable {
         status == .working && !activity.isEmpty ? activity : status.title
     }
 
+    /// Проєкт, а поруч — що робить. У сесії, що чекає дозволу, остання дія —
+    /// саме те, на що вона просить дозволу: «виконує: Restart daemon».
+    /// Хто чекає дозволу — лише дія: на неї й просять дозволу, і обрізати
+    /// її назвою проєкту шкода (проєкт видно з іконки в куточку).
     var subtitle: String {
-        activity.isEmpty || status != .working ? project : "\(project) · \(activity)"
+        if status == .needsInput, !activity.isEmpty { return activity }
+        return activity.isEmpty || status != .working ? project : "\(project) · \(activity)"
     }
 }
 
@@ -198,6 +203,12 @@ final class IslandModel: ObservableObject {
     /// Уже відсортовані: спершу ті, що чекають дозволу, потім ті, що працюють.
     @Published var items: [IslandItem] = []
     @Published var expanded = false
+    /// Розгорнуто саме тому, що хтось просить дозволу: у списку — лише ті,
+    /// хто чекає. Звичайне розгортання кліком показує всіх.
+    @Published var alert = false
+    /// Не ховати від кліку деінде: тривогу легко проґавити, тож вона чекає
+    /// відповіді агентові або кліку по самому острову.
+    var pinned = false
     /// Панель зараз розміру розгорнутого острова (острів у ній ще може бути
     /// згорнутим — перед анімацією й одразу після неї).
     @Published var panelExpanded = false
@@ -227,8 +238,13 @@ final class IslandModel: ObservableObject {
         return items.compactMap { seen.insert($0.agent).inserted ? $0.agent : nil }
     }
 
-    var visibleItems: ArraySlice<IslandItem> { items.prefix(IslandMetrics.maxRows) }
-    var hiddenCount: Int { max(0, items.count - IslandMetrics.maxRows) }
+    var waitingItems: [IslandItem] { items.filter { $0.status == .needsInput } }
+
+    /// Що в розгорнутому списку: при тривозі — хто чекає дозволу, інакше — всі.
+    var listedItems: ArraySlice<IslandItem> {
+        alert ? waitingItems.prefix(IslandMetrics.maxRows) : items.prefix(IslandMetrics.maxRows)
+    }
+    var hiddenCount: Int { alert ? 0 : max(0, items.count - IslandMetrics.maxRows) }
 
     // ------------------------------------------------------------ крила
 
@@ -279,7 +295,7 @@ final class IslandModel: ObservableObject {
 
     var expandedSize: CGSize {
         let m = metrics
-        let rows = CGFloat(visibleItems.count)
+        let rows = CGFloat(listedItems.count)
         let list = m.listTop
             + rows * m.rowHeight
             + max(0, rows - 1) * m.rowSpacing
@@ -357,6 +373,9 @@ final class IslandController {
 
     private var surfaces: [CGDirectDisplayID: Surface] = [:]
     private var subscriptions = Set<AnyCancellable>()
+    /// Сесії, про чий запит дозволу острів уже сповістив розгортанням.
+    /// Новий запит (сесії немає в цьому списку) — розгортаємо знову.
+    private var alerted = Set<String>()
     private var outsideClicks: Any?
     private weak var client: DaemonClient?
 
@@ -413,8 +432,38 @@ final class IslandController {
                 place(surface)
             } else {
                 model.expanded = false
+                model.alert = false
                 surface.panel.orderOut(nil)
             }
+        }
+
+        alertIfNeeded(items)
+    }
+
+    /// Хтось новий просить дозволу — острів сам розгортається й показує, хто
+    /// саме: помаранчевий обідок легко проґавити. І не ховається від кліку
+    /// деінде — клікаєш постійно, і тривога зникала б непоміченою. Ховається,
+    /// щойно відповідь отримано (демон бачить її в транскрипті), або від
+    /// кліку по самому острову.
+    private func alertIfNeeded(_ items: [IslandItem]) {
+        let waiting = Set(items.filter { $0.status == .needsInput }.map(\.id))
+        let fresh = !waiting.subtracting(alerted).isEmpty
+        alerted = waiting
+
+        let shown = surfaces.values.filter { $0.panel.isVisible }
+        if fresh {
+            // Список, уже відкритий кліком, лишається як є, але теж
+            // закріплюється — інакше перший же клік деінде сховав би і запит.
+            for surface in shown where surface.model.panelExpanded { surface.model.pinned = true }
+            let closed = shown.filter { !$0.model.panelExpanded }
+            if !closed.isEmpty { open(closed, alert: true) }
+            updateOutsideClicks()
+        } else if waiting.isEmpty {
+            // Відповідь отримано: тривогу згортаємо, а відкритий людиною
+            // список лише відкріплюємо.
+            collapse(shown.filter { $0.model.alert })
+            for surface in shown where !surface.model.alert { surface.model.pinned = false }
+            updateOutsideClicks()
         }
     }
 
@@ -528,43 +577,72 @@ final class IslandController {
         surface.panel.contentView?.layoutSubtreeIfNeeded()
     }
 
+    /// Клік по острову: відкритий — згорнути (і тривогу теж), закритий —
+    /// показати всі сесії.
     func toggle(_ id: CGDirectDisplayID) {
         guard let surface = surfaces[id] else { return }
-        surface.model.expanded ? collapseAll() : expand(surface)
+        if surface.model.expanded {
+            collapseAll()
+        } else {
+            collapseAll()
+            open([surface], alert: false)
+        }
     }
 
-    private func expand(_ surface: Surface) {
-        collapseAll()
-
+    private func open(_ list: [Surface], alert: Bool) {
         // Спершу розсуваємо панель, а острів у ній лишається згорнутим на
         // своєму місці. Анімація — наступним тактом: якщо зміна розміру
         // панелі потрапить у ту саму анімацію, значки на мить поїдуть убік
         // (docs/decisions.md).
-        place(surface, expanded: true)
-
-        // Клік будь-де поза островом — згорнути. Глобальний монітор бачить
-        // кліки в інших програмах; доступу до клавіатури він не просить.
-        outsideClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { _ in
-            Task { @MainActor in IslandController.shared.collapseAll() }
+        for surface in list {
+            surface.model.alert = alert
+            surface.model.pinned = alert
+            place(surface, expanded: true)
         }
+        updateOutsideClicks()
 
-        DispatchQueue.main.async { [weak self] in
-            // Встигли згорнути ще до цього такту — не розгортаємо.
-            guard let self, self.outsideClicks != nil else { return }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { surface.model.expanded = true }
+        DispatchQueue.main.async {
+            // Встигли згорнути ще до цього такту — панель уже стиснута, не
+            // розгортаємо.
+            let still = list.filter { $0.model.panelExpanded && !$0.model.expanded }
+            guard !still.isEmpty else { return }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                for surface in still { surface.model.expanded = true }
+            }
         }
     }
 
     func collapseAll() {
-        if let outsideClicks {
+        collapse(Array(surfaces.values))
+    }
+
+    /// Клік деінде ховає лише незакріплене: список, відкритий людиною. Тривогу
+    /// — ні.
+    private func outsideClick() {
+        collapse(surfaces.values.filter { $0.model.expanded && !$0.model.pinned })
+    }
+
+    /// Глобальний монітор кліків — лише доки відкрито щось незакріплене.
+    /// Він бачить кліки в інших програмах; доступу до клавіатури не просить.
+    private func updateOutsideClicks() {
+        let needed = surfaces.values.contains { $0.model.panelExpanded && !$0.model.pinned }
+        if needed, outsideClicks == nil {
+            outsideClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { _ in
+                Task { @MainActor in IslandController.shared.outsideClick() }
+            }
+        } else if !needed, let outsideClicks {
             NSEvent.removeMonitor(outsideClicks)
             self.outsideClicks = nil
         }
+    }
 
-        for surface in surfaces.values {
+    private func collapse(_ list: [Surface]) {
+        for surface in list {
             guard surface.model.expanded else {
                 // Розгортання ще не почалось, а панель уже могла розсунутись —
                 // повертаємо одразу, щоб прозорі краї не забирали кліки.
+                surface.model.alert = false
+                surface.model.pinned = false
                 place(surface)
                 continue
             }
@@ -572,9 +650,13 @@ final class IslandController {
             // Панель стискаємо, коли острів уже згорнувся.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) { [weak self] in
                 guard let self, !surface.model.expanded else { return }
+                surface.model.alert = false
+                surface.model.pinned = false
                 self.place(surface)
+                self.updateOutsideClicks()
             }
         }
+        updateOutsideClicks()
     }
 
     // ------------------------------------------------------------ дії
@@ -726,7 +808,7 @@ struct IslandView: View {
     private var list: some View {
         let m = model.metrics
         return VStack(spacing: m.rowSpacing) {
-            ForEach(model.visibleItems) { item in
+            ForEach(model.listedItems) { item in
                 Button { onOpen(item) } label: { IslandRow(item: item, metrics: m) }
                     .buttonStyle(.plain)
             }

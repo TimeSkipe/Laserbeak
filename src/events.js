@@ -174,7 +174,9 @@ function handle(event, payload, meta) {
         // англійською, а людина вибрала свою мову. Оригінал лишається
         // в events.jsonl полем detail.
         const why = [t('notify.permission'), payload.tool_name].filter(Boolean).join(': ');
-        state.touch(sid, { ...base, status: 'needs-input' });
+        // Коли почала чекати: продовження після відповіді демон побачить у
+        // транскрипті (daemon.js) — Claude Code сам до кінця ходу не скаже.
+        state.touch(sid, { ...base, status: 'needs-input', needsInputAt: Date.now() });
         state.record({ sid, label, project, kind: 'permission', message: why, detail: raw });
 
         notify.send({

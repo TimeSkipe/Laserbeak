@@ -841,6 +841,15 @@ orange.
    ✳ ֍ ┌──────── notch ────────┐ 2        ← two agents need you
 ```
 
+When a session asks for permission, the island does not wait for a
+glance: it opens by itself and shows just the sessions that are waiting,
+each with what it wants to do (*running: Restart the daemon*, *asking you
+a question*). It stays open until you answer — the daemon sees the answer
+in the transcript — and a click elsewhere does not hide it, since you
+click all the time and would miss it; a click on the island itself does.
+A new request opens it again. A list you opened yourself still folds on
+a click anywhere else.
+
 A click expands it downwards: who is waiting, who is working and what
 exactly they are doing (*editing server.js*, *searching “notch”*), how
 long the turn has been running and how much memory the session holds —

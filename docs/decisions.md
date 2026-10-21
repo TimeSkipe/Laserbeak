@@ -420,6 +420,24 @@ the type first; only an unknown or missing type falls back to the text,
 which still catches plan approval — that one goes through a dialog
 without a type of its own.
 
+### After a permission request Claude Code says nothing until the turn ends
+
+A permission prompt — and a question from `AskUserQuestion` — sends one
+`Notification` hook (`permission_prompt`, about ten seconds after the
+prompt appears). The answer sends nothing: no hook fires until `Stop`.
+So a session stayed orange, "waiting for permission", for the rest of the
+turn while it was busy working again — the island and the menu bar
+insisted someone needed you when nobody did.
+
+The answer does show up in the transcript, which the daemon reads every
+two seconds anyway: the tool result, then the agent's next step. When a
+session marked "needs input" gets a new user or assistant record later
+than the request, it is working again. Subagents' records are not
+counted — a subagent can keep working while the main session waits.
+
+Verified live: request at 14:42:51, answer seen at 14:43:03, the island
+folded by itself.
+
 ### A project name cannot be recovered from the transcript directory name
 
 Claude Code encodes the path by replacing `/` with `-`, and project names

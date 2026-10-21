@@ -103,6 +103,10 @@ const BROWSER_TOOL = /claude-in-chrome|playwright|puppeteer|browser/i;
 // бачить кожен, хто дивиться на екран. Лише опис, який Claude дає їй сам.
 const activity = new Map();
 
+// Час останнього запису розмови (репліки людини чи агента) — з нього видно,
+// що сесія продовжила роботу після запиту дозволу.
+const lastRecord = new Map();
+
 const lastPart = (p) => String(p || '').split('/').filter(Boolean).pop() || '';
 const shorten = (s, n = 60) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
 
@@ -134,6 +138,7 @@ function describeTool(block) {
     case 'Task':
     case 'Agent': return { kind: 'agent', target: shorten(input.description || input.subagent_type, 40) };
     case 'TodoWrite': return { kind: 'plan', target: '' };
+    case 'AskUserQuestion': return { kind: 'question', target: '' };
     default: return { kind: 'tool', target: shorten(name, 40) };
   }
 }
@@ -264,6 +269,13 @@ function ingest(sid, transcriptPath, meta = {}) {
     }
 
     noteActivity(sid, record);
+
+    // Репліки підагентів не рахуємо: підагент може працювати, поки головна
+    // сесія чекає на дозвіл.
+    if ((record.type === 'user' || record.type === 'assistant') && !record.isSidechain) {
+      const at = Date.parse(record.timestamp || '') || 0;
+      if (at > (lastRecord.get(sid) || 0)) lastRecord.set(sid, at);
+    }
 
     const message = distill(record);
     if (!message) continue;
@@ -444,10 +456,15 @@ function lastBrowserUse(sid) {
   return index.get(sid)?.lastBrowserTs || 0;
 }
 
+/** Коли в розмові сесії зʼявився останній запис, epoch ms; 0 — невідомо. */
+function lastRecordAt(sid) {
+  return lastRecord.get(sid) || 0;
+}
+
 /** Остання дія сесії: { kind, target, at } або null. */
 function lastActivity(sid) {
   return activity.get(sid) || null;
 }
 
 module.exports = {
-  lastBrowserUse, lastActivity, describeTool, ingest, ingestRecent, list, meta, read, distill, ARCHIVE_DIR, fileFor };
+  lastBrowserUse, lastActivity, lastRecordAt, describeTool, ingest, ingestRecent, list, meta, read, distill, ARCHIVE_DIR, fileFor };
