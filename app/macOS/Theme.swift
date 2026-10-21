@@ -112,9 +112,18 @@ struct SymbolTile: View {
 
 /// Значок стану сесії. Поки сесія працює, він пульсує — видно з першого
 /// погляду, навіть не читаючи.
+///
+/// Пульс — це анімація прозорості, а не `.symbolEffect(.pulse)`. Той
+/// щокадру перемальовував сам символ (RBSymbolAnimator) і через це
+/// змушував вікно перераховувати всю розкладку по 60–120 разів на
+/// секунду — звідси ~30% процесора, поки вікно відкрите. Прозорість же
+/// змінюється лише на шарі (композитор на GPU), розкладки не чіпає, тож
+/// анімація майже нічого не коштує головному потоку.
 struct StatusBadge: View {
     let status: SessionStatus
     var size: CGFloat = 30
+
+    @State private var faded = false
 
     var body: some View {
         Circle()
@@ -124,8 +133,20 @@ struct StatusBadge: View {
                 Image(systemName: status.symbol)
                     .font(.system(size: size * 0.5, weight: .semibold))
                     .foregroundStyle(status.color)
-                    .symbolEffect(.pulse, options: .repeating, isActive: status == .working)
+                    .opacity(faded ? 0.3 : 1)
             }
+            .onAppear(perform: pulse)
+            .onChange(of: status) { pulse() }
+    }
+
+    private func pulse() {
+        // Спершу гасимо попередній пульс і повертаємо повну видимість:
+        // присвоєння без анімації обриває repeatForever.
+        withAnimation(.linear(duration: 0)) { faded = false }
+        guard status == .working else { return }
+        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+            faded = true
+        }
     }
 }
 
