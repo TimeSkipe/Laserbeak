@@ -403,8 +403,8 @@ hold hand edits).
   "state": "available", "behind": 3, "more": false, "checkedAt": 0,
   "enabled": true,                 // config.updates.check
   "checking": false,
-  "version": "1.0.0", "head": "ca638cf",
-  "release": "White Album 1.0",    // codename from package.json + version; what the window shows
+  "version": "1.1.0", "head": "ca638cf",
+  "release": "White Album 1.1",    // codename from package.json + version; what the window shows
   "repo": "TimeSkipe/Laserbeak", "branch": "main",
   "url": "https://github.com/TimeSkipe/Laserbeak/commits/main",
   "error": "",
