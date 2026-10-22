@@ -10,6 +10,7 @@ const { createServer } = require('./server');
 const notify = require('./notify');
 const state = require('./state');
 const archive = require('./archive');
+const rollout = require('./rollout');
 const terminals = require('./terminals');
 const tmux = require('./tmux');
 const modes = require('./modes');
@@ -65,28 +66,35 @@ server.listen(cfg.port, HOST, () => {
 // виріс, усе зводиться до одного statSync.
 const LIVE_ARCHIVE_MS = 2000;
 
+// Після запиту дозволу агент мовчить до кінця ходу. Тож що людина
+// відповіла, видно лише з транскрипту: новий запис після запиту — сесія
+// працює далі, а острів і меню-бар не мають лишатись помаранчевими.
+// Секунда запасу — щоб не прийняти за відповідь записи самого запиту.
+function answered(session) {
+  const after = session.needsInputAt + 1000;
+  return session.agent === 'codex'
+    ? rollout.movedOn(session.sid, after)
+    : archive.lastRecordAt(session.sid) > after;
+}
+
 setInterval(() => {
   // Сесії, про які демон знає з хуків: у них є свіжі мітка і проєкт.
   for (const session of state.sessions.values()) {
-    if (!session.transcript) continue;
     try {
-      archive.ingest(session.sid, session.transcript, {
-        label: session.label,
-        project: session.project,
-        projectPath: session.projectPath,
-      });
+      if (session.transcript) {
+        archive.ingest(session.sid, session.transcript, {
+          label: session.label,
+          project: session.project,
+          projectPath: session.projectPath,
+        });
+      }
 
-      // Після запиту дозволу Claude Code мовчить до кінця ходу. Тож що
-      // людина відповіла, видно лише з транскрипту: новий запис розмови
-      // після запиту — сесія працює далі, а острів і меню-бар не мають
-      // лишатись помаранчевими.
-      if (session.status === 'needs-input' && session.needsInputAt
-          && archive.lastRecordAt(session.sid) > session.needsInputAt + 1000) {
+      if (session.status === 'needs-input' && session.needsInputAt && answered(session)) {
         state.touch(session.sid, { status: 'working', needsInputAt: 0 });
         log.info(`сесія ${session.label}: відповідь отримано — працює далі`);
       }
     } catch (e) {
-      log.warnRepeated(`archive ${session.sid}`, `архів ${session.sid.slice(0, 8)}`, e);
+      log.warnRepeated(`archive ${session.sid}`, `транскрипт ${session.sid.slice(0, 8)}`, e);
     }
   }
 

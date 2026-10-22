@@ -146,11 +146,13 @@ Accepted **from localhost only**. The body is the JSON Claude Code or
 Codex passed to the hook. The response is sent before processing, so the
 session never waits.
 
-Events: `session-start`, `prompt`, `stop`, `notification`, `session-end`.
-The old name `permission` is still accepted — sessions opened before the
-rename still send it. Codex adds two of its own: `approval` (its
-`PermissionRequest` — always "permission needed", no text to recognise)
-and `interrupt` (Esc in the middle of a turn: the turn ends, no banner).
+Events: `session-start`, `prompt`, `stop`, `notification`, `approval`,
+`session-end`. The old name `permission` is still accepted — sessions
+opened before the rename still send it. `approval` is `PermissionRequest`
+from either agent — always "permission needed", no text to recognise,
+sent the moment the dialog appears; a Claude `notification` about a
+request already raised that way is ignored. Codex adds `interrupt` (Esc
+in the middle of a turn: the turn ends, no banner).
 
 Headers: `X-Agent` (`claude` or `codex`; missing means `claude`),
 `X-Claude-Label`, `X-App-Bundle`, `X-Tmux-Pane`, `X-Hook-Ppid`,

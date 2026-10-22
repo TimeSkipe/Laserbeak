@@ -8,8 +8,8 @@
 │  (inside tmux — shell/laserbeak.zsh)                     │
 └───────────────┬──────────────────────────────────────────┘
                 │ hooks: SessionStart, UserPromptSubmit,
-                │        Stop, Notification, SessionEnd
-                │        (Codex: + PermissionRequest, Interrupt)
+                │        Stop, PermissionRequest, Notification,
+                │        SessionEnd (Codex: + Interrupt, no Notification)
                 ▼
         hooks/hook.sh  ── POST ──►  127.0.0.1:8787
                                           │
@@ -231,7 +231,8 @@ start "name"
        ├─ SessionStart      → the session appears in state
        ├─ UserPromptSubmit  → status "working", turn timer starts
        ├─ Stop              → status "done", notification
-       ├─ Notification      → permission needed, or waiting for input
+       ├─ PermissionRequest → permission needed, the moment the dialog appears
+       ├─ Notification      → the same 6 s later (ignored), or waiting for input
        └─ SessionEnd        → the session disappears
 ```
 

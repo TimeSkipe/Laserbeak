@@ -25,6 +25,7 @@
 | `roots.js` | which directory counts as the project (IDE → `.git` → the directory itself) |
 | `modes.js` | reading the permission mode from the Claude Code status line, effort from `~/.claude/settings.json` |
 | `reaper.js` | collecting sessions that are no longer alive |
+| `rollout.js` | has a Codex session moved on since its permission request: reads its rollout file from the request onwards |
 | `appguard.js` | keeps the Mac app alive: it is the menu bar and the banners |
 | `updates.js` | is there a newer version on GitHub, and the commands that install it |
 
@@ -277,7 +278,7 @@ through the daemon; what differs is kept in a few places:
 | Where | What |
 |-------|------|
 | `patch-settings.js --codex` | `SessionStart`, `UserPromptSubmit`, `Stop`, `PermissionRequest` → `approval`, `Interrupt` → `interrupt`, `SessionEnd` |
-| `events.js` | `approval` is always "permission needed"; `interrupt` ends the turn without a banner; a Codex transcript is not handed to the archive — it reads Claude's format only |
+| `events.js` | `approval` is always "permission needed", and the moment it comes the rollout file is marked for `rollout.js`; `interrupt` ends the turn without a banner; a Codex transcript is not handed to the archive — it reads Claude's format only |
 | `procs.js` | a process named `codex` counts as an agent, for the exact "session → pid" link only |
 | `reaper.js` | a Codex session is never judged by counting processes |
 | `state.js` | `agent` in every session; mode and effort are empty for Codex |

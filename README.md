@@ -225,6 +225,17 @@ The input reminder is off by default because it duplicates the
 finished-work banner. Turn it on in Settings → Notifications if you turn
 the finished-work banner off.
 
+A permission request does not wait for `Notification`, though: that one
+comes six seconds after the dialog. The `PermissionRequest` hook fires the
+moment the dialog appears, so the banner and the island turn orange
+right away, and the later `Notification` about the same request is
+ignored. Codex has only `PermissionRequest`.
+
+Neither agent says when you have answered — the next hook is `Stop`, at
+the end of the turn. So the daemon watches the transcript: a new record
+after the request means the session is working again. For Codex that is
+its rollout file, read only from the point of the request onwards.
+
 ### How it is delivered
 
 The daemon keeps a queue of events, and the app waits on them with a
@@ -1162,7 +1173,7 @@ Full description in [docs/api.md](docs/api.md). Everything is on
 | GET | `/events/wait` | banners for the app (long-poll) |
 
 Events: `session-start`, `prompt`, `stop`, `notification`, `session-end`
-(Codex adds `approval`, `interrupt`).
+(plus `approval` from `PermissionRequest`, and `interrupt` from Codex).
 
 ---
 

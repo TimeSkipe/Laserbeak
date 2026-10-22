@@ -423,8 +423,9 @@ without a type of its own.
 ### After a permission request Claude Code says nothing until the turn ends
 
 A permission prompt — and a question from `AskUserQuestion` — sends one
-`Notification` hook (`permission_prompt`, about ten seconds after the
-prompt appears). The answer sends nothing: no hook fires until `Stop`.
+`Notification` hook (`permission_prompt`, six seconds after the prompt
+appears: 6.0–6.2 s across 24 requests, measured against the tool call in
+the transcript). The answer sends nothing: no hook fires until `Stop`.
 So a session stayed orange, "waiting for permission", for the rest of the
 turn while it was busy working again — the island and the menu bar
 insisted someone needed you when nobody did.
@@ -437,6 +438,28 @@ counted — a subagent can keep working while the main session waits.
 
 Verified live: request at 14:42:51, answer seen at 14:43:03, the island
 folded by itself.
+
+The six seconds are gone too. Claude Code also has a `PermissionRequest`
+hook, fired the moment the dialog appears, with `tool_name` in it; it now
+goes to the same `approval` as Codex's. `Notification` stays as the
+fallback, and when it arrives for a request `PermissionRequest` already
+raised (`needsInputVia: 'request'`) it is dropped — otherwise every
+request would give two banners.
+
+### Codex stayed orange for the whole turn
+
+Codex says nothing after an answer either, and nobody read its
+transcript: the archive only reads Claude's format. So the island kept a
+Codex session orange from the request to `Stop` — on 22 October a request
+at 11:21:17 was answered and its command done sixteen seconds later, and
+the island stayed orange until 11:37:41.
+
+Its rollout file has what is needed. While a request waits, Codex writes
+at most a `token_usage_record`; after the answer come `item_completed`
+for the command and `response_item` with its output. `rollout.js` marks the end of the file when the request
+arrives and then reads only what was appended, so a 6 MB file costs
+nothing. If the daemon restarts mid-wait, it rereads the last 256 KB and
+lets the timestamps sort it out.
 
 ### A project name cannot be recovered from the transcript directory name
 

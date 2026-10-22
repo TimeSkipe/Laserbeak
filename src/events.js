@@ -4,9 +4,9 @@
 //
 // Хуки в них майже однакові (SessionStart, UserPromptSubmit, Stop,
 // SessionEnd), тож і шлях один. Відмінності три, і всі тут:
-//   • запит дозволу — у Claude це Notification, який розпізнаємо за
-//     полем notification_type (запасний шлях — текст), у Codex окрема
-//     подія PermissionRequest (у нас approval);
+//   • запит дозволу — в обох PermissionRequest (у нас approval), а в
+//     Claude ще й Notification, який розпізнаємо за полем
+//     notification_type (запасний шлях — текст);
 //   • переривання (Esc посеред ходу) Codex повідомляє окремо — без цього
 //     сесія лишалась би «працює» до наступного запиту;
 //   • транскрипт Codex — зовсім інший формат, тож архів, який уміє
@@ -19,6 +19,7 @@ const projects = require('./projects');
 const sessionSettings = require('./sessionSettings');
 const roots = require('./roots');
 const archive = require('./archive');
+const rollout = require('./rollout');
 const procs = require('./procs');
 const notify = require('./notify');
 const log = require('./log');
@@ -169,14 +170,31 @@ function handle(event, payload, meta) {
         || PERMISSION_TYPES.has(type)
         || (!IDLE_TYPES.has(type) && /permission|approval|approve|дозвол|схвал/i.test(raw));
 
+      // Про один запит Claude Code каже двічі: PermissionRequest — щойно
+      // зʼявився діалог, а Notification — через шість секунд (виміряно на
+      // 24 запитах), якщо відповіді досі немає. Друге — повтор: тривогу й
+      // банер уже показано.
+      if (needsApproval && event !== 'approval'
+          && known?.status === 'needs-input' && known.needsInputVia === 'request') {
+        break;
+      }
+
       if (needsApproval) {
         // В історію — перекладений текст: від Claude Code приходить
         // англійською, а людина вибрала свою мову. Оригінал лишається
         // в events.jsonl полем detail.
         const why = [t('notify.permission'), payload.tool_name].filter(Boolean).join(': ');
         // Коли почала чекати: продовження після відповіді демон побачить у
-        // транскрипті (daemon.js) — Claude Code сам до кінця ходу не скаже.
-        state.touch(sid, { ...base, status: 'needs-input', needsInputAt: Date.now() });
+        // транскрипті (daemon.js) — агент сам до кінця ходу не скаже. У
+        // Codex транскрипт — rollout-файл, читаємо лише дописане після
+        // запиту.
+        if (agent === 'codex') rollout.mark(sid, payload.transcript_path);
+        state.touch(sid, {
+          ...base,
+          status: 'needs-input',
+          needsInputAt: Date.now(),
+          needsInputVia: event === 'approval' ? 'request' : 'notification',
+        });
         state.record({ sid, label, project, kind: 'permission', message: why, detail: raw });
 
         notify.send({
@@ -230,6 +248,7 @@ function handle(event, payload, meta) {
 
     case 'session-end':
       state.remove(sid);
+      rollout.forget(sid);
       state.record({ sid, label, project, kind: 'session-end', message: t('history.closed') });
       break;
 

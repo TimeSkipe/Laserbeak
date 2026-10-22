@@ -40,6 +40,11 @@ const TARGETS = {
       SessionStart: 'session-start',
       UserPromptSubmit: 'prompt',
       Stop: 'stop',
+      // Запит дозволу — щойно зʼявився діалог. Notification про нього ж
+      // приходить на шість секунд пізніше й лишається запасним шляхом: для
+      // старіших версій Claude Code і діалогів, де PermissionRequest
+      // раптом не спрацює.
+      PermissionRequest: 'approval',
       Notification: 'notification',
       SessionEnd: 'session-end',
     },
