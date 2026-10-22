@@ -834,8 +834,10 @@ On a MacBook with a notch, Laserbeak puts its own small island around it —
 like the Dynamic Island on an iPhone. On the left of the notch, the marks
 of the agents at work — Claude, Codex, Gemini — each once; on the right,
 how many are waiting for permission (orange), or else how many are
-working (blue). While someone waits, the whole island is outlined in
-orange.
+working (blue). While someone waits, the island is outlined in orange
+along its sides and bottom — the top is the edge of the screen — and
+drops a few points below the notch, so the bottom line is not hidden
+under it.
 
 ```
    ✳ ֍ ┌──────── notch ────────┐ 2        ← two agents need you

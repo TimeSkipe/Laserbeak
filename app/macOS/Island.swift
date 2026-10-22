@@ -53,6 +53,10 @@ struct IslandMetrics: Equatable {
     var expandedWidth: CGFloat { max(340, (bar * 12.5).rounded()) }
     var stripHeight: CGFloat { max(16, bar - 6) }
     var stripMaxWidth: CGFloat { max(260, (bar * 13).rounded()) }
+    /// Наскільки обведений острів опускається нижче вирізу. Виріз рівно
+    /// такої висоти, як меню-бар, тож без цього нижня лінія обідка лягала б
+    /// під нього й посередині зникала.
+    var rim: CGFloat { max(3, (bar * 0.1).rounded()) }
 
     static let maxRows = 6
     static let maxAgents = 3
@@ -292,9 +296,12 @@ final class IslandModel: ObservableObject {
 
     var headerHeight: CGFloat { isNotch ? spot.bar : metrics.stripHeight }
 
+    /// Обведений острів біля вирізу нижчий за виріз на `rim`: вміст лишається
+    /// в меню-барі, а нижня лінія обідка — під вирізом, де її видно.
     var collapsedSize: CGSize {
         isNotch
-            ? CGSize(width: left.width + notchWidth + right.width, height: spot.bar)
+            ? CGSize(width: left.width + notchWidth + right.width,
+                     height: spot.bar + (waitingForPermission > 0 ? metrics.rim : 0))
             : CGSize(width: stripWidth, height: metrics.stripHeight)
     }
 
@@ -727,8 +734,11 @@ struct IslandView: View {
         .background(shape.fill(Color.black))
         .overlay {
             // Хтось чекає дозволу — острів обведено помаранчевим. Статично.
+            // Біля вирізу — без верхньої лінії: там край екрана, а посередині
+            // сам виріз. Її піднято над островом, і clipShape її відрізає.
             if model.waitingForPermission > 0 {
                 shape.stroke(Color.orange.opacity(0.85), lineWidth: 1.5)
+                    .padding(.top, model.isNotch ? -2 : 0)
             }
         }
         .clipShape(shape)

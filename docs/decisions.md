@@ -892,6 +892,21 @@ ten points inside it. So before giving up on the right, the wing trims
 its own margin to the island's edge (`outerTight`, 4 pt instead of 10);
 the item's empty edge still keeps them apart.
 
+### The notch hides half of the island's outline
+
+The orange outline of a waiting island was drawn all the way round, and
+on the screen only pieces of it were left. The notch is exactly as tall
+as the menu bar, and the island was too, so its bottom line ran along
+the notch's lower edge and vanished under it in the middle; the top line
+ran along the very edge of the screen, broken by the notch. A screenshot
+does not show this: `screencapture` takes the whole frame, the pixels
+behind the notch included, so there the outline looks complete.
+
+Now the island next to the notch has no top line — the stroke is raised
+above the island and clipped away — and an outlined island is `rim`
+(about 3 pt) taller than the notch, so its bottom line lies below it. The
+contents stay in the menu bar; only the black edge drops.
+
 ## Settings, language and updates
 
 ### `LASERBEAK_LANG` in the LaunchAgent beat the settings switch
