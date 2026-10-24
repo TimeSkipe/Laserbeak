@@ -116,6 +116,15 @@ Everything an app needs. Polled every 2 seconds.
 
   "history": [{ "ts": 0, "sid": "…", "kind": "stop", "message": "…" }],
 
+  "limits": [{                // plan limits, as of the last turn on this Mac
+    "agent": "claude",        // claude | codex; an agent whose every window has reset is left out
+    "windows": [
+      { "kind": "session", "used": 35, "resetsAt": 1792846431 },  // 5 hours; epoch seconds
+      { "kind": "weekly",  "used": 30, "resetsAt": 1792880031 }   // resetsAt 0 — already reset, next unknown
+    ],
+    "updatedAt": 0            // ms
+  }],
+
   "island": { "show": true }  // the notch island in the Mac app — config.json, Settings → General
 }
 ```
@@ -157,6 +166,16 @@ in the middle of a turn: the turn ends, no banner).
 Headers: `X-Agent` (`claude` or `codex`; missing means `claude`),
 `X-Claude-Label`, `X-App-Bundle`, `X-Tmux-Pane`, `X-Hook-Ppid`,
 `X-Term-Program`.
+
+### `POST /limits/claude`
+
+The JSON Claude Code passes to its status line, forwarded whole by
+`hooks/statusline.sh`. Answered at once, like a hook; only
+`rate_limits.five_hour` and `rate_limits.seven_day` (`used_percentage`,
+`resets_at`) are read, the rest is ignored and never logged. A window
+missing from the body keeps its last value — Claude Code leaves out a
+window that has already reset. Codex limits need no route: the daemon
+reads them from Codex's own rollout files.
 
 ---
 
@@ -403,8 +422,8 @@ hold hand edits).
   "state": "available", "behind": 3, "more": false, "checkedAt": 0,
   "enabled": true,                 // config.updates.check
   "checking": false,
-  "version": "1.1.0", "head": "ca638cf",
-  "release": "White Album 1.1",    // codename from package.json + version; what the window shows
+  "version": "1.2.0", "head": "ca638cf",
+  "release": "White Album 1.2",    // codename from package.json + version; what the window shows
   "repo": "TimeSkipe/Laserbeak", "branch": "main",
   "url": "https://github.com/TimeSkipe/Laserbeak/commits/main",
   "error": "",
@@ -448,3 +467,6 @@ Long-poll: the request hangs until an event appears, or for 20 seconds.
 ```
 
 Only the daemon filters — the client shows everything it receives.
+An item with `"soundOnly": true` (a permission request while the notch
+island is on — the island shows it) is played as its `sound` and not
+shown as a banner.

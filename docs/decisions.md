@@ -101,6 +101,20 @@ The event counter starts at zero, while the app remembered a higher
 number and filtered the event out itself. Now **only the daemon** filters
 — the client shows everything it receives.
 
+### The banner's left icon is the app's, always
+
+A banner was asked to show the agent — Claude or Codex — where
+Laserbeak's icon is. `UNNotificationContent` has no icon of its own: the
+left one is the posting app's. The only way past it is a communication
+notification (an `INSendMessageIntent` with the sender's picture), as
+messengers do, and that needs the
+`com.apple.developer.usernotifications.communication` entitlement — a
+provisioning profile with that capability. The app is signed by a free
+Personal Team with no profile at all; whether such a team may have this
+capability could not be confirmed and was not tried, and Laserbeak has
+to build for anyone with a free Apple ID. So the agent's mark went into the attachment on
+the right, with the project icon in its corner.
+
 ---
 
 ## The browser extension
@@ -651,6 +665,44 @@ line. A four-line C program that forks the hook works.
 
 ---
 
+## Plan limits
+
+### Claude Code's limits exist only in its status line
+
+Tools like OpenUsage read the OAuth token out of the Keychain and ask
+`api.anthropic.com/api/oauth/usage`. That works, but it means Laserbeak
+holding the person's login and sending it out, while the daemon's only
+outbound request is the update check. The Claude Code 2.1.310 binary
+pointed to a local source instead: the JSON a `statusLine` command
+receives carries `rate_limits.five_hour` and `.seven_day`, each with
+`used_percentage` and `resets_at`, "present only while the API reports
+it and its resets_at has not passed". Nothing else on disk has them —
+not `~/.claude.json`, not the transcripts.
+
+So `hooks/statusline.sh` sits in `statusLine`, forwards a copy and runs
+the person's own command. Checked: its output is the same as the
+original's, with the daemon down too; the first numbers arrived seconds
+after the wrapper went in (5 hours 35%, week 30%), next to OpenUsage's
+30% and 30% a quarter of an hour earlier.
+
+The price is freshness: the numbers move only while a Claude session on
+this Mac redraws its status line, so usage on claude.ai or another
+computer shows after the next turn here. A window past its reset reads
+as 0 with an unknown next reset rather than its stale percentage.
+
+### Codex writes its limits into every turn
+
+Records of type `token_count` in a rollout file carry `rate_limits`:
+`primary` and `secondary`, each with `used_percent`, `window_minutes` and
+`resets_at`. On a Pro plan only one is there, 10 080 minutes — the
+weekly window; a window up to a day long is shown as the 5-hour one.
+They are account-wide, so the freshest record in any rollout file is
+the answer: the newest file by mtime, plus a few more in case that one
+is a new session without a turn yet. A long session keeps writing into
+the folder of the day it started, so the last eight days of folders are
+listed, not just today's; that was about 290 files to `stat` every 30
+seconds here.
+
 ## Daemon state
 
 ### Restarting the daemon wiped every session
@@ -1017,6 +1069,28 @@ neither the mouse nor focus.
 The menu bar listed projects and sessions as `Text`, and in a menu that
 is a disabled item: grey, and nothing happens on click. They are buttons
 now, opening the window on Sessions.
+
+### Hiding the menu bar circle must not hide what it starts
+
+"Island or circle" in Settings → General used to mean "island and
+circle": the circle was always there, and on a bigger screen both showed.
+It could not simply be removed, because its label is the only SwiftUI
+view alive from launch: it is what starts the island and hands
+`AppRouter` the `openWindow` action — the island and a banner have no
+other way to open the window.
+
+So `MenuBarExtra(isInserted:)` keeps the circle at every launch until its
+label has appeared once (`menuBarReady`), and only then hides it while the
+island is on and the daemon answers. An `openWindow` captured from a label
+that is gone still works: with the circle hidden, `open -a Laserbeak`
+opened the window. The circle comes back when the daemon goes silent —
+the island cannot show that ⚠︎ — and "Quit", which lived only in its menu,
+is in Settings → General too.
+
+Checking it needs no screenshot, but on macOS 26 a menu bar item belongs
+to Control Center, not to the app: count the `statusWindow`-level windows
+before and after toggling the setting. The circle is the one 40 pt item
+that appears.
 
 ## Quick commands and the reply mod
 

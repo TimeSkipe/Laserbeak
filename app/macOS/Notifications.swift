@@ -251,9 +251,19 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     }
 
     private func show(_ item: DaemonNotification) {
+        // Запит дозволу, коли увімкнено острів: його показує острів, а
+        // демон шле лише звук банера.
+        if item.soundOnly {
+            if !item.sound.isEmpty { NSSound(named: NSSound.Name(item.sound))?.play() }
+            return
+        }
+
+        // Згори — проєкт, під ним назва чату, якщо вона є, далі що сталося й
+        // скільки тривало. У банера про сам Laserbeak проєкту немає — тоді
+        // згори його заголовок.
         let content = UNMutableNotificationContent()
-        content.title = item.session
-        if !item.project.isEmpty { content.subtitle = item.project }
+        content.title = item.project.isEmpty ? item.session : item.project
+        if !item.project.isEmpty, !item.session.isEmpty { content.subtitle = item.session }
         content.body = item.message
         content.userInfo = ["appBundle": item.appBundle, "sid": item.sid, "kind": item.kind]
 
@@ -265,7 +275,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         // окремо від усіх сесій.
         content.threadIdentifier = item.sid.isEmpty ? item.kind : item.sid
 
-        // Іконка проєкту в його кольорі — банер упізнається, не читаючи текст.
+        // Знак агента з іконкою проєкту — банер упізнається, не читаючи текст.
         if let attachment = iconAttachment(for: item) {
             content.attachments = [attachment]
         }
@@ -291,10 +301,13 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 // MARK: - Картинка для банера
 
 extension NotificationService {
-    /// Малює іконку проєкту в його кольорі, а в кутку — значок події,
-    /// той самий, що в розділі «Сповіщення»: зелена галочка, помаранчева
-    /// рука, пісочний годинник. Так банер каже і «чий», і «що сталося»
-    /// ще до того, як прочитаєш текст.
+    /// Малює знак агента — Claude, Codex, — що зробив подію, а в кутку —
+    /// іконку проєкту в його кольорі з обідком кольору події, як на острові:
+    /// зелений — закінчив, помаранчевий — чекає дозволу. Так банер каже і
+    /// «хто», і «чий», і «що сталося» ще до того, як прочитаєш текст. Ліву
+    /// іконку банера macOS завжди бере з програми (docs/decisions.md), тож
+    /// агент — тут. Банер про сам Laserbeak агента не має — тоді лише
+    /// іконка з кольором, як раніше.
     ///
     /// UNNotificationAttachment приймає лише файл, тому картинка щоразу
     /// пишеться в тимчасову теку. Файли дрібні, система прибирає їх сама.
@@ -306,25 +319,38 @@ extension NotificationService {
         let card = ZStack(alignment: .bottomTrailing) {
             ZStack {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(color.opacity(0.18))
+                    .fill(item.agent.isEmpty ? color.opacity(0.18) : Color.black)
 
-                LucideIcon(name: icon, size: 56)
-                    .foregroundStyle(color)
+                if item.agent.isEmpty {
+                    LucideIcon(name: icon, size: 56)
+                        .foregroundStyle(color)
+                } else {
+                    AgentMark(agent: item.agent, size: 60)
+                }
             }
             .frame(width: 100, height: 100)
 
             Circle()
-                .fill(kind.color)
-                .frame(width: 40, height: 40)
+                .fill(item.agent.isEmpty ? kind.color : Color.black)
+                .frame(width: 44, height: 44)
                 .overlay {
-                    Image(systemName: kind.symbol)
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(.white)
+                    if item.agent.isEmpty {
+                        Image(systemName: kind.symbol)
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        LucideIcon(name: icon, size: 24)
+                            .foregroundStyle(Palette.color(item.color) ?? Color.white.opacity(0.9))
+                    }
                 }
-                .overlay { Circle().strokeBorder(.white, lineWidth: 3) }
+                .overlay {
+                    Circle().strokeBorder(item.agent.isEmpty ? Color.white : kind.color, lineWidth: 4)
+                }
                 .offset(x: 6, y: 6)
         }
         .frame(width: 112, height: 112, alignment: .topLeading)
+        // Знак Codex малюється кольором тексту — на чорному тлі він має бути білим.
+        .environment(\.colorScheme, .dark)
 
         let renderer = ImageRenderer(content: card)
         renderer.scale = 2
@@ -367,13 +393,17 @@ struct DaemonNotification: Codable, Identifiable {
     var message: String = ""
     var sound: String = ""
     var appBundle: String = ""
+    /// Лише звук, без банера: запит дозволу вже показує острів.
+    var soundOnly: Bool = false
+    /// Чий це банер: claude, codex…; порожньо — про сам Laserbeak.
+    var agent: String = ""
 
     var id: Int { seq }
 
     init() {}
 
     enum CodingKeys: String, CodingKey {
-        case seq, ts, kind, sid, session, project, color, icon, message, sound, appBundle
+        case seq, ts, kind, sid, session, project, color, icon, message, sound, appBundle, soundOnly, agent
     }
 
     // Той самий підхід, що і в решті моделей: відсутнє поле не має
@@ -391,6 +421,8 @@ struct DaemonNotification: Codable, Identifiable {
         message    = (try? c.decodeIfPresent(String.self, forKey: .message)) ?? ""
         sound      = (try? c.decodeIfPresent(String.self, forKey: .sound)) ?? ""
         appBundle  = (try? c.decodeIfPresent(String.self, forKey: .appBundle)) ?? ""
+        soundOnly  = (try? c.decodeIfPresent(Bool.self, forKey: .soundOnly)) ?? false
+        agent      = (try? c.decodeIfPresent(String.self, forKey: .agent)) ?? ""
     }
 }
 

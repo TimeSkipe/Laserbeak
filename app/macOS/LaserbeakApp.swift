@@ -32,11 +32,24 @@ struct LaserbeakApp: App {
             CommandGroup(replacing: .newItem) { }   // вікно тут одне
         }
 
-        MenuBarExtra {
+        // Острів і кружок — одне з двох (Налаштування → Загальні).
+        MenuBarExtra(isInserted: circleBinding) {
             MenuBarContent(client: client, router: router)
         } label: {
             MenuBarLabel(client: client)
         }
+    }
+
+    /// Кружок ховаємо, лише коли острів увімкнено і демон відповідає:
+    /// ⚠︎ «демон мовчить» острів показати не може. І не раніше, ніж підпис
+    /// зʼявився хоч раз — він запускає острів і відкриває вікно (MenuBarLabel).
+    private var circleBinding: Binding<Bool> {
+        Binding(
+            get: {
+                !router.menuBarReady || !client.isConnected || client.state?.islandEnabled != true
+            },
+            set: { _ in }
+        )
     }
 }
 
@@ -48,6 +61,10 @@ final class AppRouter: ObservableObject {
     static let mainWindow = "main"
 
     @Published var section: SidebarItem = .sessions
+
+    /// Підпис у меню-барі вже зʼявлявся: острів запущено, вікно відкривається.
+    /// Доти кружок не ховаємо навіть з увімкненим островом.
+    @Published var menuBarReady = false
 
     /// Відкрити вікно сцени вміє лише SwiftUI зсередини якоїсь вʼюшки.
     /// Дію сюди кладе підпис у меню-барі — він живе весь час роботи

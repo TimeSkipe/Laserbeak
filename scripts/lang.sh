@@ -445,6 +445,12 @@ lb_t() {
     ru:patch.added) text='  ✓ хуки прописаны (%s)' ;;
     kk:patch.added) text='  ✓ хуктар жазылды (%s)' ;;
 
+    uk:patch.statusline) text='  ✓ рядок стану йде через Laserbeak (ліміти підписки); твоя команда — у %s' ;;
+    en:patch.statusline) text='  ✓ status line goes through Laserbeak (plan limits); your command is in %s' ;;
+    cs:patch.statusline) text='  ✓ stavový řádek jde přes Laserbeak (limity předplatného); tvůj příkaz je v %s' ;;
+    ru:patch.statusline) text='  ✓ строка состояния идёт через Laserbeak (лимиты подписки); твоя команда — в %s' ;;
+    kk:patch.statusline) text='  ✓ күй жолағы Laserbeak арқылы өтеді (жазылым лимиттері); сіздің командаңыз — %s ішінде' ;;
+
     uk:ext.copied) text='Теку скопійовано в буфер:' ;;
     en:ext.copied) text='Folder path copied to the clipboard:' ;;
     cs:ext.copied) text='Cesta ke složce je ve schránce:' ;;

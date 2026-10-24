@@ -17,6 +17,7 @@ const modes = require('./modes');
 const reaper = require('./reaper');
 const appguard = require('./appguard');
 const updates = require('./updates');
+const limits = require('./limits');
 const log = require('./log');
 
 if (!fs.existsSync(CONFIG_PATH)) {
@@ -56,6 +57,9 @@ server.listen(cfg.port, HOST, () => {
 
   // Чи вийшла нова версія на GitHub — раз на кілька годин.
   updates.start();
+
+  // Ліміти Codex — з його rollout-файлів; Claude шле свої сам.
+  limits.start();
 });
 
 // Переписку живих сесій дочитуємо постійно, а не лише на подіях хуків.

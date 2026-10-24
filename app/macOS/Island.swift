@@ -40,8 +40,38 @@ struct IslandMetrics: Equatable {
     /// Те саме, коли праворуч тісно: далі однаково прозорі поля значка
     /// меню-бару, тож візуально відступ лишається.
     var outerTight: CGFloat { max(4, (bar * 0.14).rounded()) }
-    /// Найширше ліве крило: далі вже меню програм.
-    var leftMax: CGFloat { (bar * 3).rounded() }
+    /// Найширше ліве крило: далі вже меню програм. Запас — на два знаки з
+    /// відсотками лімітів поруч.
+    var leftMax: CGFloat { (bar * 4.5).rounded() }
+
+    /// Відсоток ліміту біля знака агента. Два вікна (5 годин і тиждень) —
+    /// стовпчиком, дрібніше: обидва мусять уміститись у висоту меню-бару.
+    /// Біля вирізу тісно, тож число дрібне, а знак відсотка — ще дрібніший.
+    var percentFont: CGFloat { max(8, (bar * 0.3).rounded()) }
+    var stackedPercentFont: CGFloat { max(7, (bar * 0.25).rounded()) }
+    var percentGap: CGFloat { 2 }
+
+    func percentSignFont(_ size: CGFloat) -> CGFloat { (size * 0.7).rounded() }
+
+    func percentWidth(_ value: Int, size: CGFloat) -> CGFloat {
+        let digits = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .semibold)
+        let sign = NSFont.systemFont(ofSize: percentSignFont(size), weight: .semibold)
+        return (("\(value)" as NSString).size(withAttributes: [.font: digits]).width
+                + ("%" as NSString).size(withAttributes: [.font: sign]).width).rounded(.up)
+    }
+
+    /// Скільки займають відсотки біля знака разом із проміжком; нічого — 0.
+    func percentsWidth(_ values: [Int]) -> CGFloat {
+        guard !values.isEmpty else { return 0 }
+        let size = values.count > 1 ? stackedPercentFont : percentFont
+        return percentGap + (values.map { percentWidth($0, size: size) }.max() ?? 0)
+    }
+
+    /// Рядки лімітів під списком сесій — дрібніше за рядки сесій.
+    var limitFont: CGFloat { max(9, font - 2) }
+    var limitRowHeight: CGFloat { max(15, (bar * 0.5).rounded()) }
+    var limitRowSpacing: CGFloat { 1 }
+    var limitsTop: CGFloat { 6 }
 
     var font: CGFloat { max(10, (bar * 0.36).rounded()) }
     var rowHeight: CGFloat { max(40, (bar * 1.35).rounded()) }
@@ -221,6 +251,8 @@ final class IslandModel: ObservableObject {
     @Published var panelExpanded = false
     /// Ширина смужки — під її вміст, але не ширше, ніж дозволяє меню-бар.
     @Published var stripWidth: CGFloat = 0
+    /// Ліміти підписок Claude і Codex.
+    @Published var limits: [UsageLimit] = []
 
     init(spot: ScreenSpot) {
         self.spot = spot
@@ -246,6 +278,17 @@ final class IslandModel: ObservableObject {
     }
 
     var waitingItems: [IslandItem] { items.filter { $0.status == .needsInput } }
+
+    /// Відсотки біля знака агента на згорнутому острові — по одному на вікно
+    /// його підписки: у Claude 5 годин над тижнем. Порожньо — лімітів не знаємо.
+    func percents(for agent: String) -> [Int] {
+        limits.first { $0.agent == agent }?.windows.map(\.percent) ?? []
+    }
+
+    /// Ліміти — під списком сесій, але не при тривозі: тоді в списку лише ті,
+    /// хто чекає дозволу, і відволікати нема чим.
+    var showsLimits: Bool { !alert && !limits.isEmpty }
+    var limitRows: Int { limits.reduce(0) { $0 + $1.windows.count } }
 
     /// Що в розгорнутому списку: при тривозі — хто чекає дозволу, інакше — всі.
     var listedItems: ArraySlice<IslandItem> {
@@ -279,17 +322,22 @@ final class IslandModel: ObservableObject {
 
     var countOnLeft: Bool { right.width == 0 }
 
-    /// Ліве крило: знаки агентів у повний розмір. Ліворуч від вирізу
-    /// місця більше, тож крила різні — острів не мусить бути симетричним.
+    /// Ліве крило: знаки агентів у повний розмір, а біля знака — відсоток
+    /// ліміту, якщо він відомий. Ліворуч від вирізу місця більше, тож крила
+    /// різні — острів не мусить бути симетричним.
     var left: (width: CGFloat, agents: [String]) {
         let m = metrics
         let countPart = countOnLeft ? m.gap + m.countWidth(count) : 0
-        func width(_ n: Int) -> CGFloat {
-            m.outer + CGFloat(n) * m.icon + CGFloat(max(0, n - 1)) * m.gap + countPart + m.inner
+        func mark(_ agent: String) -> CGFloat {
+            m.icon + m.percentsWidth(percents(for: agent))
+        }
+        func width(_ shown: [String]) -> CGFloat {
+            m.outer + shown.map(mark).reduce(0, +) + CGFloat(max(0, shown.count - 1)) * m.gap
+                + countPart + m.inner
         }
         var shown = Array(agents.prefix(IslandMetrics.maxAgents))
-        while shown.count > 1, width(shown.count) > m.leftMax { shown.removeLast() }
-        return (width(shown.count), shown)
+        while shown.count > 1, width(shown) > m.leftMax { shown.removeLast() }
+        return (width(shown), shown)
     }
 
     // ------------------------------------------------------------ розміри
@@ -308,9 +356,14 @@ final class IslandModel: ObservableObject {
     var expandedSize: CGSize {
         let m = metrics
         let rows = CGFloat(listedItems.count)
+        let limitRows = showsLimits ? CGFloat(self.limitRows) : 0
+        let limits = showsLimits
+            ? m.rowSpacing + m.limitsTop + limitRows * m.limitRowHeight + max(0, limitRows - 1) * m.limitRowSpacing
+            : 0
         let list = m.listTop
             + rows * m.rowHeight
             + max(0, rows - 1) * m.rowSpacing
+            + limits
             + m.footerHeight
             + m.listBottom
         // Розгорнутий острів — по центру вирізу, тож кожна половина має
@@ -432,6 +485,7 @@ final class IslandController {
             let model = surface.model
             if model.spot != spot { model.spot = spot }
             if model.items != items { model.items = items }
+            if model.limits != state.limits { model.limits = state.limits }
 
             if !model.isNotch {
                 let width = stripWidth(for: model)
@@ -781,13 +835,32 @@ struct IslandView: View {
         }
     }
 
-    /// Просто знаки агентів — Claude, Codex, — кожен один раз. Число —
-    /// тут же, якщо праворуч від вирізу йому тісно.
+    /// Знаки агентів — Claude, Codex, — кожен один раз, а поруч скільки
+    /// використано з ліміту його підписки. Число — тут же, якщо праворуч від
+    /// вирізу йому тісно.
     private var leftWing: some View {
         let m = model.metrics
         return HStack(spacing: m.gap) {
             ForEach(model.left.agents, id: \.self) { agent in
-                AgentMark(agent: agent, size: m.icon)
+                HStack(spacing: m.percentGap) {
+                    AgentMark(agent: agent, size: m.icon)
+                    let percents = model.percents(for: agent)
+                    if !percents.isEmpty {
+                        // У Claude — 5 годин, а під ними тиждень, трохи тьмяніше.
+                        let size = percents.count > 1 ? m.stackedPercentFont : m.percentFont
+                        VStack(alignment: .leading, spacing: -1) {
+                            ForEach(Array(percents.enumerated()), id: \.offset) { index, percent in
+                                (Text(verbatim: "\(percent)")
+                                    .font(.system(size: size, weight: .semibold).monospacedDigit())
+                                 + Text(verbatim: "%")
+                                    .font(.system(size: m.percentSignFont(size), weight: .semibold)))
+                                    .foregroundStyle(percent >= LimitColor.warning
+                                                     ? LimitColor.of(percent)
+                                                     : Color.white.opacity(index == 0 ? 0.85 : 0.6))
+                            }
+                        }
+                    }
+                }
             }
             if model.countOnLeft {
                 countText
@@ -826,6 +899,10 @@ struct IslandView: View {
             ForEach(model.listedItems) { item in
                 Button { onOpen(item) } label: { IslandRow(item: item, metrics: m) }
                     .buttonStyle(.plain)
+            }
+            if model.showsLimits {
+                LimitsView(limits: model.limits, metrics: m)
+                    .padding(.top, m.limitsTop)
             }
             // Завжди, а не лише коли рядків більше, ніж вміщається: це й
             // найкоротший шлях у вікно програми.
@@ -958,6 +1035,108 @@ struct AgentBadge: View {
                     .offset(x: corner * 0.32, y: corner * 0.28)
             }
             .frame(width: size, height: size)
+    }
+}
+
+/// Синє — запас є, помаранчеве — від 70%, червоне — від 90%.
+enum LimitColor {
+    static let warning = 70
+
+    static func of(_ percent: Int) -> Color {
+        percent >= 90 ? .red : percent >= warning ? .orange : .blue
+    }
+}
+
+/// Ліміти підписок під списком сесій: агент, вікно, смужка, скільки
+/// використано і коли скинеться.
+struct LimitsView: View {
+    let limits: [UsageLimit]
+    let metrics: IslandMetrics
+
+    var body: some View {
+        // До скидання — хвилини, тож оновлюємо раз на пів хвилини, не частіше.
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            VStack(spacing: metrics.limitRowSpacing) {
+                ForEach(limits) { limit in
+                    ForEach(Array(limit.windows.enumerated()), id: \.offset) { index, window in
+                        LimitRow(agent: limit.agent, first: index == 0, window: window,
+                                 metrics: metrics, now: context.date)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Рядок ліміту: знак агента (лише в першому його рядку), вікно, смужка,
+/// відсоток і ↻ за скільки скинеться. Колонки однакової ширини, тож
+/// смужки рівні.
+struct LimitRow: View {
+    let agent: String
+    let first: Bool
+    let window: LimitWindow
+    let metrics: IslandMetrics
+    let now: Date
+
+    var body: some View {
+        let font = metrics.limitFont
+        HStack(spacing: 6) {
+            Group {
+                if first { AgentMark(agent: agent, size: font + 3) } else { Color.clear }
+            }
+            .frame(width: font + 3, height: font + 3)
+            Text(verbatim: window.title)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(width: (font * 4.4).rounded(), alignment: .leading)
+            LimitBar(percent: window.percent, height: 3)
+            Text(verbatim: "\(window.percent)%")
+                .monospacedDigit()
+                .foregroundStyle(window.percent >= LimitColor.warning ? LimitColor.of(window.percent) : Color.primary)
+                .frame(width: (font * 2.8).rounded(), alignment: .trailing)
+            reset
+                .frame(width: (font * 6.8).rounded(), alignment: .leading)
+        }
+        .font(.system(size: font))
+        .padding(.horizontal, 8)
+        .frame(height: metrics.limitRowHeight)
+    }
+
+    @ViewBuilder
+    private var reset: some View {
+        let left = window.resetsAt - now.timeIntervalSince1970
+        if window.resetsAt == 0 || left <= 0 {
+            Text("скинуто")
+                .foregroundStyle(.secondary)
+        } else {
+            HStack(spacing: 2) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: metrics.limitFont - 2, weight: .semibold))
+                Text(verbatim: Format.resetsIn(left))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// Смужка заповнення ліміту.
+struct LimitBar: View {
+    let percent: Int
+    let height: CGFloat
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.12))
+                Capsule()
+                    .fill(LimitColor.of(percent))
+                    .frame(width: geometry.size.width * CGFloat(min(100, max(0, percent))) / 100)
+            }
+        }
+        .frame(height: height)
     }
 }
 

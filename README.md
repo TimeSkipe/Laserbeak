@@ -174,20 +174,24 @@ name in Notification Center, its own group in system settings:
 
 ```
 ┌──────────────────────────────────┐
-│ ✳  frontend                 [🚀✓]│
-│    storefront                    │
-│    Finished                      │
-│    1m 4s                         │
+│ ✳  storefront               [֍🚀]│
+│    frontend                      │
+│    Finished · 1m 4s              │
 └──────────────────────────────────┘
 ```
 
-The title is the session name, the subtitle the project, and the body says
-what actually happened: finished working, or permission needed. The reason
-for a permission request is not put in the banner — what matters is the
-fact; the full text stays in the history. On the right is the project icon
-in its colour with the event in its corner — a green tick for finished
-work, an orange hand for permission, an hourglass for the input reminder
-— so a banner says whose and what without being read.
+The title is the project, the subtitle the chat's name — when it has one
+(a `start` label or a name given in the app; the id-based fallback is
+left out) — and the body says what actually happened and how long it
+took: finished working, or permission needed. The reason for a
+permission request is not put in the banner — what matters is the fact;
+the full text stays in the history. On the right is the mark of the
+agent — Claude, Codex — with the project icon in its colour in the
+corner, ringed in the event's colour: green for finished work, orange
+for permission. So a banner says who, whose and what without being read.
+
+The icon on the left is always Laserbeak's: macOS takes it from the app
+that posts the notification (see `docs/decisions.md`).
 
 Notifications from one session are grouped together, and clicking one
 opens the editor the session was started from.
@@ -199,6 +203,11 @@ Notifications, with a ▶ to hear each sound. A whole project can be made
 quiet with the speaker on its card — banners still come, without sound.
 A single session is muted in its own menu (⋯ → Name and notifications),
 and that beats the general rule.
+
+With the notch island on, a permission request comes without a banner,
+just its sound: the island opens by itself and shows who is waiting and
+for what, and a banner on top would say the same twice. With the app
+closed the banner comes as before, through `terminal-notifier`.
 
 ### Two different events under one hook
 
@@ -679,8 +688,10 @@ LASERBEAK_LANG=cs npm run install:all
 The script installs `tmux` and `terminal-notifier`, builds the `.app`,
 puts it in `/Applications`, registers two LaunchAgents (autostart at
 login), writes the hooks into `~/.claude/settings.json` — with a backup,
-leaving other settings alone — adds `start`/`stop` to `~/.zshrc` and
-installs the reply-cards mod. Reinstalling keeps the language you had.
+leaving other settings alone — routes Claude Code's status line through
+Laserbeak for the plan limits (your own `statusLine` command keeps
+drawing it), adds `start`/`stop` to `~/.zshrc` and installs the
+reply-cards mod. Reinstalling keeps the language you had.
 
 Hooks take effect in **new** Claude Code sessions. To remove everything:
 `npm run uninstall`
@@ -776,9 +787,12 @@ and appears neither in the Dock nor in ⌘Tab. Roughly like Docker.
 
 **The window is opened from the menu bar** — "Open Laserbeak" (⌘O), a
 click on any project or session listed there, or "Settings…" (⌘,)
-straight into the settings. It comes to the front even when another app
-is active. The close button just closes
-it; the app keeps working. To quit for real, use "Quit" in the same menu.
+straight into the settings. With the notch island on there is no menu
+bar circle, so the window opens from the island — or from Spotlight,
+when no agent is running and the island is hidden too. It comes to the
+front even when another app is active. The close button just closes
+it; the app keeps working. To quit for real, use "Quit" in the same menu
+or the button in Settings → General.
 
 The window has a sidebar:
 
@@ -793,7 +807,8 @@ The window has a sidebar:
 When a new version is out, a green note appears at the bottom of the
 sidebar, and the menu bar gets an "Update available" item.
 
-The menu bar icon:
+The menu bar icon — shown while the island is off, and whenever the
+daemon is not responding:
 
 | Icon | What it means |
 |------|---------------|
@@ -850,6 +865,24 @@ along its sides and bottom — the top is the edge of the screen — and
 drops a few points below the notch, so the bottom line is not hidden
 under it.
 
+Next to each agent's mark is how much of its plan limit is used: for
+Claude the 5-hour window with the weekly one under it, for Codex the
+weekly one. The expanded island ends with the limits in full, a bar
+each, blue, orange from 70% and red from 90%:
+
+```
+✳  5 h    ███░░░░░░░  35%  ↻ 1h 42m
+   week   ███░░░░░░░  30%  ↻ 11h 2m
+֍  week   ███░░░░░░░  32%  ↻ 6d 7h
+```
+
+Nothing is asked of Anthropic or OpenAI for this. Claude Code hands its
+5-hour and weekly limits to the status line, which Laserbeak routes
+through itself (your own status line is drawn as before); Codex writes
+its limits into its session files after every turn. So the numbers are
+as of the last turn on this Mac: usage on claude.ai or another computer
+shows up after the next turn here.
+
 ```
    ✳ ֍ ┌──────── notch ────────┐ 2        ← two agents need you
 ```
@@ -887,8 +920,9 @@ When that is tight, the island first trims its own margin, and only when
 even then the number does not fit does it move to the left of the notch. What a session is doing comes from its transcript;
 shell commands are never shown, only the description Claude gives them,
 since a command can carry a token. Settings → General chooses between the
-island and just the circle with a number in the menu bar, which is always
-there.
+island and the circle with a number in the menu bar — one or the other:
+while the island is on, the circle is gone, and it comes back only when
+the daemon is not responding, a warning the island cannot show.
 
 ### If the app crashes
 
@@ -1106,6 +1140,7 @@ src/              the Node daemon
   sessionSettings.js  custom session names and notification switches
   settings.js       what the window may change in config.json
   updates.js        newer version on GitHub, and how to install it
+  limits.js         Claude and Codex plan limits for the island
   archive.js        conversation archive (transcripts live only 30 days)
   shots.js          region screenshots from the browser → prompt into a session
   roots.js          resolving the project root from a working directory

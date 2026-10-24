@@ -18,6 +18,7 @@ const tmux = require('./tmux');
 const modes = require('./modes');
 const i18n = require('./i18n');
 const updates = require('./updates');
+const limits = require('./limits');
 
 const sessions = new Map();
 let history = [];
@@ -299,6 +300,8 @@ function snapshot() {
     projects: buildProjects(live),
     sessions: live.sort((a, b) => a.since - b.since),
     history: history.slice(0, 40),
+    // Скільки лишилось у підписках Claude і Codex — для острова.
+    limits: limits.snapshot(now),
   };
 }
 

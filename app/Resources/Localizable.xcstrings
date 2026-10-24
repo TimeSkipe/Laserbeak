@@ -36,6 +36,76 @@
         }
       }
     },
+    "%1$d г %2$d хв": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$dh %2$dm"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d h %2$d min"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d г %2$d хв"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d ч %2$d мин"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d сағ %2$d мин"
+          }
+        }
+      }
+    },
+    "%1$d д %2$d г": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$dd %2$dh"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d d %2$d h"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d д %2$d г"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d д %2$d ч"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d к %2$d сағ"
+          }
+        }
+      }
+    },
     "%@ — %@": {
       "extractionState": "manual",
       "localizations": {
@@ -246,6 +316,41 @@
         }
       }
     },
+    "%d хв": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%dm"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d хв"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d мин"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d мин"
+          }
+        }
+      }
+    },
     "%dгод %dхв": {
       "extractionState": "manual",
       "localizations": {
@@ -382,6 +487,41 @@
           "stringUnit": {
             "state": "translated",
             "value": "1 сессия"
+          }
+        }
+      }
+    },
+    "5 год": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 h"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 h"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 год"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 ч"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 сағ"
           }
         }
       }
@@ -946,37 +1086,72 @@
         }
       }
     },
-    "Вимкнути банери однієї сесії можна в її меню: «Назва й сповіщення…». Це сильніше за загальне правило.": {
+    "Вийти з Laserbeak": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Banners for a single session can be turned off in its menu: “Name and notifications…”. That overrides the general rule."
+            "value": "Quit Laserbeak"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bannery jedné relace lze vypnout v její nabídce: „Název a oznámení…“. To má přednost před obecným pravidlem."
+            "value": "Ukončit Laserbeak"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вимкнути банери однієї сесії можна в її меню: «Назва й сповіщення…». Це сильніше за загальне правило."
+            "value": "Вийти з Laserbeak"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Отключить баннеры одной сессии можно в её меню: «Название и уведомления…». Это сильнее общего правила."
+            "value": "Выйти из Laserbeak"
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Бір сессияның баннерлерін оның мәзірінен өшіруге болады: «Атау және хабарландырулар…». Бұл жалпы ережеден басым."
+            "value": "Laserbeak-тен шығу"
+          }
+        }
+      }
+    },
+    "Вимкнути банери однієї сесії можна в її меню: «Назва й сповіщення…». Це сильніше за загальне правило. Поки увімкнено острів біля вирізу, запит дозволу показує лише він — без банера, але з його звуком.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Banners for a single session can be turned off in its menu: “Name and notifications…”. That overrides the general rule. While the notch island is on, a permission request shows only there — no banner, but with its sound."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bannery jedné relace lze vypnout v její nabídce: „Název a oznámení…“. To má přednost před obecným pravidlem. Dokud je ostrov u výřezu zapnutý, žádost o povolení ukazuje jen on — bez banneru, ale s jeho zvukem."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнути банери однієї сесії можна в її меню: «Назва й сповіщення…». Це сильніше за загальне правило. Поки увімкнено острів біля вирізу, запит дозволу показує лише він — без банера, але з його звуком."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить баннеры одной сессии можно в её меню: «Название и уведомления…». Это сильнее общего правила. Пока включён остров у выреза, запрос разрешения показывает только он — без баннера, но с его звуком."
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бір сессияның баннерлерін оның мәзірінен өшіруге болады: «Атау және хабарландырулар…». Бұл жалпы ережеден басым. Ойық жанындағы арал қосулы тұрғанда рұқсат сұрауын тек сол көрсетеді — баннерсіз, бірақ оның дыбысымен."
           }
         }
       }
@@ -2766,37 +2941,37 @@
         }
       }
     },
-    "Острів — знаки агентів обабіч вирізу; помаранчевий — хтось чекає дозволу. На моніторі без вирізу — вузька смужка посеред меню-бару: що робить сесія і скільки триває її хід. Кружок із числом у меню-барі є завжди.": {
+    "Острів — знаки агентів обабіч вирізу; помаранчевий — хтось чекає дозволу. На моніторі без вирізу — вузька смужка посеред меню-бару: що робить сесія і скільки триває її хід. Поки острів увімкнено, кружка в меню-барі немає: вікно відкривається з острова, а вийти можна нижче. Коли агентів немає, острова теж не видно — тоді відкривайте Laserbeak через Spotlight. Кружок повертається, коли демон не відповідає.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The island shows agent icons on both sides of the notch; orange means someone is waiting for permission. On a display without a notch it is a slim strip in the middle of the menu bar: what a session is doing and how long its turn has run. The circle with a number in the menu bar is always there."
+            "value": "The island shows agent icons on both sides of the notch; orange means someone is waiting for permission. On a display without a notch it is a slim strip in the middle of the menu bar: what a session is doing and how long its turn has run. While the island is on, there is no circle in the menu bar: the window opens from the island, and you can quit below. With no agents running the island is hidden too — open Laserbeak from Spotlight then. The circle comes back when the daemon is not responding."
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ostrov ukazuje ikony agentů po obou stranách výřezu; oranžová znamená, že někdo čeká na povolení. Na monitoru bez výřezu je to úzký pruh uprostřed řádku nabídek: co relace dělá a jak dlouho trvá její tah. Kroužek s číslem v řádku nabídek je tam vždy."
+            "value": "Ostrov ukazuje ikony agentů po obou stranách výřezu; oranžová znamená, že někdo čeká na povolení. Na monitoru bez výřezu je to úzký pruh uprostřed řádku nabídek: co relace dělá a jak dlouho trvá její tah. Dokud je ostrov zapnutý, kroužek v řádku nabídek není: okno se otevírá z ostrova a ukončit aplikaci lze níže. Když žádní agenti neběží, není vidět ani ostrov — Laserbeak pak otevřete přes Spotlight. Kroužek se vrátí, když démon neodpovídá."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Острів — знаки агентів обабіч вирізу; помаранчевий — хтось чекає дозволу. На моніторі без вирізу — вузька смужка посеред меню-бару: що робить сесія і скільки триває її хід. Кружок із числом у меню-барі є завжди."
+            "value": "Острів — знаки агентів обабіч вирізу; помаранчевий — хтось чекає дозволу. На моніторі без вирізу — вузька смужка посеред меню-бару: що робить сесія і скільки триває її хід. Поки острів увімкнено, кружка в меню-барі немає: вікно відкривається з острова, а вийти можна нижче. Коли агентів немає, острова теж не видно — тоді відкривайте Laserbeak через Spotlight. Кружок повертається, коли демон не відповідає."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Остров — значки агентов по обе стороны выреза; оранжевый — кто-то ждёт разрешения. На мониторе без выреза — узкая полоска посреди строки меню: что делает сессия и сколько длится её ход. Кружок с числом в строке меню есть всегда."
+            "value": "Остров — значки агентов по обе стороны выреза; оранжевый — кто-то ждёт разрешения. На мониторе без выреза — узкая полоска посреди строки меню: что делает сессия и сколько длится её ход. Пока остров включён, кружка в строке меню нет: окно открывается с острова, а выйти можно ниже. Когда агентов нет, не видно и острова — тогда открывайте Laserbeak через Spotlight. Кружок возвращается, когда демон не отвечает."
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Арал — ойықтың екі жағындағы агент белгілері; қызғылт сары — біреу рұқсат күтіп тұр. Ойығы жоқ мониторда — мәзір жолағының ортасындағы жіңішке жолақ: сессия не істеп жатыр және оның жүрісі қанша уақыт созылып жатыр. Мәзір жолағындағы сан жазылған дөңгелек әрқашан бар."
+            "value": "Арал — ойықтың екі жағындағы агент белгілері; қызғылт сары — біреу рұқсат күтіп тұр. Ойығы жоқ мониторда — мәзір жолағының ортасындағы жіңішке жолақ: сессия не істеп жатыр және оның жүрісі қанша уақыт созылып жатыр. Арал қосулы тұрғанда мәзір жолағында дөңгелек болмайды: терезе аралдан ашылады, ал шығу төменде. Агенттер жоқ кезде арал да көрінбейді — онда Laserbeak-ті Spotlight арқылы ашыңыз. Демон жауап бермегенде дөңгелек қайта шығады."
           }
         }
       }
@@ -6161,6 +6336,41 @@
         }
       }
     },
+    "скинуто": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reset"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "obnoveno"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "скинуто"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "сброшено"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "қалпына келді"
+          }
+        }
+      }
+    },
     "спершу план, дії лише після схвалення": {
       "extractionState": "manual",
       "localizations": {
@@ -6227,6 +6437,41 @@
           "stringUnit": {
             "state": "translated",
             "value": "иә, tmux арқылы"
+          }
+        }
+      }
+    },
+    "тиждень": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "week"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "týden"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "тиждень"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "неделя"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "апта"
           }
         }
       }

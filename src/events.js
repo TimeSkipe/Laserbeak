@@ -135,8 +135,9 @@ function handle(event, payload, meta) {
         term: base.term,
         title: `✅ ${project || product}`,
         subtitle: sessionSettings.displayName(sid, label),
-        // Перший рядок — що сталося, другий — скільки тривало.
-        message: [t('notify.done'), elapsed != null ? fmtDuration(elapsed) : ''].filter(Boolean).join('\n'),
+        agent,
+        // Що сталося і скільки тривало — одним рядком.
+        message: [t('notify.done'), elapsed != null ? fmtDuration(elapsed) : ''].filter(Boolean).join(' · '),
       });
       break;
     }
@@ -206,6 +207,7 @@ function handle(event, payload, meta) {
           term: base.term,
           title: `⏸ ${project || product}`,
           subtitle: sessionSettings.displayName(sid, label),
+          agent,
           // Причину в банер не пишемо — важливий сам факт, що чекають
           // на тебе. Повний текст лишається в історії.
           message: t('notify.permission'),
@@ -227,6 +229,7 @@ function handle(event, payload, meta) {
         term: base.term,
         title: `⌛ ${project || product}`,
         subtitle: sessionSettings.displayName(sid, label),
+        agent,
         message: t('notify.idle'),
       });
       break;

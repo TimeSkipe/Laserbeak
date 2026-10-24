@@ -36,6 +36,7 @@ const { t, tLog } = require('./i18n');
 const reaper = require('./reaper');
 const inspect = require('./inspect');
 const notify = require('./notify');
+const limits = require('./limits');
 const log = require('./log');
 
 const MAX_BODY = 2 * 1024 * 1024;
@@ -237,6 +238,23 @@ async function handle(req, res) {
     return;
   }
 
+  // Ліміти підписки Claude — копія вводу рядка стану (hooks/statusline.sh).
+  // Як і хук: відповідаємо одразу, а з тіла беремо лише rate_limits.
+  if (req.method === 'POST' && p === '/limits/claude') {
+    const raw = await readBody(req);
+    json(res, 200, { ok: true });
+
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch (e) {
+      log.warnRepeated('limits-json', `ліміти Claude: тіло не JSON (${raw.length} байт)`, e);
+      return;
+    }
+    limits.fromClaude(payload);
+    return;
+  }
+
   // Примусове оновлення на вимогу — кнопка «Оновити список» у програмі.
   //
   // Демон і так перевіряє живучість сесій щопівхвилини, а процеси
@@ -248,6 +266,7 @@ async function handle(req, res) {
     await inspect.refresh();
     const removed = reaper.reap();
     modes.clear();
+    limits.refreshCodex();
 
     try {
       archive.ingestRecent();

@@ -26,6 +26,7 @@
 | `modes.js` | reading the permission mode from the Claude Code status line, effort from `~/.claude/settings.json` |
 | `reaper.js` | collecting sessions that are no longer alive |
 | `rollout.js` | has a Codex session moved on since its permission request: reads its rollout file from the request onwards |
+| `limits.js` | plan limits for the island: Claude's from its status line (`POST /limits/claude`, kept in `limits.json`), Codex's from the tail of its newest rollout file, every 30 s; a window past its reset reads as 0 |
 | `appguard.js` | keeps the Mac app alive: it is the menu bar and the banners |
 | `updates.js` | is there a newer version on GitHub, and the commands that install it |
 
@@ -37,7 +38,7 @@
 | `tmux.js` | input into WebStorm sessions: `send-keys`, Shift+Tab, `capture-pane` |
 | `terminals.js` | sessions the daemon started in its own pseudo-terminal (API only, the app no longer offers it) |
 | `pty-bridge.py` | the pseudo-terminal itself; standard library only |
-| `notify.js` | notifications: through the app, or via `terminal-notifier` as fallback; `announce()` for ones that are not about a session |
+| `notify.js` | notifications: through the app, or via `terminal-notifier` as fallback; a permission request gets no banner while the island is on and the app listens — the island opens instead, and the app only plays the banner's sound (`soundOnly`); `announce()` for ones that are not about a session |
 | `shots.js` | region screenshots from the browser: save the file, assemble the prompt in the chosen language, sweep old ones |
 | `outbox.js` | notification queue for the Mac app (long-poll) |
 
@@ -60,12 +61,12 @@ the `.xcodeproj` itself is not kept in git. One target, macOS 14+.
 | `MainWindow.swift` | the window: sidebar (Sessions, Activity, Settings: General / Notifications / Updates) and the selected pane |
 | `SessionsPane.swift` | projects as cards, sessions as rows: status, turn time, memory, mode, the actions menu (details, name, model, effort, compact, interrupt, remove) |
 | `ActivityPane.swift` | event history by day |
-| `SettingsPanes.swift` | General (language, about), Notifications (per event: on/off and sound), Updates (status, what is new, how to install) |
+| `SettingsPanes.swift` | General (language, island or circle, about, quit), Notifications (per event: on/off and sound), Updates (status, what is new, how to install) |
 | `Views.swift` | sheets: session details, session name and notifications, project colour and icon; the empty state |
 | `Theme.swift` | cards, status pills, icon tiles, the pulsing status badge |
-| `MenuBar.swift` | the menu bar icon and menu |
-| `Island.swift` | the notch island and its strip: on a notched screen, the agent's mark with the project icon in the corner on both sides of the notch, orange when someone waits for permission; on a screen without a notch, a slim strip in the menu bar with what a session is doing and its turn time. A click expands the list; a row opens the session's editor. One borderless panel per screen at the menu bar's level, sized exactly to the island; sizes follow each screen's menu bar, and the wings shrink so as never to cover menu bar items. No endless animation — the turn time ticks once a second, only while a session works |
-| `Notifications.swift` | banners from the app itself: project icon with the event badge, its own log file |
+| `MenuBar.swift` | the menu bar icon and menu; the icon is inserted at every launch (its label starts the island and hands the router `openWindow`), then hidden while the island is on and the daemon answers |
+| `Island.swift` | the notch island and its strip: on a notched screen, the agent's mark with the project icon in the corner on both sides of the notch, orange when someone waits for permission; on a screen without a notch, a slim strip in the menu bar with what a session is doing and its turn time. Next to each mark, how much of that agent's plan limit is used — one number per window, Claude's 5 hours above its week. A click expands the list, with a bar per limit window below it — used, and when it resets; a row opens the session's editor. One borderless panel per screen at the menu bar's level, sized exactly to the island; sizes follow each screen's menu bar, and the wings shrink so as never to cover menu bar items. No endless animation — the turn time ticks once a second, only while a session works |
+| `Notifications.swift` | banners from the app itself: project, chat name, what happened and how long; on the right the agent's mark with the project icon ringed in the event's colour; `soundOnly` items are just played; its own log file |
 | `Language.swift` | the window's language: from `config.json` into `AppleLanguages`, relaunch |
 | `Models.swift` | mirror of the JSON from `/state`, `/settings`, `/update`; **hand-written decoding**, see below |
 | `DaemonClient.swift` | polling `/state` and every action |
@@ -287,6 +288,16 @@ through the daemon; what differs is kept in a few places:
 
 Not there yet: the conversation archive for Codex (its rollout files are
 a different format).
+
+## The status line — `hooks/statusline.sh`
+
+Claude Code hands plan limits only to its status line, so this script
+takes the place of the person's `statusLine` command: it `curl`s a copy
+of its input to `/limits/claude` in the background and pipes the same
+input into the original command, kept in
+`~/.laserbeak/statusline-command`. The line on screen does not change.
+`patch-settings.js` puts it in and, with `--remove`, puts the original
+back. Without an original command it prints nothing.
 
 ## The guard — `hooks/guard-tmux.sh`
 

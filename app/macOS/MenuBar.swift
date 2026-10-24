@@ -1,8 +1,9 @@
 import SwiftUI
 import AppKit
 
-/// Значок у меню-барі. Живе весь час роботи програми — тому саме він
-/// віддає роутеру вміння відкривати вікно (див. AppRouter).
+/// Значок у меню-барі. Зʼявляється при кожному запуску — тому саме він
+/// віддає роутеру вміння відкривати вікно (див. AppRouter). Потім, якщо
+/// увімкнено острів, кружок ховається, а запущене ним працює далі.
 struct MenuBarLabel: View {
     @ObservedObject var client: DaemonClient
     @Environment(\.openWindow) private var openWindow
@@ -13,6 +14,7 @@ struct MenuBarLabel: View {
                 AppRouter.shared.openMainWindow = { openWindow(id: AppRouter.mainWindow) }
                 // Острів біля вирізу живе стільки ж, скільки програма.
                 IslandController.shared.start(client: client)
+                AppRouter.shared.menuBarReady = true
             }
     }
 }

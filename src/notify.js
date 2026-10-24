@@ -72,6 +72,15 @@ function viaOsascript(n, sound) {
   ], { timeout: 3000 }, (err) => { if (err) log.error('банер через osascript', err); });
 }
 
+// Назва чату для банера — лише справжня: мітка з `start "назва"` чи своя
+// назва з програми. Без мітки демон підставляє початок id сесії (events.js),
+// а такий рядок у банері нічого не каже. Як і назва, що повторює проєкт.
+function chatName(n) {
+  const name = n.subtitle || '';
+  if (!name || name === n.project || (n.sid && n.sid.startsWith(name))) return '';
+  return name;
+}
+
 /**
  * Показати сповіщення.
  *
@@ -104,6 +113,17 @@ function send(n) {
   const look = projects.settingsFor(n.cwd);
   const sound = look.silent ? '' : (cfg.sounds?.[n.kind] || '');
 
+  // На запит дозволу острів сам розгортається й показує, хто чекає і чого
+  // хоче, — банер поверх нього казав би те саме вдруге. Тож з островом
+  // банера немає, а звук його лишається: острів мовчить, а запит не можна
+  // проґавити, навіть не дивлячись на екран. Острів малює програма, тому
+  // лише поки вона на звʼязку: закрита — банер через terminal-notifier.
+  if (n.kind === 'permission' && cfg.island?.show !== false && outbox.hasDesktopClient()) {
+    if (sound) outbox.push({ kind: n.kind, sid: n.sid, sound, soundOnly: true });
+    log.info(`без банера [${n.kind}] ${n.subtitle}: показано на острові${sound ? `, звук ${sound}` : ''}`);
+    return;
+  }
+
   if (outbox.hasDesktopClient()) {
     // Колір та іконка проєкту йдуть у банер, щоб він упізнавався
     // з першого погляду, без читання тексту.
@@ -111,7 +131,10 @@ function send(n) {
     outbox.push({
       kind: n.kind,
       sid: n.sid,
-      session: n.subtitle,
+      // Банер: згори проєкт, під ним назва чату (якщо є), далі повідомлення;
+      // праворуч — знак агента з іконкою проєкту в куточку.
+      session: chatName(n),
+      agent: n.agent || 'claude',
       project: n.project || '',
       color: look.color || '',
       icon: look.icon || '',
@@ -123,8 +146,9 @@ function send(n) {
     return;
   }
 
-  if (notifierPath) viaNotifier(n, sound);
-  else viaOsascript(n, sound);
+  const plain = { ...n, subtitle: chatName(n) };
+  if (notifierPath) viaNotifier(plain, sound);
+  else viaOsascript(plain, sound);
 
   log.info(`сповіщено [${n.kind}] ${n.subtitle} → terminal-notifier (програму закрито)`);
 }

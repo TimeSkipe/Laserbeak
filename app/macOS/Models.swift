@@ -494,6 +494,9 @@ struct DaemonState: Codable {
     /// Чи показувати острів біля вирізу (config.json → island.show).
     var islandEnabled: Bool = true
 
+    /// Ліміти підписок Claude і Codex — станом на останній хід на цьому Маку.
+    var limits: [UsageLimit] = []
+
     /// Показуємо лише те, що відкрито просто зараз. Демон памʼятає всі
     /// проєкти разом із їхніми кольорами й іконками.
     ///
@@ -539,7 +542,7 @@ struct DaemonState: Codable {
 
     enum CodingKeys: String, CodingKey {
         case ok, uptimeSeconds, host, port, language, update
-        case projects, sessions, history, notifierInstalled
+        case projects, sessions, history, notifierInstalled, limits
     }
     // Окремо від CodingKeys: там лише поля, які кодуються як є.
     enum ExtraKeys: String, CodingKey { case island }
@@ -557,9 +560,60 @@ struct DaemonState: Codable {
         sessions          = c.value(.sessions, [Session]())
         history           = c.value(.history, [ActivityEvent]())
         notifierInstalled = c.value(.notifierInstalled, false)
+        limits            = c.value(.limits, [UsageLimit]())
         let extra = try? decoder.container(keyedBy: ExtraKeys.self)
         let island = try? extra?.nestedContainer(keyedBy: IslandKeys.self, forKey: .island)
         islandEnabled     = island?.value(.show, true) ?? true
+    }
+}
+
+// MARK: - Ліміти підписок
+
+/// Одне вікно ліміту підписки: 5-годинне або тижневе.
+struct LimitWindow: Codable, Hashable {
+    /// session (5 годин) | weekly
+    var kind: String = ""
+    /// Скільки використано, 0–100.
+    var used: Double = 0
+    /// Коли вікно скинеться, epoch-секунди. 0 — уже скинулось, а коли
+    /// наступне, стане відомо з наступного ходу.
+    var resetsAt: Double = 0
+
+    var title: String {
+        kind == "session" ? String(localized: "5 год") : String(localized: "тиждень")
+    }
+
+    /// Ціле число відсотків, як його показуємо.
+    var percent: Int { Int(used.rounded()) }
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey { case kind, used, resetsAt }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind     = c.value(.kind, "")
+        used     = c.value(.used, 0)
+        resetsAt = c.value(.resetsAt, 0)
+    }
+}
+
+/// Ліміти одного агента. Без `updatedAt` із /state: він змінюється з кожним
+/// рядком стану, і острів перемальовувався б даремно.
+struct UsageLimit: Codable, Hashable, Identifiable {
+    var agent: String = ""
+    var windows: [LimitWindow] = []
+
+    var id: String { agent }
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey { case agent, windows }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        agent   = c.value(.agent, "")
+        windows = c.value(.windows, [LimitWindow]())
     }
 }
 
@@ -727,6 +781,16 @@ enum Format {
         let m = Int(seconds) / 60
         if m < 60 { return String(format: String(localized: "%dхв %dс"), m, Int(seconds) % 60) }
         return String(format: String(localized: "%dгод %dхв"), m / 60, m % 60)
+    }
+
+    /// За скільки скинеться ліміт: «1 г 58 хв», «6 д 7 г». Перед ним острів
+    /// малює ↻ — без слова «через», бо місця мало.
+    static func resetsIn(_ seconds: Double) -> String {
+        let minutes = max(1, Int((seconds / 60).rounded(.up)))
+        let d = minutes / 1440, h = minutes % 1440 / 60, m = minutes % 60
+        if d > 0 { return String(format: String(localized: "%1$d д %2$d г"), d, h) }
+        if h > 0 { return String(format: String(localized: "%1$d г %2$d хв"), h, m) }
+        return String(format: String(localized: "%d хв"), m)
     }
 
     static let clock: DateFormatter = {

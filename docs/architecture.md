@@ -160,6 +160,19 @@ Claude Code
 The hook's response is sent **before** processing — the session never
 waits.
 
+### Plan limits
+
+```
+Claude Code status line ── hooks/statusline.sh ──┬─ POST /limits/claude  (copy, background)
+                                                  └─ your own statusLine command → the line
+Codex rollout file (token_count) ◄── limits.js, every 30 s
+                                      └─ /state "limits" → the island
+```
+
+Both come from what the agents leave on this computer — no token, no
+request to Anthropic or OpenAI. The cost is freshness: the numbers are
+as of the last turn here (see `docs/decisions.md`).
+
 ### Showing state
 
 ```
@@ -253,6 +266,8 @@ Code lives in the repository, user data in `~/.laserbeak/`:
 | `shots/` | region screenshots from the browser; last 200 or 7 days |
 | `events.jsonl` | log of every event |
 | `update.json` | the last update check |
+| `limits.json` | Claude's plan limits, last seen in its status line |
+| `statusline-command` | the person's own `statusLine` command, run by `hooks/statusline.sh` |
 | `extension-key.pem` | the extension's private key, mode `0600` |
 | `app-quit` | marker of a deliberate app quit |
 | `daemon.log`, `app.log` | logs: the daemon's, and the Mac app's (`AppLog`); over 5 MB / 2 MB the older half moves to `.1` |

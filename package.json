@@ -1,6 +1,6 @@
 {
   "name": "laserbeak",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "codename": "White Album",
   "description": "Фоновий демон сповіщень для Claude Code і Codex + програма для macOS і розширення браузера.",
   "type": "commonjs",

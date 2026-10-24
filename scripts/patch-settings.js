@@ -9,10 +9,13 @@
 //
 // Правила безпеки:
 //   • перед записом робиться бекап із таймстампом;
-//   • усі інші ключі (statusLine, plugins, env, permissions) не чіпаються;
+//   • усі інші ключі (plugins, env, permissions) не чіпаються;
 //   • чужі хуки зберігаються — видаляються лише наші попередні
 //     (ті, що містять laserbeak у команді);
-//   • --remove знімає наші хуки і нічого більше.
+//   • statusLine Claude Code обгортається hooks/statusline.sh: ліміти
+//     підписки є лише там (src/limits.js). Твоя команда переїжджає в
+//     ~/.laserbeak/statusline-command і малює рядок, як і раніше;
+//   • --remove знімає наші хуки й повертає твій statusLine — і нічого більше.
 //
 // Формат хуків у Codex той самий, що в Claude Code (перевірено на
 // hooks.json його вбудованих плагінів), тож скрипт один. Відмінність —
@@ -26,6 +29,10 @@ const { t } = require('./lang');
 
 const ROOT = path.resolve(__dirname, '..');
 const HOOK = path.join(ROOT, 'hooks', 'hook.sh');
+const STATUSLINE = path.join(ROOT, 'hooks', 'statusline.sh');
+const DATA_DIR = process.env.LASERBEAK_DIR || path.join(os.homedir(), '.laserbeak');
+// Твоя команда рядка стану, поки її місце займає наша обгортка.
+const STATUSLINE_COMMAND = path.join(DATA_DIR, 'statusline-command');
 const MARKER = 'laserbeak';
 
 const remove = process.argv.includes('--remove');
@@ -72,6 +79,37 @@ function isOurs(entry) {
   return JSON.stringify(entry).includes(MARKER);
 }
 
+// Рядок стану — єдине місце, куди Claude Code віддає ліміти підписки.
+// Обгортка шле їх демону, а рядок малює твоя команда.
+function patchStatusLine(settings) {
+  const current = settings.statusLine;
+  const ours = Boolean(current) && isOurs(current);
+
+  if (remove) {
+    if (!ours) return;
+    let saved = '';
+    try {
+      saved = fs.readFileSync(STATUSLINE_COMMAND, 'utf8').trim();
+    } catch {
+      // файлу немає — до нас рядка стану не було
+    }
+    if (saved) settings.statusLine = { ...current, type: 'command', command: saved };
+    else delete settings.statusLine;
+    fs.rmSync(STATUSLINE_COMMAND, { force: true });
+    return;
+  }
+
+  // Уже обгорнуто — лише оновлюємо шлях (репозиторій могли перенести), а
+  // збережену команду не чіпаємо: інакше там опинилась би наша ж обгортка.
+  if (!ours) {
+    const command = current?.type === 'command' && typeof current.command === 'string' ? current.command : '';
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(STATUSLINE_COMMAND, command ? `${command}\n` : '');
+  }
+  settings.statusLine = { ...(current || {}), type: 'command', command: `bash '${STATUSLINE}'` };
+  console.log(t('patch.statusline', STATUSLINE_COMMAND));
+}
+
 function main() {
   let settings = {};
   if (fs.existsSync(target.file)) {
@@ -114,6 +152,9 @@ function main() {
 
   if (Object.keys(hooks).length) settings.hooks = hooks;
   else delete settings.hooks;
+
+  // Рядок стану з лімітами є лише в Claude Code.
+  if (!codex) patchStatusLine(settings);
 
   fs.mkdirSync(path.dirname(target.file), { recursive: true });
   fs.writeFileSync(target.file, JSON.stringify(settings, null, 2) + '\n');
